@@ -1,0 +1,19 @@
+{
+  "name": "Pixel Craft Studio — Pattern Maker",
+  "short_name": "PixelCraft",
+  "description": "Turn pictures into pixel art craft charts with the most beautiful colors for Perler beads, cross-stitch, diamond painting, and pixel art.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#030712",
+  "theme_color": "#4f46e5",
+  "categories": ["crafts", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

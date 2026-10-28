@@ -7,7 +7,9 @@ import {
   HelpCircle,
   Scissors,
   Wand2,
-  Coffee
+  Coffee,
+  Sparkles,
+  Smartphone
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -15,6 +17,9 @@ interface HeaderProps {
   onUpdateConfig: (newConfig: Partial<GridConfig>) => void;
   onOpenExportModal: () => void;
   onOpenAiModal: () => void;
+  onOpenStarterGallery?: () => void;
+  isZenMode?: boolean;
+  onToggleZenMode?: () => void;
   onResetProgress: () => void;
   onClearEverything?: () => void;
   onLoadProjectJSON: (project: CraftProject) => void;
@@ -26,6 +31,9 @@ export const Header: React.FC<HeaderProps> = ({
   onUpdateConfig,
   onOpenExportModal,
   onOpenAiModal,
+  onOpenStarterGallery,
+  isZenMode = false,
+  onToggleZenMode,
   onResetProgress,
   onClearEverything,
   onLoadProjectJSON,
@@ -128,6 +136,34 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>New</span>
+          </button>
+        )}
+
+        {/* Starter Designs Gallery */}
+        {onOpenStarterGallery && (
+          <button
+            onClick={onOpenStarterGallery}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 transition shadow-sm"
+            title="Browse starter pattern gallery"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            <span className="hidden md:inline">Starters</span>
+          </button>
+        )}
+
+        {/* Tablet / Zen Craft Mode */}
+        {onToggleZenMode && (
+          <button
+            onClick={onToggleZenMode}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition ${
+              isZenMode
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-2 ring-emerald-400/50'
+                : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-700/80'
+            }`}
+            title={isZenMode ? 'Exit Tablet Craft Mode (Show controls)' : 'Tablet Craft Mode: Focus on stitching with full-width canvas'}
+          >
+            <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden xl:inline">{isZenMode ? 'Exit Focus' : 'Focus Mode'}</span>
           </button>
         )}
 

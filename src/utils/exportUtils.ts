@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { GridConfig, PaletteColor, CraftProject, CellProgress } from '../types/craft';
 import { getContrastingTextColor } from './colorUtils';
+import { getCraftDimensionsSummary } from './craftCalculator';
 
 // Export crisp, pixelated PNG (scale factor like 16x per pixel)
 export function exportPixelArtPNG(
@@ -161,7 +162,8 @@ export function generatePatternPDF(
   doc.setFontSize(10);
   doc.setTextColor(108, 117, 125);
   const totalCells = config.width * config.height;
-  const subtitle = `Craft Type: ${config.craftType.toUpperCase()} | Grid: ${config.width} x ${config.height} (${totalCells} cells) | Colors: ${palette.length}`;
+  const sizeSummary = getCraftDimensionsSummary(config.width, config.height, config.craftType);
+  const subtitle = `Craft: ${config.craftType.toUpperCase()} | Grid: ${config.width} x ${config.height} (${totalCells} cells) | Size: ${sizeSummary}`;
   doc.text(subtitle, margin, 26);
 
   doc.setDrawColor(200, 200, 200);

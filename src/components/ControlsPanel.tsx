@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import type { CraftType, ExtractionMode, DitherType, CraftStandard, GridConfig, SampleImage, AiHistoryItem } from '../types/craft';
 import { SAMPLE_IMAGES } from '../utils/sampleImages';
 import { 
+  calculateCrossStitchDimensions, 
+  calculatePerlerDimensions, 
+  calculateDiamondDimensions,
+  type CrossStitchClothCount 
+} from '../utils/craftCalculator';
+import { 
   Grid3X3, 
   Palette, 
   Image as ImageIcon, 
@@ -27,6 +33,7 @@ interface ControlsPanelProps {
   onRegenerate: () => void;
   onOpenAiModal: () => void;
   onInspectCurrentPhoto?: () => void;
+  onOpenStarterGallery?: () => void;
   aiHistory?: AiHistoryItem[];
   onSelectHistoryImage?: (item: AiHistoryItem) => void;
   aspectRatio: number;
@@ -40,12 +47,14 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onRegenerate,
   onOpenAiModal,
   onInspectCurrentPhoto,
+  onOpenStarterGallery,
   aiHistory = [],
   onSelectHistoryImage,
   aspectRatio,
 }) => {
   const [showPreFilters, setShowPreFilters] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'grid' | 'colors' | 'craft'>('grid');
+  const [clothCount, setClothCount] = useState<CrossStitchClothCount>(14);
 
   const handleWidthChange = (newWidth: number) => {
     const clampedW = Math.max(8, Math.min(160, newWidth));
@@ -71,27 +80,6 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
     if (e.target.files && e.target.files[0]) {
       onUploadImage(e.target.files[0]);
     }
-  };
-
-  // Physical size calculation based on craft type
-  const getPhysicalDimensions = () => {
-    if (config.craftType === 'perler') {
-      // 5mm perler bead
-      const wCm = (config.width * 0.5).toFixed(1);
-      const hCm = (config.height * 0.5).toFixed(1);
-      return `${wCm} x ${hCm} cm (Midi 5mm beads)`;
-    } else if (config.craftType === 'cross-stitch') {
-      // 14 count Aida cloth (~5.5 stitches per cm)
-      const wCm = (config.width / 5.5).toFixed(1);
-      const hCm = (config.height / 5.5).toFixed(1);
-      return `${wCm} x ${hCm} cm (14-count Aida)`;
-    } else if (config.craftType === 'diamond') {
-      // 2.8mm diamond drill
-      const wCm = (config.width * 0.28).toFixed(1);
-      const hCm = (config.height * 0.28).toFixed(1);
-      return `${wCm} x ${hCm} cm (2.8mm drills)`;
-    }
-    return `${config.width} x ${config.height} px`;
   };
 
   return (
@@ -145,6 +133,18 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             </button>
           ))}
         </div>
+
+        {/* Browse Starter Patterns Gallery Button */}
+        {onOpenStarterGallery && (
+          <button
+            type="button"
+            onClick={onOpenStarterGallery}
+            className="w-full mt-2 py-1.5 px-3 bg-slate-800/90 hover:bg-slate-700 text-pink-300 hover:text-pink-200 rounded-xl font-bold text-xs border border-pink-500/30 flex items-center justify-center gap-1.5 transition"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            <span>Browse Starter Gallery</span>
+          </button>
+        )}
 
         {/* Ask AI to Draw Picture Button */}
         <button
@@ -349,12 +349,72 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               </div>
             </div>
 
-            {/* Estimated Physical Size */}
-            <div className="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
-              <span className="text-[11px] text-slate-400 block mb-0.5">Physical Finished Size:</span>
-              <span className="text-xs font-bold text-amber-300 font-mono">
-                {getPhysicalDimensions()}
-              </span>
+            {/* Real-World Sizing & Material Calculator */}
+            <div className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📏</span> Real-World Sizing
+                </span>
+                {config.craftType === 'cross-stitch' && (
+                  <select
+                    value={clothCount}
+                    onChange={(e) => setClothCount(Number(e.target.value) as CrossStitchClothCount)}
+                    className="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[10px] text-indigo-300 font-medium focus:outline-none"
+                  >
+                    {[11, 14, 16, 18, 22].map((ct) => (
+                      <option key={ct} value={ct}>{ct}-count Aida</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {config.craftType === 'cross-stitch' && (() => {
+                const res = calculateCrossStitchDimensions(config.width, config.height, clothCount);
+                return (
+                  <div className="space-y-1 text-xs">
+                    <div className="text-amber-300 font-bold font-mono">
+                      {res.dimensions.summary}
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Recommended fabric cut: <span className="text-slate-300 font-medium">{res.recommendedFabricSizeInches.width}" × {res.recommendedFabricSizeInches.height}"</span> (with 3" margins)
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {config.craftType === 'perler' && (() => {
+                const res = calculatePerlerDimensions(config.width, config.height, 'midi-5mm');
+                return (
+                  <div className="space-y-1 text-xs">
+                    <div className="text-amber-300 font-bold font-mono">
+                      {res.dimensions.summary}
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      Standard 29×29 pegboards: <span className="text-slate-300 font-bold">{res.totalPegboards} {res.totalPegboards === 1 ? 'board' : `boards (${res.pegboardCols} × ${res.pegboardRows})`}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {config.craftType === 'diamond' && (() => {
+                const res = calculateDiamondDimensions(config.width, config.height, 'square-2.5mm');
+                return (
+                  <div className="space-y-1 text-xs">
+                    <div className="text-amber-300 font-bold font-mono">
+                      {res.dimensions.summary}
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      2.5mm square drills
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {config.craftType === 'pixel' && (
+                <div className="text-xs text-amber-300 font-bold font-mono">
+                  {config.width} × {config.height} pixels
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -19,6 +19,8 @@ import { ExportModal } from './components/ExportModal';
 import { HelpModal } from './components/HelpModal';
 import { AiGenerateModal } from './components/AiGenerateModal';
 import { ImageInspectModal } from './components/ImageInspectModal';
+import { StarterGalleryModal } from './components/StarterGalleryModal';
+import { cleanConfettiColors } from './utils/paletteOperations';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -65,6 +67,8 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
+  const [isStarterGalleryOpen, setIsStarterGalleryOpen] = useState<boolean>(false);
+  const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [inspectModalOpen, setInspectModalOpen] = useState<boolean>(false);
   const [inspectData, setInspectData] = useState<{
     url: string;
@@ -438,6 +442,24 @@ export default function App() {
     }
   };
 
+  // Clean confetti colors (<1% stitches) into their nearest CIELAB neighbor
+  const handleCleanConfetti = useCallback(() => {
+    if (gridData.length === 0 || palette.length <= 1) return;
+    
+    // Save current state for undo
+    setGridHistory((prev) => [...prev.slice(-30), gridData.map((row) => [...row])]);
+    setGridFuture([]);
+
+    const result = cleanConfettiColors(gridData, palette, 1.0);
+    if (result.removedCount > 0) {
+      setGridData(result.newGrid);
+      setPalette(result.newPalette);
+      if (activeColorIndex >= result.newPalette.length) {
+        setActiveColorIndex(0);
+      }
+    }
+  }, [gridData, palette, activeColorIndex]);
+
   // Re-run color extraction and grid quantization on existing image
   const reprocessCurrentImage = useCallback(() => {
     if (!sourceImage) return;
@@ -635,11 +657,15 @@ export default function App() {
       onDrop={handleDrop}
     >
       {/* Top Header */}
+      {/* Top Application Header */}
       <Header
         config={config}
         onUpdateConfig={handleUpdateConfig}
         onOpenExportModal={() => setIsExportOpen(true)}
         onOpenAiModal={() => setIsAiModalOpen(true)}
+        onOpenStarterGallery={() => setIsStarterGalleryOpen(true)}
+        isZenMode={isZenMode}
+        onToggleZenMode={() => setIsZenMode((prev) => !prev)}
         onResetProgress={handleResetProgress}
         onClearEverything={handleClearEverything}
         onLoadProjectJSON={handleLoadProjectJSON}
@@ -649,18 +675,21 @@ export default function App() {
       {/* Main Workspace: Left Controls + Center Canvas + Right Palette */}
       <main className="flex-1 flex overflow-hidden relative">
         {/* Left Controls (Grid, Colors amount, Craft style, AI) */}
-        <ControlsPanel
-          config={config}
-          onUpdateConfig={handleUpdateConfig}
-          onSelectSampleImage={handleSelectSample}
-          onUploadImage={handleUploadFile}
-          onRegenerate={reprocessCurrentImage}
-          onOpenAiModal={() => setIsAiModalOpen(true)}
-          onInspectCurrentPhoto={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
-          aiHistory={aiHistory}
-          onSelectHistoryImage={handleSelectHistoryImage}
-          aspectRatio={aspectRatio}
-        />
+        {!isZenMode && (
+          <ControlsPanel
+            config={config}
+            onUpdateConfig={handleUpdateConfig}
+            onSelectSampleImage={handleSelectSample}
+            onUploadImage={handleUploadFile}
+            onRegenerate={reprocessCurrentImage}
+            onOpenAiModal={() => setIsAiModalOpen(true)}
+            onInspectCurrentPhoto={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
+            onOpenStarterGallery={() => setIsStarterGalleryOpen(true)}
+            aiHistory={aiHistory}
+            onSelectHistoryImage={handleSelectHistoryImage}
+            aspectRatio={aspectRatio}
+          />
+        )}
 
         {/* Center Interactive Craft Canvas */}
         <CraftCanvas
@@ -681,18 +710,21 @@ export default function App() {
         />
 
         {/* Right Palette Legend & Material Shopping List */}
-        <PaletteLegend
-          palette={palette}
-          gridData={gridData}
-          spotlightColorId={spotlightColorId}
-          activeColorIndex={activeColorIndex}
-          completedCells={completedCells}
-          craftType={config.craftType}
-          onSelectColor={(idx) => setActiveColorIndex(idx)}
-          onToggleSpotlight={handleToggleSpotlight}
-          onUpdateColorHex={handleUpdateColorHex}
-          onToggleLockColor={handleToggleLockColor}
-        />
+        {!isZenMode && (
+          <PaletteLegend
+            palette={palette}
+            gridData={gridData}
+            spotlightColorId={spotlightColorId}
+            activeColorIndex={activeColorIndex}
+            completedCells={completedCells}
+            craftType={config.craftType}
+            onSelectColor={(idx) => setActiveColorIndex(idx)}
+            onToggleSpotlight={handleToggleSpotlight}
+            onUpdateColorHex={handleUpdateColorHex}
+            onToggleLockColor={handleToggleLockColor}
+            onCleanConfetti={handleCleanConfetti}
+          />
+        )}
 
         {/* Drag & Drop Overlay */}
         {isDraggingFile && (
@@ -712,6 +744,19 @@ export default function App() {
         palette={palette}
         config={config}
         completedCells={completedCells}
+      />
+
+      {/* Starter Patterns & Inspiration Gallery Modal */}
+      <StarterGalleryModal
+        isOpen={isStarterGalleryOpen}
+        onClose={() => setIsStarterGalleryOpen(false)}
+        onSelectStarter={(sample, craftType) => {
+          if (craftType) {
+            handleUpdateConfig({ craftType });
+          }
+          handleSelectSample(sample);
+        }}
+        onOpenAiGenerator={() => setIsAiModalOpen(true)}
       />
 
       {/* Ask AI to Generate Picture Modal with History */}

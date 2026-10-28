@@ -20,7 +20,8 @@ import {
   ChevronDown, 
   ChevronUp,
   ExternalLink,
-  Coffee 
+  Coffee,
+  Sparkles 
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -34,6 +35,7 @@ interface PaletteLegendProps {
   onToggleSpotlight: (colorId: string) => void;
   onUpdateColorHex: (index: number, newHex: string) => void;
   onToggleLockColor: (index: number) => void;
+  onCleanConfetti?: () => void;
 }
 
 export const PaletteLegend: React.FC<PaletteLegendProps> = ({
@@ -47,6 +49,7 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
   onToggleSpotlight,
   onUpdateColorHex,
   onToggleLockColor,
+  onCleanConfetti,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showTagConfig, setShowTagConfig] = useState(false);
@@ -95,9 +98,21 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
               Color Key & Shopping List
             </h3>
           </div>
-          <span className="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-400 font-mono">
-            {palette.length} colors
-          </span>
+          <div className="flex items-center gap-1.5">
+            {onCleanConfetti && (
+              <button
+                onClick={onCleanConfetti}
+                className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 flex items-center gap-1 transition"
+                title="Merge rare confetti colors (<1% stitches) into their closest matching color"
+              >
+                <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
+                <span>Clean Confetti</span>
+              </button>
+            )}
+            <span className="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-400 font-mono">
+              {palette.length} colors
+            </span>
+          </div>
         </div>
 
         {/* Search */}
@@ -185,8 +200,18 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
                         <span>{total}</span>
                       )}
                     </div>
-                    <div className="text-[10px] text-slate-500">
-                      {color.percentage}%
+                    <div className="text-[10px] text-slate-500 flex items-center justify-end gap-1 font-mono">
+                      <span>{color.percentage}%</span>
+                      {craftType === 'cross-stitch' && (
+                        <span className="text-[9px] text-indigo-400 font-sans" title="Estimated DMC 8m skeins needed">
+                          • {total > 1800 ? `${(total / 1800).toFixed(1)} sk` : '1 sk'}
+                        </span>
+                      )}
+                      {craftType === 'perler' && (
+                        <span className="text-[9px] text-amber-400 font-sans" title="Estimated 1,000-bead packs needed">
+                          • {Math.max(1, Math.ceil(total / 1000))} pk
+                        </span>
+                      )}
                     </div>
                   </div>
 

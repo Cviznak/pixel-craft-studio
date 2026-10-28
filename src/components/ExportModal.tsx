@@ -7,6 +7,7 @@ import {
   saveProjectJSON 
 } from '../utils/exportUtils';
 import { buildAmazonSuppliesUrl } from '../utils/amazonUtils';
+import { getCraftDimensionsSummary } from '../utils/craftCalculator';
 import { 
   Download, 
   FileText, 
@@ -98,13 +99,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             />
           </div>
 
-          {/* Quick Stats Pill */}
-          <div className="flex items-center justify-between p-3 bg-slate-950/70 rounded-xl border border-slate-800 text-xs">
-            <div className="text-slate-400">
-              Grid: <span className="font-bold text-slate-200">{config.width} × {config.height}</span> ({totalCells} stitches/beads)
+          {/* Quick Stats & Physical Dimensions Pill */}
+          <div className="p-3 bg-slate-950/70 rounded-xl border border-slate-800 text-xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="text-slate-400">
+                Grid: <span className="font-bold text-slate-200">{config.width} × {config.height}</span> ({totalCells} stitches/beads)
+              </div>
+              <div className="text-slate-400">
+                Palette: <span className="font-bold text-pink-400">{palette.length} colors</span>
+              </div>
             </div>
-            <div className="text-slate-400">
-              Palette: <span className="font-bold text-pink-400">{palette.length} colors</span>
+            <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">Finished Size:</span>
+              <span className="font-mono font-bold text-amber-300">
+                {getCraftDimensionsSummary(config.width, config.height, config.craftType)}
+              </span>
             </div>
           </div>
 
