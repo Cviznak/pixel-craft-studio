@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import type { PaletteColor, CellProgress, CraftType } from '../types/craft';
 import { getContrastingTextColor } from '../utils/colorUtils';
 import { 
+  buildAmazonColorSearchUrl, 
+  buildAmazonSuppliesUrl, 
+  getActiveAffiliateTag, 
+  setCustomAffiliateTag, 
+  DEFAULT_AMAZON_TAG 
+} from '../utils/amazonUtils';
+import { 
   Eye, 
   EyeOff, 
   Lock, 
@@ -43,38 +50,15 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showTagConfig, setShowTagConfig] = useState(false);
-  const [affiliateTag, setAffiliateTag] = useState(() => {
-    try {
-      return localStorage.getItem('amazon_affiliate_tag') || '';
-    } catch {
-      return '';
-    }
-  });
+  const [affiliateTag, setAffiliateTag] = useState(() => getActiveAffiliateTag());
 
   const handleSaveTag = (tag: string) => {
-    setAffiliateTag(tag);
-    try {
-      localStorage.setItem('amazon_affiliate_tag', tag);
-    } catch {
-      // Ignore
-    }
+    setCustomAffiliateTag(tag);
+    setAffiliateTag(tag ? tag.trim() : DEFAULT_AMAZON_TAG);
   };
 
   const getAmazonSearchUrl = (color: PaletteColor) => {
-    let query = '';
-    if (craftType === 'perler') {
-      query = `perler beads ${color.name || color.code || ''}`.trim();
-    } else if (craftType === 'cross-stitch') {
-      const codeOnly = color.code ? color.code.replace('DMC', '').replace('~', '').trim() : '';
-      query = `dmc ${codeOnly || color.name || ''} embroidery floss`.trim();
-    } else if (craftType === 'diamond') {
-      query = `diamond painting drills ${color.code || color.name || ''}`.trim();
-    } else {
-      query = `pixel craft supplies ${color.name || ''}`.trim();
-    }
-
-    const base = `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
-    return affiliateTag ? `${base}&tag=${encodeURIComponent(affiliateTag)}` : base;
+    return buildAmazonColorSearchUrl(color, craftType);
   };
 
   // Compute completed count per color
@@ -280,13 +264,7 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
         {/* Quick Links: Buy Supplies & Coffee */}
         <div className="flex items-center gap-1.5 pt-1">
           <a
-            href={`https://www.amazon.com/s?k=${encodeURIComponent(
-              craftType === 'perler'
-                ? 'perler beads craft kit'
-                : craftType === 'cross-stitch'
-                ? 'dmc embroidery floss kit'
-                : 'diamond painting supplies kit'
-            )}${affiliateTag ? `&tag=${encodeURIComponent(affiliateTag)}` : ''}`}
+            href={buildAmazonSuppliesUrl(craftType)}
             target="_blank"
             rel="noopener noreferrer"
             className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[11px] font-semibold transition"

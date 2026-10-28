@@ -6,6 +6,7 @@ import {
   generatePatternPDF, 
   saveProjectJSON 
 } from '../utils/exportUtils';
+import { buildAmazonSuppliesUrl } from '../utils/amazonUtils';
 import { 
   Download, 
   FileText, 
@@ -225,13 +226,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {/* Amazon Supplies Kit */}
               <a
-                href={`https://www.amazon.com/s?k=${encodeURIComponent(
-                  config.craftType === 'perler' 
-                    ? 'perler beads bucket 10000 with pegboards'
-                    : config.craftType === 'cross-stitch'
-                    ? 'dmc embroidery floss kit with 14 count aida cloth'
-                    : 'diamond painting tools kit with tray'
-                )}${localStorage.getItem('amazon_affiliate_tag') ? `&tag=${encodeURIComponent(localStorage.getItem('amazon_affiliate_tag') || '')}` : ''}`}
+                href={buildAmazonSuppliesUrl(config.craftType)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-3 rounded-xl border border-amber-500/30 bg-amber-950/20 hover:bg-amber-950/30 transition flex items-center justify-between group"
