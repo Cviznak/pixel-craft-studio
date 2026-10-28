@@ -117,8 +117,16 @@ export const ImageInspectModal: React.FC<ImageInspectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-150">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-2.5 sm:p-4 animate-in fade-in duration-150 select-none"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] my-auto"
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/70 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -212,7 +220,7 @@ export const ImageInspectModal: React.FC<ImageInspectModalProps> = ({
         </div>
 
         {/* Footer with prompt info & Use for Craft button */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
+        <div className="shrink-0 p-3 sm:p-4 border-t border-slate-800 bg-slate-950/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           {prompt ? (
             <div className="min-w-0 flex-1 flex items-center gap-2">
               <span className="text-slate-500 text-xs shrink-0 font-medium">Prompt:</span>

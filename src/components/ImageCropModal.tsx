@@ -219,10 +219,18 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
   const pixelH = imgElement ? Math.round(crop.h * imgElement.naturalHeight) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-150 select-none">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl max-h-[92vh] shadow-2xl overflow-hidden flex flex-col">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-2.5 sm:p-4 animate-in fade-in duration-150 select-none"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] shadow-2xl overflow-hidden flex flex-col my-auto"
+      >
         {/* Modal Header */}
-        <div className="p-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
+        <div className="shrink-0 p-3.5 sm:p-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
               <Crop className="w-4 h-4" />
@@ -233,15 +241,17 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Close (Esc)"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Aspect Ratio Presets Bar */}
-        <div className="px-4 py-2 bg-slate-950/40 border-b border-slate-800 flex items-center justify-between text-xs overflow-x-auto gap-2">
+        <div className="shrink-0 px-3 sm:px-4 py-2 bg-slate-950/40 border-b border-slate-800 flex items-center justify-between text-xs overflow-x-auto gap-2 [scrollbar-width:none]">
           <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider shrink-0">
             Ratio:
           </span>
@@ -359,7 +369,7 @@ export const ImageCropModal: React.FC<ImageCropModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3.5 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
+        <div className="shrink-0 p-3 sm:p-3.5 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between">
           <button
             onClick={() => {
               setCrop({ x: 0, y: 0, w: 1, h: 1 });

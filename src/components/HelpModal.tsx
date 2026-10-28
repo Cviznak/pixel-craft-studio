@@ -10,24 +10,34 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2.5 sm:p-4 animate-in fade-in duration-150 select-none"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] my-auto"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/50">
+        <div className="shrink-0 flex items-center justify-between p-3.5 sm:p-4 border-b border-slate-800 bg-slate-950/60">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-400" />
-            <h2 className="text-base font-bold text-slate-100">Pixel Craft Studio Guide</h2>
+            <h2 className="text-sm sm:text-base font-bold text-slate-100">Pixel Craft Studio Guide</h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Close (Esc)"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-5 overflow-y-auto space-y-4 text-xs text-slate-300">
+        <div className="flex-1 min-h-0 p-4 sm:p-5 overflow-y-auto space-y-3.5 text-xs text-slate-300 [scrollbar-width:thin] [scrollbar-color:#334155_transparent]">
           {/* Tip 0: AI Generation */}
           <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 flex gap-3">
             <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400 shrink-0 h-fit">
@@ -123,7 +133,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end">
+        <div className="shrink-0 p-3.5 sm:p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition"

@@ -158,16 +158,24 @@ export const AiGenerateModal: React.FC<AiGenerateModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div 
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2.5 sm:p-4 animate-in fade-in duration-150 select-none"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh] my-auto"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-950/70">
+        <div className="shrink-0 flex items-center justify-between p-3.5 sm:p-4 border-b border-slate-800 bg-slate-950/70">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-indigo-500 to-pink-500 text-white shadow-md shadow-pink-500/20">
               <Wand2 className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-2">
                 AI Picture Studio
               </h2>
               <p className="text-[11px] text-slate-400">
@@ -176,18 +184,21 @@ export const AiGenerateModal: React.FC<AiGenerateModalProps> = ({
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            title="Close (Esc)"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 px-4 pt-2 gap-2 text-xs">
+        <div className="shrink-0 flex border-b border-slate-800 bg-slate-950/40 px-3 sm:px-4 pt-2 gap-2 text-xs overflow-x-auto [scrollbar-width:none]">
           <button
+            type="button"
             onClick={() => setActiveTab('create')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg font-bold transition border-b-2 ${
+            className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-t-lg font-bold transition border-b-2 whitespace-nowrap ${
               activeTab === 'create'
                 ? 'border-indigo-500 text-indigo-300 bg-slate-900'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -197,8 +208,9 @@ export const AiGenerateModal: React.FC<AiGenerateModalProps> = ({
             Create Picture
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-lg font-bold transition border-b-2 ${
+            className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-t-lg font-bold transition border-b-2 whitespace-nowrap ${
               activeTab === 'history'
                 ? 'border-indigo-500 text-indigo-300 bg-slate-900'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -213,7 +225,7 @@ export const AiGenerateModal: React.FC<AiGenerateModalProps> = ({
         </div>
 
         {/* Tab Content */}
-        <div className="p-5 overflow-y-auto space-y-4 text-xs flex-1">
+        <div className="p-3.5 sm:p-5 overflow-y-auto space-y-4 text-xs flex-1 min-h-0 [scrollbar-width:thin] [scrollbar-color:#334155_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
           {/* TAB 1: CREATE */}
           {activeTab === 'create' && (
             <div className="space-y-4">
@@ -556,7 +568,7 @@ export const AiGenerateModal: React.FC<AiGenerateModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/70 flex items-center justify-between">
+        <div className="shrink-0 p-3 sm:p-4 border-t border-slate-800 bg-slate-950/70 flex items-center justify-between">
           <span className="text-[11px] text-slate-400">
             {retryCountdown > 0 ? (
               <span className="text-amber-400 font-medium">Cooldown: {retryCountdown}s remaining</span>
