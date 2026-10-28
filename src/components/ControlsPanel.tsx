@@ -22,7 +22,8 @@ import {
   SlidersHorizontal,
   Wand2,
   History,
-  Maximize2
+  Maximize2,
+  X
 } from 'lucide-react';
 
 interface ControlsPanelProps {
@@ -34,6 +35,7 @@ interface ControlsPanelProps {
   onOpenAiModal: () => void;
   onInspectCurrentPhoto?: () => void;
   onOpenStarterGallery?: () => void;
+  onClose?: () => void;
   aiHistory?: AiHistoryItem[];
   onSelectHistoryImage?: (item: AiHistoryItem) => void;
   aspectRatio: number;
@@ -48,6 +50,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onOpenAiModal,
   onInspectCurrentPhoto,
   onOpenStarterGallery,
+  onClose,
   aiHistory = [],
   onSelectHistoryImage,
   aspectRatio,
@@ -83,14 +86,14 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   };
 
   return (
-    <aside className="w-84 h-full bg-slate-900 border-r border-slate-800 flex flex-col z-10 shrink-0 overflow-y-auto">
+    <aside className="w-84 max-w-[85vw] h-full bg-slate-900 border-r border-slate-800 flex flex-col z-10 shrink-0 overflow-y-auto shadow-2xl lg:shadow-none">
       {/* Picture Selection Section */}
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
-              Picture Source
+              Picture & Settings
             </span>
             {onInspectCurrentPhoto && (
               <button
@@ -103,16 +106,28 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               </button>
             )}
           </div>
-          <label className="cursor-pointer text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition">
-            <Upload className="w-3 h-3" />
-            Upload Photo
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="cursor-pointer text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 transition">
+              <Upload className="w-3 h-3" />
+              Upload
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden transition"
+                title="Close settings"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Sample Images Strip */}

@@ -143,11 +143,11 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenStarterGallery && (
           <button
             onClick={onOpenStarterGallery}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 transition shadow-sm"
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 transition shadow-sm"
             title="Browse starter pattern gallery"
           >
             <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-            <span className="hidden md:inline">Starters</span>
+            <span>Starters</span>
           </button>
         )}
 
@@ -155,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onToggleZenMode && (
           <button
             onClick={onToggleZenMode}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition ${
+            className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition ${
               isZenMode
                 ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-2 ring-emerald-400/50'
                 : 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-700/80'
@@ -163,28 +163,28 @@ export const Header: React.FC<HeaderProps> = ({
             title={isZenMode ? 'Exit Tablet Craft Mode (Show controls)' : 'Tablet Craft Mode: Focus on stitching with full-width canvas'}
           >
             <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden xl:inline">{isZenMode ? 'Exit Focus' : 'Focus Mode'}</span>
+            <span>{isZenMode ? 'Exit Focus' : 'Focus Mode'}</span>
           </button>
         )}
 
         {/* Ask AI Button */}
         <button
           onClick={onOpenAiModal}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-600/20 transition active:scale-98"
+          className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-600/20 transition active:scale-98"
           title="Ask AI to generate a picture from prompt"
         >
           <Wand2 className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Ask AI</span>
+          <span>Ask AI</span>
         </button>
 
         {/* Reset Craft Tracker */}
         <button
           onClick={onResetProgress}
-          className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 transition flex items-center gap-1"
+          className="hidden md:flex p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 transition items-center gap-1"
           title="Reset craft completion checkboxes"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Reset Done</span>
+          <span>Reset Done</span>
         </button>
 
         {/* Buy Me a Coffee */}
@@ -192,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
           href="https://buymeacoffee.com/orjustdosomething"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-200 shadow-sm shadow-amber-400/20 transition active:scale-98"
+          className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold text-amber-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-200 shadow-sm shadow-amber-400/20 transition active:scale-98"
           title="Enjoying the craft studio? Buy me a coffee!"
         >
           <Coffee className="w-3.5 h-3.5 text-amber-950" />
@@ -202,10 +202,11 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Export & Print */}
         <button
           onClick={onOpenExportModal}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-md shadow-indigo-600/20 transition active:scale-98"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-md shadow-indigo-600/20 transition active:scale-98"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Export & Print</span>
+          <span className="hidden sm:inline">Export & Print</span>
+          <span className="sm:hidden">Export</span>
         </button>
 
         {/* Help button */}

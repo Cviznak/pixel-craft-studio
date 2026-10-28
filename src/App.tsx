@@ -21,6 +21,7 @@ import { AiGenerateModal } from './components/AiGenerateModal';
 import { ImageInspectModal } from './components/ImageInspectModal';
 import { StarterGalleryModal } from './components/StarterGalleryModal';
 import { cleanConfettiColors } from './utils/paletteOperations';
+import { SlidersHorizontal, Sparkles, Wand2, Palette } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -69,6 +70,8 @@ export default function App() {
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [isStarterGalleryOpen, setIsStarterGalleryOpen] = useState<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
+  const [isMobileControlsOpen, setIsMobileControlsOpen] = useState<boolean>(false);
+  const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState<boolean>(false);
   const [inspectModalOpen, setInspectModalOpen] = useState<boolean>(false);
   const [inspectData, setInspectData] = useState<{
     url: string;
@@ -674,21 +677,52 @@ export default function App() {
 
       {/* Main Workspace: Left Controls + Center Canvas + Right Palette */}
       <main className="flex-1 flex overflow-hidden relative">
-        {/* Left Controls (Grid, Colors amount, Craft style, AI) */}
+        {/* Left Controls (Desktop Sidebar & Mobile Drawer) */}
         {!isZenMode && (
-          <ControlsPanel
-            config={config}
-            onUpdateConfig={handleUpdateConfig}
-            onSelectSampleImage={handleSelectSample}
-            onUploadImage={handleUploadFile}
-            onRegenerate={reprocessCurrentImage}
-            onOpenAiModal={() => setIsAiModalOpen(true)}
-            onInspectCurrentPhoto={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
-            onOpenStarterGallery={() => setIsStarterGalleryOpen(true)}
-            aiHistory={aiHistory}
-            onSelectHistoryImage={handleSelectHistoryImage}
-            aspectRatio={aspectRatio}
-          />
+          <div
+            className={`fixed inset-y-0 left-0 z-40 lg:static lg:z-auto transition-transform duration-300 ease-in-out ${
+              isMobileControlsOpen
+                ? 'translate-x-0'
+                : '-translate-x-full lg:translate-x-0'
+            }`}
+          >
+            {/* Mobile Backdrop */}
+            {isMobileControlsOpen && (
+              <div
+                onClick={() => setIsMobileControlsOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm lg:hidden -z-10"
+              />
+            )}
+            <ControlsPanel
+              config={config}
+              onUpdateConfig={handleUpdateConfig}
+              onSelectSampleImage={(sample) => {
+                handleSelectSample(sample);
+                setIsMobileControlsOpen(false);
+              }}
+              onUploadImage={(file) => {
+                handleUploadFile(file);
+                setIsMobileControlsOpen(false);
+              }}
+              onRegenerate={reprocessCurrentImage}
+              onOpenAiModal={() => {
+                setIsMobileControlsOpen(false);
+                setIsAiModalOpen(true);
+              }}
+              onInspectCurrentPhoto={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
+              onOpenStarterGallery={() => {
+                setIsMobileControlsOpen(false);
+                setIsStarterGalleryOpen(true);
+              }}
+              onClose={() => setIsMobileControlsOpen(false)}
+              aiHistory={aiHistory}
+              onSelectHistoryImage={(item) => {
+                handleSelectHistoryImage(item);
+                setIsMobileControlsOpen(false);
+              }}
+              aspectRatio={aspectRatio}
+            />
+          </div>
         )}
 
         {/* Center Interactive Craft Canvas */}
@@ -709,22 +743,92 @@ export default function App() {
           onInspectSourceImage={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
         />
 
-        {/* Right Palette Legend & Material Shopping List */}
+        {/* Right Palette Legend (Desktop Sidebar & Mobile Drawer) */}
         {!isZenMode && (
-          <PaletteLegend
-            palette={palette}
-            gridData={gridData}
-            spotlightColorId={spotlightColorId}
-            activeColorIndex={activeColorIndex}
-            completedCells={completedCells}
-            craftType={config.craftType}
-            onSelectColor={(idx) => setActiveColorIndex(idx)}
-            onToggleSpotlight={handleToggleSpotlight}
-            onUpdateColorHex={handleUpdateColorHex}
-            onToggleLockColor={handleToggleLockColor}
-            onCleanConfetti={handleCleanConfetti}
-          />
+          <div
+            className={`fixed inset-y-0 right-0 z-40 lg:static lg:z-auto transition-transform duration-300 ease-in-out ${
+              isMobilePaletteOpen
+                ? 'translate-x-0'
+                : 'translate-x-full lg:translate-x-0'
+            }`}
+          >
+            {/* Mobile Backdrop */}
+            {isMobilePaletteOpen && (
+              <div
+                onClick={() => setIsMobilePaletteOpen(false)}
+                className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm lg:hidden -z-10"
+              />
+            )}
+            <PaletteLegend
+              palette={palette}
+              gridData={gridData}
+              spotlightColorId={spotlightColorId}
+              activeColorIndex={activeColorIndex}
+              completedCells={completedCells}
+              craftType={config.craftType}
+              onSelectColor={(idx) => setActiveColorIndex(idx)}
+              onToggleSpotlight={handleToggleSpotlight}
+              onUpdateColorHex={handleUpdateColorHex}
+              onToggleLockColor={handleToggleLockColor}
+              onCleanConfetti={handleCleanConfetti}
+              onClose={() => setIsMobilePaletteOpen(false)}
+            />
+          </div>
         )}
+
+        {/* Mobile & Tablet Bottom Navigation Bar */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-1 flex items-center justify-around shadow-2xl">
+          <button
+            onClick={() => {
+              setIsMobilePaletteOpen(false);
+              setIsMobileControlsOpen((prev) => !prev);
+            }}
+            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition ${
+              isMobileControlsOpen
+                ? 'text-indigo-400 bg-indigo-500/15'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">Settings</span>
+          </button>
+
+          <button
+            onClick={() => setIsAiModalOpen(true)}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-purple-400 hover:text-purple-300 transition"
+          >
+            <Wand2 className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">AI Draw</span>
+          </button>
+
+          <button
+            onClick={() => setIsStarterGalleryOpen(true)}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-pink-400 hover:text-pink-300 transition"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">Starters</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setIsMobileControlsOpen(false);
+              setIsMobilePaletteOpen((prev) => !prev);
+            }}
+            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition relative ${
+              isMobilePaletteOpen
+                ? 'text-pink-400 bg-pink-500/15'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="relative">
+              <Palette className="w-4 h-4" />
+              <span className="absolute -top-1 -right-2 text-[9px] bg-pink-500 text-white font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                {palette.length}
+              </span>
+            </div>
+            <span className="text-[10px] font-semibold">Palette</span>
+          </button>
+        </nav>
 
         {/* Drag & Drop Overlay */}
         {isDraggingFile && (

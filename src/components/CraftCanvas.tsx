@@ -511,48 +511,48 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   };
 
   return (
-    <div className="relative flex-1 h-full w-full bg-slate-900 overflow-hidden flex flex-col select-none touch-none" ref={containerRef}>
+    <div className="relative flex-1 h-full w-full bg-slate-900 overflow-hidden flex flex-col select-none touch-none pb-14 lg:pb-0" ref={containerRef}>
       {/* Top Floating Toolbar */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-slate-800/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700/70 shadow-xl">
+      <div className="absolute top-2 sm:top-4 left-2 sm:left-4 z-20 flex items-center gap-1 sm:gap-2 bg-slate-800/90 backdrop-blur-md p-1 sm:p-1.5 rounded-xl border border-slate-700/70 shadow-xl max-w-[calc(100vw-1rem)] overflow-x-auto">
         <button
           onClick={() => setTool('pan')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
             tool === 'pan' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-700/60'
           }`}
-          title="Pan & Navigate (or hold Middle-Click / Shift)"
+          title="Pan & Navigate (or drag with 1-finger in Pan mode)"
         >
           <Move className="w-3.5 h-3.5" />
-          <span>Pan</span>
+          <span className="hidden sm:inline">Pan</span>
         </button>
 
         <button
           onClick={() => setTool('tracker')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
             tool === 'tracker' ? 'bg-emerald-600 text-white shadow-md ring-2 ring-emerald-400/50' : 'text-slate-300 hover:bg-slate-700/60'
           }`}
-          title="Craft Tracker: Click or drag across beads/stitches to mark them done"
+          title="Craft Tracker: Tap beads/stitches to mark them completed"
         >
           <CheckSquare className="w-3.5 h-3.5" />
-          <span>Craft Tracker</span>
+          <span className="hidden sm:inline">Tracker</span>
         </button>
 
         <button
           onClick={() => setTool('pencil')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+          className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition-all shrink-0 ${
             tool === 'pencil' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-700/60'
           }`}
-          title="Pixel Touch-Up Pencil: Click cell to paint with selected color"
+          title="Pencil: Tap cell to paint with selected color"
         >
           <Edit3 className="w-3.5 h-3.5" />
-          <span>Pencil</span>
+          <span className="hidden sm:inline">Pencil</span>
         </button>
 
         {/* Undo / Redo */}
-        <div className="w-[1px] h-5 bg-slate-700 mx-0.5" />
+        <div className="w-[1px] h-5 bg-slate-700 mx-0.5 shrink-0" />
         <button
           onClick={onUndo}
           disabled={!canUndo}
-          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 disabled:opacity-30 disabled:hover:bg-transparent transition"
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 disabled:opacity-30 disabled:hover:bg-transparent transition shrink-0"
           title="Undo Pencil (Ctrl+Z)"
         >
           <Undo2 className="w-3.5 h-3.5" />
@@ -560,26 +560,26 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         <button
           onClick={onRedo}
           disabled={!canRedo}
-          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 disabled:opacity-30 disabled:hover:bg-transparent transition"
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 disabled:opacity-30 disabled:hover:bg-transparent transition shrink-0"
           title="Redo Pencil (Ctrl+Y or Ctrl+Shift+Z)"
         >
           <Redo2 className="w-3.5 h-3.5" />
         </button>
 
-        <div className="w-[1px] h-5 bg-slate-700 mx-0.5" />
+        <div className="w-[1px] h-5 bg-slate-700 mx-0.5 shrink-0 hidden md:block" />
 
         {onInspectSourceImage && (
           <button
             onClick={onInspectSourceImage}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-700/60 hover:text-white transition"
+            className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:bg-slate-700/60 hover:text-white transition shrink-0"
             title="Inspect source picture in full resolution"
           >
             <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden md:inline">Inspect Photo</span>
+            <span>Inspect</span>
           </button>
         )}
 
-        <div className="w-[1px] h-5 bg-slate-700 mx-0.5" />
+        <div className="w-[1px] h-5 bg-slate-700 mx-0.5 shrink-0" />
 
         <button
           onClick={() => {
@@ -587,7 +587,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             setZoom(newZoom);
             onSetZoom?.(newZoom);
           }}
-          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 transition"
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 transition shrink-0"
           title="Zoom In"
         >
           <ZoomIn className="w-4 h-4" />
@@ -598,40 +598,40 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             setZoom(newZoom);
             onSetZoom?.(newZoom);
           }}
-          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 transition"
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 transition shrink-0"
           title="Zoom Out"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
         <button
           onClick={fitToScreen}
-          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 transition"
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-700/60 transition shrink-0"
           title="Fit Canvas to Viewport"
         >
           <Maximize2 className="w-4 h-4" />
         </button>
-        <span className="text-slate-400 text-xs font-mono font-medium px-1">
+        <span className="text-slate-400 text-[11px] font-mono font-medium px-1 shrink-0">
           {Math.round(zoom * 100)}%
         </span>
       </div>
 
       {/* Progress & Spotlight Bar */}
-      <div className="absolute top-4 right-4 z-20 flex items-center gap-3">
+      <div className="absolute top-14 sm:top-4 right-2 sm:right-4 z-20 flex items-center gap-2">
         {spotlightColorId && (
-          <div className="flex items-center gap-2 bg-amber-500/20 border border-amber-500/50 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg animate-pulse">
-            <Eye className="w-4 h-4 text-amber-400" />
-            <span className="text-amber-200 text-xs font-semibold">
-              Color Spotlight Active (Other cells dimmed)
+          <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/50 backdrop-blur-md px-2.5 py-1 rounded-xl shadow-lg animate-pulse text-xs">
+            <Eye className="w-3.5 h-3.5 text-amber-400" />
+            <span className="text-amber-200 text-[11px] font-semibold hidden sm:inline">
+              Spotlight Active
             </span>
           </div>
         )}
 
         {totalCells > 0 && (
-          <div className="flex items-center gap-2.5 bg-slate-800/90 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-slate-700/70 shadow-xl">
+          <div className="flex items-center gap-2 bg-slate-800/90 backdrop-blur-md px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl border border-slate-700/70 shadow-xl">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Craft Progress</span>
-              <span className="text-xs font-bold text-slate-100">
-                {doneCount} / {totalCells} ({progressPercent}%)
+              <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold hidden sm:block">Craft Progress</span>
+              <span className="text-xs font-bold text-slate-100 font-mono">
+                {doneCount}/{totalCells} <span className="text-emerald-400 font-sans font-semibold">({progressPercent}%)</span>
               </span>
             </div>
             {doneCount === totalCells && (

@@ -21,7 +21,8 @@ import {
   ChevronUp,
   ExternalLink,
   Coffee,
-  Sparkles 
+  Sparkles,
+  X 
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -36,6 +37,7 @@ interface PaletteLegendProps {
   onUpdateColorHex: (index: number, newHex: string) => void;
   onToggleLockColor: (index: number) => void;
   onCleanConfetti?: () => void;
+  onClose?: () => void;
 }
 
 export const PaletteLegend: React.FC<PaletteLegendProps> = ({
@@ -50,6 +52,7 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
   onUpdateColorHex,
   onToggleLockColor,
   onCleanConfetti,
+  onClose,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showTagConfig, setShowTagConfig] = useState(false);
@@ -88,14 +91,14 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
   });
 
   return (
-    <aside className="w-80 h-full bg-slate-900 border-l border-slate-800 flex flex-col z-10 shrink-0">
+    <aside className="w-80 max-w-[85vw] h-full bg-slate-900 border-l border-slate-800 flex flex-col z-10 shrink-0 shadow-2xl lg:shadow-none">
       {/* Header */}
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Palette className="w-4 h-4 text-pink-400" />
             <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide">
-              Color Key & Shopping List
+              Color Key & Shopping
             </h3>
           </div>
           <div className="flex items-center gap-1.5">
@@ -106,12 +109,22 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
                 title="Merge rare confetti colors (<1% stitches) into their closest matching color"
               >
                 <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
-                <span>Clean Confetti</span>
+                <span className="hidden sm:inline">Clean Confetti</span>
               </button>
             )}
             <span className="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-400 font-mono">
-              {palette.length} colors
+              {palette.length}
             </span>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden transition"
+                title="Close palette"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
