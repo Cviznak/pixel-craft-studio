@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import type { 
   ExtractionMode, 
   DitherType, 
@@ -34,6 +34,8 @@ import {
   SlidersHorizontal, 
   ChevronDown, 
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Ruler,
   Crop,
   FileText
@@ -82,6 +84,14 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   const [thumbTab, setThumbTab] = useState<'presets' | 'uploads' | 'ai'>('presets');
   const [showPreFilters, setShowPreFilters] = useState<boolean>(false);
   const [clothCount, setClothCount] = useState<CrossStitchClothCount>(14);
+  const thumbStripRef = useRef<HTMLDivElement>(null);
+
+  const scrollThumbnails = (direction: 'left' | 'right') => {
+    if (thumbStripRef.current) {
+      const scrollAmount = direction === 'left' ? -130 : 130;
+      thumbStripRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const handleWidthChange = (newWidth: number) => {
     const clampedW = Math.max(8, Math.min(160, newWidth));
@@ -225,17 +235,43 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               )}
             </div>
 
-            {onOpenHistoryModal && (
+            <div className="flex items-center gap-1">
               <button
-                onClick={onOpenHistoryModal}
-                className="text-pink-400 hover:text-pink-300 underline font-semibold flex items-center gap-0.5"
+                type="button"
+                onClick={() => scrollThumbnails('left')}
+                className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition"
+                title="Scroll thumbnails left"
               >
-                All
+                <ChevronLeft className="w-3 h-3" />
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => scrollThumbnails('right')}
+                className="p-1 rounded text-slate-500 hover:text-slate-200 hover:bg-slate-800 transition"
+                title="Scroll thumbnails right"
+              >
+                <ChevronRight className="w-3 h-3" />
+              </button>
+              {onOpenHistoryModal && (
+                <button
+                  onClick={onOpenHistoryModal}
+                  className="text-pink-400 hover:text-pink-300 underline font-semibold flex items-center gap-0.5 ml-1"
+                >
+                  All
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+          <div 
+            ref={thumbStripRef}
+            onWheel={(e) => {
+              if (e.deltaY !== 0) {
+                e.currentTarget.scrollLeft += e.deltaY;
+              }
+            }}
+            className="flex gap-1.5 overflow-x-auto pb-1 pt-0.5 scroll-smooth [scrollbar-width:thin] [scrollbar-color:#334155_transparent] [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-slate-950/40 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700/80 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-indigo-500 [&::-webkit-scrollbar-button]:hidden"
+          >
             {thumbTab === 'presets' &&
               SAMPLE_IMAGES.map((sample) => (
                 <button
