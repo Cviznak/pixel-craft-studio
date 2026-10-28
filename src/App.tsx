@@ -70,6 +70,8 @@ export default function App() {
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [isStarterGalleryOpen, setIsStarterGalleryOpen] = useState<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
   const [isMobileControlsOpen, setIsMobileControlsOpen] = useState<boolean>(false);
   const [isMobilePaletteOpen, setIsMobilePaletteOpen] = useState<boolean>(false);
   const [inspectModalOpen, setInspectModalOpen] = useState<boolean>(false);
@@ -673,6 +675,10 @@ export default function App() {
         onClearEverything={handleClearEverything}
         onLoadProjectJSON={handleLoadProjectJSON}
         onToggleHelpModal={() => setIsHelpOpen(true)}
+        isLeftPanelOpen={isLeftPanelOpen}
+        onToggleLeftPanel={() => setIsLeftPanelOpen((prev) => !prev)}
+        isRightPanelOpen={isRightPanelOpen}
+        onToggleRightPanel={() => setIsRightPanelOpen((prev) => !prev)}
       />
 
       {/* Main Workspace: Left Controls + Center Canvas + Right Palette */}
@@ -680,10 +686,12 @@ export default function App() {
         {/* Left Controls (Desktop Sidebar & Mobile Drawer) */}
         {!isZenMode && (
           <div
-            className={`fixed inset-y-0 left-0 z-40 lg:static lg:z-auto transition-transform duration-300 ease-in-out ${
+            className={`fixed inset-y-0 left-0 z-40 transition-transform duration-300 ease-in-out ${
               isMobileControlsOpen
                 ? 'translate-x-0'
-                : '-translate-x-full lg:translate-x-0'
+                : '-translate-x-full'
+            } lg:static lg:z-auto ${
+              isLeftPanelOpen ? 'lg:translate-x-0 lg:flex' : 'lg:-translate-x-full lg:hidden'
             }`}
           >
             {/* Mobile Backdrop */}
@@ -746,10 +754,12 @@ export default function App() {
         {/* Right Palette Legend (Desktop Sidebar & Mobile Drawer) */}
         {!isZenMode && (
           <div
-            className={`fixed inset-y-0 right-0 z-40 lg:static lg:z-auto transition-transform duration-300 ease-in-out ${
+            className={`fixed inset-y-0 right-0 z-40 transition-transform duration-300 ease-in-out ${
               isMobilePaletteOpen
                 ? 'translate-x-0'
-                : 'translate-x-full lg:translate-x-0'
+                : 'translate-x-full'
+            } lg:static lg:z-auto ${
+              isRightPanelOpen ? 'lg:translate-x-0 lg:flex' : 'lg:translate-x-full lg:hidden'
             }`}
           >
             {/* Mobile Backdrop */}
