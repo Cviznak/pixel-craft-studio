@@ -2,7 +2,7 @@
 
 > Free online pattern maker to **convert images to pixel art**, **Perler bead patterns**, **cross-stitch charts**, and **diamond painting designs** with official DMC floss codes and real-world dimensions.
 
-🌐 **Live Website**: [https://pixel-craft-studio-ten.vercel.app](https://pixel-craft-studio-ten.vercel.app)
+🌐 **Live Website**: [https://pixel-craft-studio.com](https://pixel-craft-studio.com)
 
 ![Pixel Craft Studio](https://img.shields.io/badge/Status-Production%20Ready-emerald?style=flat-square)
 ![Build](https://img.shields.io/badge/Build-Passing-blue?style=flat-square)
