@@ -1,9 +1,12 @@
 # Pixel Craft Studio 🧵🔘💎
 
-> Turn any picture into a vibrant pixel art grid and craft chart for **Perler beads**, **cross-stitch**, **diamond painting**, and **pixel craft** using the most beautiful colors.
+> Free online pattern maker to **convert images to pixel art**, **Perler bead patterns**, **cross-stitch charts**, and **diamond painting designs** with official DMC floss codes and real-world dimensions.
+
+🌐 **Live Website**: [https://pixel-craft-studio-ten.vercel.app](https://pixel-craft-studio-ten.vercel.app)
 
 ![Pixel Craft Studio](https://img.shields.io/badge/Status-Production%20Ready-emerald?style=flat-square)
 ![Build](https://img.shields.io/badge/Build-Passing-blue?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-purple?style=flat-square)
 
 ---
 
