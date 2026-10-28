@@ -93,8 +93,9 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     const targetW = clientWidth - padding;
     const targetH = clientHeight - padding;
 
-    const totalGridW = gridWidth * baseCellSize;
-    const totalGridH = gridHeight * baseCellSize;
+    const rulerOffset = config.showRulers ? 24 : 0;
+    const totalGridW = gridWidth * baseCellSize + rulerOffset;
+    const totalGridH = gridHeight * baseCellSize + rulerOffset;
 
     const scaleX = targetW / totalGridW;
     const scaleY = targetH / totalGridH;
@@ -102,10 +103,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
     setZoom(newZoom);
     setPan({
-      x: (clientWidth - totalGridW * newZoom) / 2,
-      y: (clientHeight - totalGridH * newZoom) / 2,
+      x: (clientWidth - totalGridW * newZoom) / 2 + rulerOffset * newZoom,
+      y: (clientHeight - totalGridH * newZoom) / 2 + rulerOffset * newZoom,
     });
-  }, [gridWidth, gridHeight, baseCellSize]);
+  }, [gridWidth, gridHeight, baseCellSize, config.showRulers]);
 
   useEffect(() => {
     fitToScreen();
@@ -366,6 +367,105 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         ctx.beginPath();
         ctx.moveTo(0, y * cellSize);
         ctx.lineTo(totalW, y * cellSize);
+        ctx.stroke();
+      }
+    }
+
+    // Draw On-Canvas Labeled Rulers (Columns at Top & Rows at Left)
+    if (config.showRulers) {
+      const rulerSize = 24;
+
+      // 1. Top Ruler (Columns)
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, -rulerSize, totalW, rulerSize);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(0, -rulerSize, totalW, rulerSize);
+
+      // 2. Left Ruler (Rows)
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(-rulerSize, 0, rulerSize, totalH);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(-rulerSize, 0, rulerSize, totalH);
+
+      // 3. Top-Left Corner Box
+      ctx.fillStyle = '#030712';
+      ctx.fillRect(-rulerSize, -rulerSize, rulerSize, rulerSize);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1 / zoom;
+      ctx.strokeRect(-rulerSize, -rulerSize, rulerSize, rulerSize);
+      ctx.fillStyle = '#64748b';
+      ctx.font = `bold ${Math.max(8, Math.floor(10 / Math.max(0.7, zoom)))}px system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('#', -rulerSize / 2, -rulerSize / 2);
+
+      // Labeling frequency for Top Ruler based on current zoom
+      const colStep = (cellSize * zoom >= 24) ? 1 : (cellSize * zoom >= 10 ? 5 : 10);
+      const fontSize = Math.max(8, Math.floor(11 / Math.max(0.6, zoom)));
+      ctx.font = `600 ${fontSize}px system-ui, sans-serif`;
+
+      for (let x = 0; x < gridWidth; x++) {
+        const colNum = x + 1;
+        const cx = x * cellSize;
+        const isHoverCol = hoverCoord?.x === x;
+        const shouldLabel = (colNum % colStep === 0) || colNum === 1 || colNum === gridWidth;
+
+        // Active column highlight on top ruler
+        if (isHoverCol) {
+          ctx.fillStyle = '#4f46e5';
+          ctx.fillRect(cx, -rulerSize, cellSize, rulerSize);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${colNum}`, cx + cellSize / 2, -rulerSize / 2);
+        } else if (shouldLabel) {
+          ctx.fillStyle = (colNum % 10 === 0) ? '#f43f5e' : (colNum % 5 === 0 ? '#38bdf8' : '#94a3b8');
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${colNum}`, cx + cellSize / 2, -rulerSize / 2);
+        }
+
+        // Column tick mark
+        ctx.strokeStyle = colNum % 10 === 0 ? '#f43f5e' : (colNum % 5 === 0 ? '#0284c7' : '#1e293b');
+        ctx.lineWidth = colNum % 10 === 0 ? 1.5 / zoom : 1 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(cx + cellSize, -rulerSize * 0.4);
+        ctx.lineTo(cx + cellSize, 0);
+        ctx.stroke();
+      }
+
+      // Left Ruler (Rows)
+      const rowStep = (cellSize * zoom >= 24) ? 1 : (cellSize * zoom >= 10 ? 5 : 10);
+
+      for (let y = 0; y < gridHeight; y++) {
+        const rowNum = y + 1;
+        const cy = y * cellSize;
+        const isHoverRow = hoverCoord?.y === y;
+        const shouldLabel = (rowNum % rowStep === 0) || rowNum === 1 || rowNum === gridHeight;
+
+        // Active row highlight on left ruler
+        if (isHoverRow) {
+          ctx.fillStyle = '#4f46e5';
+          ctx.fillRect(-rulerSize, cy, rulerSize, cellSize);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${rowNum}`, -rulerSize / 2, cy + cellSize / 2);
+        } else if (shouldLabel) {
+          ctx.fillStyle = (rowNum % 10 === 0) ? '#f43f5e' : (rowNum % 5 === 0 ? '#38bdf8' : '#94a3b8');
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${rowNum}`, -rulerSize / 2, cy + cellSize / 2);
+        }
+
+        // Row tick mark
+        ctx.strokeStyle = rowNum % 10 === 0 ? '#f43f5e' : (rowNum % 5 === 0 ? '#0284c7' : '#1e293b');
+        ctx.lineWidth = rowNum % 10 === 0 ? 1.5 / zoom : 1 / zoom;
+        ctx.beginPath();
+        ctx.moveTo(-rulerSize * 0.4, cy + cellSize);
+        ctx.lineTo(0, cy + cellSize);
         ctx.stroke();
       }
     }
@@ -792,16 +892,18 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
       {/* Coordinate & Cell Info Pill */}
       {hoverCoord && (
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800/80 text-slate-300 text-xs font-mono shadow-lg flex items-center gap-2 pointer-events-none">
-          <span>X: {hoverCoord.x + 1}, Y: {hoverCoord.y + 1}</span>
+        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800/80 text-slate-300 text-xs font-mono shadow-lg flex items-center gap-2 pointer-events-none">
+          <span className="font-semibold text-slate-200">
+            Col: {hoverCoord.x + 1}/{gridWidth} • Row: {hoverCoord.y + 1}/{gridHeight}
+          </span>
           {gridData[hoverCoord.y]?.[hoverCoord.x] !== undefined && (
             <>
               <span className="text-slate-600">•</span>
               <div 
-                className="w-3 h-3 rounded-full border border-white/30"
+                className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-sm"
                 style={{ backgroundColor: palette[gridData[hoverCoord.y][hoverCoord.x]]?.hex }}
               />
-              <span className="font-semibold text-slate-200">
+              <span className="font-semibold text-slate-100">
                 {palette[gridData[hoverCoord.y][hoverCoord.x]]?.code || palette[gridData[hoverCoord.y][hoverCoord.x]]?.hex}
               </span>
               <span className="text-amber-400 font-bold">

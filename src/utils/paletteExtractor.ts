@@ -12,18 +12,22 @@ interface SamplePixel {
   weight: number;
 }
 
+/**
+ * Extracts a high-accuracy, aesthetically balanced color palette from image data.
+ * Uses perceptual CIELAB color space and K-Means clustering.
+ */
 export function extractBeautifulPalette(
   imageData: ImageData,
   k: number,
-  mode: ExtractionMode = 'vibrant',
+  mode: ExtractionMode = 'balanced',
   craftStandard: CraftStandard = 'custom',
   lockedColors: PaletteColor[] = []
 ): PaletteColor[] {
   const { data, width, height } = imageData;
   const totalPixels = width * height;
   
-  // 1. Gather representative pixels (subsample if image is large for instant speed)
-  const step = Math.max(1, Math.floor(Math.sqrt(totalPixels / 15000)));
+  // 1. Gather representative pixels (sample densely for high color accuracy)
+  const step = Math.max(1, Math.floor(Math.sqrt(totalPixels / 30000)));
   const pixels: SamplePixel[] = [];
 
   for (let y = 0; y < height; y += step) {
@@ -40,16 +44,18 @@ export function extractBeautifulPalette(
 
       let weight = 1.0;
       if (mode === 'vibrant') {
-        // Boost vivid jewel tones so subtle flowers, lips, eyes, sky pop out
-        weight = 1.0 + Math.pow(vibrance, 1.4) * 4.0;
+        // Subtle boost for rich jewel tones while preserving true subject colors
+        weight = 1.0 + vibrance * 1.8;
       } else if (mode === 'balanced') {
-        weight = 1.0 + vibrance * 1.5;
-      } else if (mode === 'pastel') {
-        // Favor lighter pastel shades
-        const lum = lab.l / 100;
-        weight = (lum > 0.6 ? 2.0 : 0.8) + vibrance * 1.5;
-      } else {
+        // Natural balanced weighting
+        weight = 1.0 + vibrance * 0.4;
+      } else if (mode === 'dominant') {
+        // Pure frequency based (true photographic realism)
         weight = 1.0;
+      } else if (mode === 'pastel') {
+        // Favor lighter pastel tones
+        const lum = lab.l / 100;
+        weight = (lum > 0.55 ? 1.8 : 0.7) + vibrance * 0.8;
       }
 
       pixels.push({ r, g, b, lab, vibrance, weight });
@@ -57,7 +63,6 @@ export function extractBeautifulPalette(
   }
 
   if (pixels.length === 0) {
-    // Fallback if image was empty/transparent
     return [
       { id: 'color-0', hex: '#000000', r: 0, g: 0, b: 0, symbol: '●', count: 0, percentage: 100 }
     ];
@@ -66,31 +71,52 @@ export function extractBeautifulPalette(
   // 2. K-means++ initialization in CIELAB space
   const centroids: RGB[] = [];
   
-  // Include any locked colors first
+  // Include any user-locked colors first
   lockedColors.forEach(locked => {
     centroids.push({ r: locked.r, g: locked.g, b: locked.b });
   });
 
   const neededK = Math.min(k, pixels.length);
 
-  // If no locked colors, pick the first centroid based on weighted vibrance
+  // If no locked colors, pick the initial centroid deterministically
   if (centroids.length === 0) {
     let bestPix = pixels[0];
     let maxScore = -1;
-    // Pick from a random subset of high-weight pixels to ensure variety
-    for (let i = 0; i < Math.min(100, pixels.length); i++) {
-      const randIdx = Math.floor(Math.random() * pixels.length);
-      const p = pixels[randIdx];
-      const score = p.weight * (0.8 + Math.random() * 0.4);
-      if (score > maxScore) {
-        maxScore = score;
-        bestPix = p;
+
+    if (mode === 'dominant') {
+      // Pick pixel closest to overall mean LAB
+      let sumL = 0, sumA = 0, sumB = 0;
+      for (const p of pixels) {
+        sumL += p.lab.l;
+        sumA += p.lab.a;
+        sumB += p.lab.b;
+      }
+      const meanLab: LAB = {
+        l: sumL / pixels.length,
+        a: sumA / pixels.length,
+        b: sumB / pixels.length,
+      };
+      let minDist = Infinity;
+      for (const p of pixels) {
+        const d = deltaE(p.lab, meanLab);
+        if (d < minDist) {
+          minDist = d;
+          bestPix = p;
+        }
+      }
+    } else {
+      // Pick highest weighted pixel
+      for (const p of pixels) {
+        if (p.weight > maxScore) {
+          maxScore = p.weight;
+          bestPix = p;
+        }
       }
     }
     centroids.push({ r: bestPix.r, g: bestPix.g, b: bestPix.b });
   }
 
-  // K-means++ seeding
+  // K-means++ seeding: choose points with probability proportional to D(x)^2
   while (centroids.length < neededK) {
     const centroidLabs = centroids.map(c => rgbToLab(c.r, c.g, c.b));
     let totalDistSq = 0;
@@ -103,7 +129,6 @@ export function extractBeautifulPalette(
         const d = deltaE(p.lab, cLab);
         if (d < minDist) minDist = d;
       }
-      // Weight distance by aesthetic score
       const dWeighted = minDist * p.weight;
       distances[i] = dWeighted * dWeighted;
       totalDistSq += distances[i];
@@ -123,8 +148,8 @@ export function extractBeautifulPalette(
     centroids.push({ r: chosen.r, g: chosen.g, b: chosen.b });
   }
 
-  // 3. Iterative K-Means refinement (max 12 iterations for rapid real-time response)
-  const maxIters = 12;
+  // 3. Iterative K-Means refinement in CIELAB space
+  const maxIters = 14;
   let clusters: SamplePixel[][] = Array.from({ length: centroids.length }, () => []);
 
   for (let iter = 0; iter < maxIters; iter++) {
@@ -147,7 +172,7 @@ export function extractBeautifulPalette(
     // Recompute centroids using weighted average
     let maxShift = 0;
     for (let j = 0; j < centroids.length; j++) {
-      // Don't shift locked colors
+      // Preserve locked colors
       if (j < lockedColors.length) continue;
 
       const cluster = clusters[j];
@@ -171,23 +196,23 @@ export function extractBeautifulPalette(
       centroids[j] = { r: newR, g: newG, b: newB };
     }
 
-    if (maxShift < 3) break;
+    if (maxShift < 2) break;
   }
 
-  // 4. Prune duplicates or near-identical colors to ensure distinct beautiful palette
+  // 4. Prune only imperceptible near-identical duplicates (deltaE < 2.8)
   const distinctCentroids: RGB[] = [];
   for (const c of centroids) {
     const cLab = rgbToLab(c.r, c.g, c.b);
     const isTooClose = distinctCentroids.some(existing => {
       const eLab = rgbToLab(existing.r, existing.g, existing.b);
-      return deltaE(cLab, eLab) < 8.0; // Perceptually very close
+      return deltaE(cLab, eLab) < 2.8; // Only prune imperceptible duplicates
     });
     if (!isTooClose || distinctCentroids.length < Math.min(3, centroids.length)) {
       distinctCentroids.push(c);
     }
   }
 
-  // If pruning left us with fewer than requested and we have room, re-add most distant pixel
+  // If pruning left fewer than neededK, fill back with furthest distinct pixels
   while (distinctCentroids.length < neededK && pixels.length > distinctCentroids.length) {
     const currentLabs = distinctCentroids.map(c => rgbToLab(c.r, c.g, c.b));
     let maxDist = -1;
@@ -235,10 +260,11 @@ export function extractBeautifulPalette(
       code = `Perler ${match.code}`;
       brand = 'Perler';
     } else {
-      // Find closest DMC match name as reference note for user even in custom mode
+      // In Custom mode, keep exact true photo RGB colors, but provide nearest DMC match as reference tag
       const match = findClosestCraftColor(finalR, finalG, finalB, 'DMC');
       name = match.name;
       code = `~DMC ${match.code}`;
+      brand = 'Custom';
     }
 
     const hex = rgbToHex(finalR, finalG, finalB);

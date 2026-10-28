@@ -34,12 +34,12 @@ const DEFAULT_CONFIG: GridConfig = {
   lockAspectRatio: true,
   colorsCount: 14,
   craftType: 'perler',
-  extractionMode: 'vibrant',
+  extractionMode: 'balanced',
   dither: 'none',
-  craftStandard: 'dmc',
+  craftStandard: 'custom',
   brightness: 0,
   contrast: 0,
-  saturation: 15,
+  saturation: 0,
   showGridLines: true,
   show10x10MajorLines: true,
   showRulers: true,
@@ -97,6 +97,24 @@ export default function App() {
 
   // Drag and drop state
   const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
+
+  // Persistent refs for zero-lag config and image pipeline synchronization
+  const latestConfigRef = useRef<GridConfig>(config);
+  const paletteRef = useRef<PaletteColor[]>(palette);
+  const sourceImageRef = useRef<HTMLImageElement | null>(sourceImage);
+  const reprocessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    latestConfigRef.current = config;
+  }, [config]);
+
+  useEffect(() => {
+    paletteRef.current = palette;
+  }, [palette]);
+
+  useEffect(() => {
+    sourceImageRef.current = sourceImage;
+  }, [sourceImage]);
 
   // Reference for synchronous beforeunload save
   const currentStateRef = useRef({
@@ -204,21 +222,26 @@ export default function App() {
     img: HTMLImageElement,
     dataUrl: string,
     sampleId = '',
-    targetConfig = config
+    targetConfig = latestConfigRef.current
   ) => {
     const aspect = img.width / img.height;
     setAspectRatio(aspect);
     setSourceImage(img);
+    sourceImageRef.current = img;
     setSourceImageDataUrl(dataUrl);
     setSampleImageId(sampleId);
 
-    let targetWidth = targetConfig.width;
-    let targetHeight = targetConfig.height;
+    let activeConfig = { ...targetConfig };
+    let targetWidth = activeConfig.width;
+    let targetHeight = activeConfig.height;
 
-    if (targetConfig.lockAspectRatio) {
+    if (activeConfig.lockAspectRatio) {
       targetHeight = Math.max(8, Math.min(160, Math.round(targetWidth / aspect)));
-      setConfig((prev) => ({ ...prev, height: targetHeight }));
+      activeConfig = { ...activeConfig, height: targetHeight };
     }
+
+    latestConfigRef.current = activeConfig;
+    setConfig(activeConfig);
 
     const tempCanvas = document.createElement('canvas');
     const maxDimension = 300;
@@ -246,9 +269,9 @@ export default function App() {
     // Extract palette using vibrant aesthetic algorithm
     const newPalette = extractBeautifulPalette(
       imgData,
-      targetConfig.colorsCount,
-      targetConfig.extractionMode,
-      targetConfig.craftStandard,
+      activeConfig.colorsCount,
+      activeConfig.extractionMode,
+      activeConfig.craftStandard,
       []
     );
 
@@ -258,15 +281,16 @@ export default function App() {
       targetWidth,
       targetHeight,
       newPalette,
-      targetConfig
+      activeConfig
     );
 
     setPalette(paletteWithCounts);
+    paletteRef.current = paletteWithCounts;
     setGridData(newGrid);
     setCompletedCells({});
     setGridHistory([]);
     setGridFuture([]);
-  }, [config]);
+  }, []);
 
   // Load saved state on mount (restores on page refresh)
   useEffect(() => {
@@ -542,13 +566,16 @@ export default function App() {
   }, [gridData, palette, activeColorIndex]);
 
   // Re-run color extraction and grid quantization on existing image
-  const reprocessCurrentImage = useCallback(() => {
-    if (!sourceImage) return;
+  const reprocessCurrentImage = useCallback((targetConfig?: GridConfig) => {
+    const img = sourceImageRef.current;
+    if (!img) return;
+
+    const activeConfig = targetConfig || latestConfigRef.current;
 
     const tempCanvas = document.createElement('canvas');
     const maxDimension = 300;
-    let sampleW = sourceImage.width;
-    let sampleH = sourceImage.height;
+    let sampleW = img.width;
+    let sampleH = img.height;
 
     if (sampleW > maxDimension || sampleH > maxDimension) {
       if (sampleW > sampleH) {
@@ -565,40 +592,36 @@ export default function App() {
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
 
-    tempCtx.drawImage(sourceImage, 0, 0, sampleW, sampleH);
+    tempCtx.drawImage(img, 0, 0, sampleW, sampleH);
     const imgData = tempCtx.getImageData(0, 0, sampleW, sampleH);
 
-    const locked = palette.filter((c) => c.isLocked);
+    const locked = paletteRef.current.filter((c) => c.isLocked);
     const newPalette = extractBeautifulPalette(
       imgData,
-      config.colorsCount,
-      config.extractionMode,
-      config.craftStandard,
+      activeConfig.colorsCount,
+      activeConfig.extractionMode,
+      activeConfig.craftStandard,
       locked
     );
 
     const { gridData: newGrid, paletteWithCounts } = processImageToGrid(
-      sourceImage,
-      config.width,
-      config.height,
+      img,
+      activeConfig.width,
+      activeConfig.height,
       newPalette,
-      config
+      activeConfig
     );
 
     setPalette(paletteWithCounts);
+    paletteRef.current = paletteWithCounts;
     setGridData(newGrid);
-  }, [
-    sourceImage,
-    config,
-    palette,
-  ]);
+  }, []);
 
   // Update Config Helper
-  const handleUpdateConfig = (newConfig: Partial<GridConfig>) => {
-    setConfig((prev) => {
-      const next = { ...prev, ...newConfig };
-      return next;
-    });
+  const handleUpdateConfig = useCallback((newConfig: Partial<GridConfig>) => {
+    const next = { ...latestConfigRef.current, ...newConfig };
+    latestConfigRef.current = next;
+    setConfig(next);
 
     const needsReprocess = 
       newConfig.width !== undefined ||
@@ -611,12 +634,15 @@ export default function App() {
       newConfig.contrast !== undefined ||
       newConfig.saturation !== undefined;
 
-    if (needsReprocess && sourceImage) {
-      setTimeout(() => {
-        reprocessCurrentImage();
-      }, 30);
+    if (needsReprocess && sourceImageRef.current) {
+      if (reprocessTimerRef.current) {
+        clearTimeout(reprocessTimerRef.current);
+      }
+      reprocessTimerRef.current = setTimeout(() => {
+        reprocessCurrentImage(next);
+      }, 35);
     }
-  };
+  }, [reprocessCurrentImage]);
 
   // Cell Interaction Handlers
   const handleToggleCellCompleted = (x: number, y: number) => {
@@ -647,6 +673,7 @@ export default function App() {
   };
 
   const handleUpdateColorHex = (index: number, newHex: string) => {
+    let updatedPalette: PaletteColor[] = [];
     setPalette((prev) => {
       const next = [...prev];
       if (next[index]) {
@@ -656,21 +683,26 @@ export default function App() {
         const b = parseInt(clean.substring(4, 6), 16);
         next[index] = { ...next[index], hex: newHex, r, g, b, isLocked: true };
       }
+      updatedPalette = next;
+      paletteRef.current = next;
       return next;
     });
 
-    if (sourceImage) {
+    const img = sourceImageRef.current;
+    if (img) {
       setTimeout(() => {
+        const curConfig = latestConfigRef.current;
         const { gridData: newGrid, paletteWithCounts } = processImageToGrid(
-          sourceImage,
-          config.width,
-          config.height,
-          palette,
-          config
+          img,
+          curConfig.width,
+          curConfig.height,
+          updatedPalette.length > 0 ? updatedPalette : paletteRef.current,
+          curConfig
         );
         setGridData(newGrid);
         setPalette(paletteWithCounts);
-      }, 50);
+        paletteRef.current = paletteWithCounts;
+      }, 30);
     }
   };
 

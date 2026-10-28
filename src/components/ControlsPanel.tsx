@@ -340,7 +340,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 <input
                   type="range"
                   min="8"
-                  max="120"
+                  max="160"
                   value={config.width}
                   onChange={(e) => handleWidthChange(parseInt(e.target.value))}
                   className="w-full accent-indigo-500 cursor-pointer"
@@ -366,7 +366,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 <input
                   type="range"
                   min="8"
-                  max="120"
+                  max="160"
                   value={config.height}
                   onChange={(e) => handleHeightChange(parseInt(e.target.value))}
                   className="w-full accent-indigo-500 cursor-pointer"
@@ -630,6 +630,16 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                   type="checkbox"
                   checked={config.showSymbols}
                   onChange={(e) => onUpdateConfig({ showSymbols: e.target.checked })}
+                  className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5"
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-2 rounded-lg bg-slate-950/40 border border-slate-800/80 cursor-pointer text-xs">
+                <span className="text-slate-300 font-medium">Show Rulers & Numbers</span>
+                <input
+                  type="checkbox"
+                  checked={config.showRulers}
+                  onChange={(e) => onUpdateConfig({ showRulers: e.target.checked })}
                   className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5"
                 />
               </label>

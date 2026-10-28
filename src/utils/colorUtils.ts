@@ -107,6 +107,10 @@ export function adjustPixel(
   contrast: number,   // -100 to 100
   saturation: number  // -100 to 100
 ): RGB {
+  if (brightness === 0 && contrast === 0 && saturation === 0) {
+    return { r, g, b };
+  }
+
   // 1. Brightness (-100 to 100 -> -255 to 255)
   let nr = r + (brightness * 255) / 100;
   let ng = g + (brightness * 255) / 100;
