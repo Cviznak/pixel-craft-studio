@@ -35,7 +35,8 @@ import {
   ChevronDown, 
   ChevronUp,
   Ruler,
-  Crop
+  Crop,
+  FileText
 } from 'lucide-react';
 
 interface ControlsPanelProps {
@@ -48,6 +49,7 @@ interface ControlsPanelProps {
   onOpenCropModal?: () => void;
   onInspectCurrentPhoto?: () => void;
   onOpenStarterGallery?: () => void;
+  onOpenWrittenInstructions?: () => void;
   onClose?: () => void;
   aiHistory?: AiHistoryItem[];
   onSelectHistoryImage?: (item: AiHistoryItem) => void;
@@ -67,6 +69,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onOpenCropModal,
   onInspectCurrentPhoto,
   onOpenStarterGallery,
+  onOpenWrittenInstructions,
   onClose,
   aiHistory = [],
   onSelectHistoryImage,
@@ -561,6 +564,18 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                         </span>
                       </div>
                     </div>
+
+                    {/* Open Written Instructions direct launch button */}
+                    {onOpenWrittenInstructions && (
+                      <button
+                        type="button"
+                        onClick={onOpenWrittenInstructions}
+                        className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-pink-600/20 to-purple-600/20 hover:from-pink-600/30 hover:to-purple-600/30 border border-pink-500/40 hover:border-pink-500/60 text-pink-300 hover:text-pink-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-pink-400" />
+                        <span>Open Row-by-Row Written Instructions</span>
+                      </button>
+                    )}
                   </div>
                 );
               })()}

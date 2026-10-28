@@ -10,7 +10,7 @@ interface StarterGalleryModalProps {
   onOpenAiGenerator: () => void;
 }
 
-const CATEGORIES = ['All', 'Pixel Gaming', 'Animals & Pets', 'Nature & Botanical', 'Vibrant Gradients', 'Exotic Birds'] as const;
+const CATEGORIES = ['All', 'Pixel Gaming', 'Animals & Pets', 'Nature & Botanical', 'Vibrant Gradients', 'Pop & Cozy', 'Exotic Birds'] as const;
 
 export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
   isOpen,

@@ -24,6 +24,7 @@ import { ImageInspectModal } from './components/ImageInspectModal';
 import { StarterGalleryModal } from './components/StarterGalleryModal';
 import { ImageCropModal } from './components/ImageCropModal';
 import { ImageHistoryModal } from './components/ImageHistoryModal';
+import { CrochetWrittenInstructionsModal } from './components/CrochetWrittenInstructionsModal';
 import { cleanConfettiColors } from './utils/paletteOperations';
 import { SlidersHorizontal, Sparkles, Wand2, Palette } from 'lucide-react';
 
@@ -74,6 +75,7 @@ export default function App() {
 
   // Modals
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isWrittenInstructionsOpen, setIsWrittenInstructionsOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [isStarterGalleryOpen, setIsStarterGalleryOpen] = useState<boolean>(false);
@@ -812,6 +814,7 @@ export default function App() {
                 setIsMobileControlsOpen(false);
                 setIsHistoryModalOpen(true);
               }}
+              onOpenWrittenInstructions={() => setIsWrittenInstructionsOpen(true)}
               aspectRatio={aspectRatio}
             />
           </div>
@@ -942,6 +945,19 @@ export default function App() {
         palette={palette}
         config={config}
         completedCells={completedCells}
+        onOpenWrittenInstructions={() => {
+          setIsExportOpen(false);
+          setIsWrittenInstructionsOpen(true);
+        }}
+      />
+
+      {/* Tapestry Crochet Written Row-by-Row Instructions Modal */}
+      <CrochetWrittenInstructionsModal
+        isOpen={isWrittenInstructionsOpen}
+        onClose={() => setIsWrittenInstructionsOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        projectName="Pixel Craft Pattern"
       />
 
       {/* Starter Patterns & Inspiration Gallery Modal */}

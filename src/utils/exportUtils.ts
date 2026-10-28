@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import type { GridConfig, PaletteColor, CraftProject, CellProgress } from '../types/craft';
 import { getContrastingTextColor } from './colorUtils';
 import { getCraftDimensionsSummary } from './craftCalculator';
+import { generateCrochetInstructions } from './crochetInstructions';
 
 // Export crisp, pixelated PNG (scale factor like 16x per pixel)
 export function exportPixelArtPNG(
@@ -86,7 +87,7 @@ export function exportPrintableGridPNG(
     }
   }
 
-  // Cells & Symbols
+  // Draw cells
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const colorIdx = gridData[y][x];
@@ -135,12 +136,121 @@ export function exportPrintableGridPNG(
   link.click();
 }
 
+/**
+ * Renders a high-resolution grid slice with rulers and coordinates for PDF pages
+ */
+function renderGridSliceCanvas(
+  gridData: number[][],
+  palette: PaletteColor[],
+  startX: number,
+  endX: number,
+  startY: number,
+  endY: number,
+  renderCellSize = 22
+): string {
+  const sliceW = endX - startX;
+  const sliceH = endY - startY;
+  const rulerSize = 24;
+  const canvasW = sliceW * renderCellSize + rulerSize;
+  const canvasH = sliceH * renderCellSize + rulerSize;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvasW, canvasH);
+
+  // Rulers bg
+  ctx.fillStyle = '#f3f4f6';
+  ctx.fillRect(0, 0, canvasW, rulerSize);
+  ctx.fillRect(0, 0, rulerSize, canvasH);
+
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#4b5563';
+
+  // Columns ruler
+  for (let x = startX; x < endX; x++) {
+    const colNum = x + 1;
+    if (colNum % 5 === 0 || x === startX || x === endX - 1) {
+      const rx = rulerSize + (x - startX) * renderCellSize + renderCellSize / 2;
+      ctx.fillText(`${colNum}`, rx, rulerSize / 2);
+    }
+  }
+
+  // Rows ruler
+  for (let y = startY; y < endY; y++) {
+    const rowNum = y + 1;
+    if (rowNum % 5 === 0 || y === startY || y === endY - 1) {
+      const ry = rulerSize + (y - startY) * renderCellSize + renderCellSize / 2;
+      ctx.fillText(`${rowNum}`, rulerSize / 2, ry);
+    }
+  }
+
+  // Draw cells
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      const cIdx = gridData[y]?.[x] ?? 0;
+      const color = palette[cIdx];
+      const px = rulerSize + (x - startX) * renderCellSize;
+      const py = rulerSize + (y - startY) * renderCellSize;
+
+      ctx.fillStyle = color ? color.hex : '#ffffff';
+      ctx.fillRect(px, py, renderCellSize, renderCellSize);
+
+      if (color) {
+        ctx.fillStyle = getContrastingTextColor(color.r, color.g, color.b);
+        ctx.font = `bold ${Math.floor(renderCellSize * 0.62)}px sans-serif`;
+        ctx.fillText(color.symbol, px + renderCellSize / 2, py + renderCellSize / 2 + 1);
+      }
+
+      ctx.strokeStyle = '#d1d5db';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px, py, renderCellSize, renderCellSize);
+    }
+  }
+
+  // 10x10 Bold Lines
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 2.5;
+  for (let x = startX; x <= endX; x++) {
+    if (x % 10 === 0) {
+      const px = rulerSize + (x - startX) * renderCellSize;
+      ctx.beginPath();
+      ctx.moveTo(px, rulerSize);
+      ctx.lineTo(px, canvasH);
+      ctx.stroke();
+    }
+  }
+  for (let y = startY; y <= endY; y++) {
+    if (y % 10 === 0) {
+      const py = rulerSize + (y - startY) * renderCellSize;
+      ctx.beginPath();
+      ctx.moveTo(rulerSize, py);
+      ctx.lineTo(canvasW, py);
+      ctx.stroke();
+    }
+  }
+
+  return canvas.toDataURL('image/png');
+}
+
+export interface PdfExportOptions {
+  multiPage?: 'single' | '2x2';
+  includeWritten?: boolean;
+}
+
 // Generate complete PDF Pattern Document with jsPDF
 export function generatePatternPDF(
   gridData: number[][],
   palette: PaletteColor[],
   config: GridConfig,
-  projectName = 'Pixel Craft Pattern'
+  projectName = 'Pixel Craft Pattern',
+  options: PdfExportOptions = { multiPage: 'single', includeWritten: false }
 ) {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -249,83 +359,126 @@ export function generatePatternPDF(
     startY += 6.5;
   });
 
-  // Second page or section: Grid Pattern
-  doc.addPage();
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.setTextColor(33, 37, 41);
-  doc.text('Craft Symbol Chart', margin, 18);
+  // Render Pattern Grid
+  const isMultiPage = options.multiPage === '2x2';
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(108, 117, 125);
-  doc.text('Each square corresponds to 1 bead, cross-stitch, or drill. Bold lines every 10 squares.', margin, 24);
+  if (!isMultiPage) {
+    // Single page chart
+    doc.addPage();
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(33, 37, 41);
+    doc.text('Craft Symbol Chart', margin, 18);
 
-  // Render high-res grid image to embed in PDF
-  const renderCellSize = 18;
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = config.width * renderCellSize;
-  tempCanvas.height = config.height * renderCellSize;
-  const tempCtx = tempCanvas.getContext('2d');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(108, 117, 125);
+    doc.text('Each square corresponds to 1 bead, cross-stitch, or stitch. Bold lines every 10 squares.', margin, 24);
 
-  if (tempCtx) {
-    for (let y = 0; y < config.height; y++) {
-      for (let x = 0; x < config.width; x++) {
-        const cIdx = gridData[y]?.[x] ?? 0;
-        const color = palette[cIdx];
-        tempCtx.fillStyle = color ? color.hex : '#ffffff';
-        tempCtx.fillRect(x * renderCellSize, y * renderCellSize, renderCellSize, renderCellSize);
+    const sliceDataUrl = renderGridSliceCanvas(gridData, palette, 0, config.width, 0, config.height, 18);
+    if (sliceDataUrl) {
+      const availableWidth = pageWidth - margin * 2;
+      const availableHeight = pageHeight - 35 - margin;
+      const aspect = config.width / config.height;
 
-        // Symbol
-        if (color) {
-          tempCtx.fillStyle = getContrastingTextColor(color.r, color.g, color.b);
-          tempCtx.font = `bold ${Math.floor(renderCellSize * 0.65)}px sans-serif`;
-          tempCtx.textAlign = 'center';
-          tempCtx.textBaseline = 'middle';
-          tempCtx.fillText(
-            color.symbol,
-            x * renderCellSize + renderCellSize / 2,
-            y * renderCellSize + renderCellSize / 2 + 1
-          );
+      let drawW = availableWidth;
+      let drawH = drawW / aspect;
+      if (drawH > availableHeight) {
+        drawH = availableHeight;
+        drawW = drawH * aspect;
+      }
+
+      const drawX = margin + (availableWidth - drawW) / 2;
+      doc.addImage(sliceDataUrl, 'PNG', drawX, 30, drawW, drawH);
+    }
+  } else {
+    // 2x2 Multi-Page Poster Split (4 Pages)
+    const midX = Math.ceil(config.width / 2);
+    const midY = Math.ceil(config.height / 2);
+
+    const quadrants = [
+      { name: 'Top-Left (Part 1 of 4)', x0: 0, x1: midX, y0: 0, y1: midY, mapCol: 0, mapRow: 0 },
+      { name: 'Top-Right (Part 2 of 4)', x0: midX, x1: config.width, y0: 0, y1: midY, mapCol: 1, mapRow: 0 },
+      { name: 'Bottom-Left (Part 3 of 4)', x0: 0, x1: midX, y0: midY, y1: config.height, mapCol: 0, mapRow: 1 },
+      { name: 'Bottom-Right (Part 4 of 4)', x0: midX, x1: config.width, y0: midY, y1: config.height, mapCol: 1, mapRow: 1 },
+    ];
+
+    quadrants.forEach((q) => {
+      doc.addPage();
+
+      // Header
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(33, 37, 41);
+      doc.text(`Chart: ${q.name}`, margin, 18);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(108, 117, 125);
+      doc.text(`Columns ${q.x0 + 1}–${q.x1} • Rows ${q.y0 + 1}–${q.y1}`, margin, 24);
+
+      // Mini page map indicator in top-right
+      const mapX = pageWidth - margin - 22;
+      const mapY = 12;
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(mapX, mapY, 20, 14);
+      doc.line(mapX + 10, mapY, mapX + 10, mapY + 14);
+      doc.line(mapX, mapY + 7, mapX + 20, mapY + 7);
+
+      // Highlight active quadrant
+      doc.setFillColor(99, 102, 241);
+      doc.rect(mapX + q.mapCol * 10, mapY + q.mapRow * 7, 10, 7, 'F');
+
+      const sliceDataUrl = renderGridSliceCanvas(gridData, palette, q.x0, q.x1, q.y0, q.y1, 22);
+      if (sliceDataUrl) {
+        const availableWidth = pageWidth - margin * 2;
+        const availableHeight = pageHeight - 35 - margin;
+        const qW = q.x1 - q.x0;
+        const qH = q.y1 - q.y0;
+        const aspect = qW / qH;
+
+        let drawW = availableWidth;
+        let drawH = drawW / aspect;
+        if (drawH > availableHeight) {
+          drawH = availableHeight;
+          drawW = drawH * aspect;
         }
 
-        // Cell boundary
-        tempCtx.strokeStyle = '#cccccc';
-        tempCtx.lineWidth = 1;
-        tempCtx.strokeRect(x * renderCellSize, y * renderCellSize, renderCellSize, renderCellSize);
+        const drawX = margin + (availableWidth - drawW) / 2;
+        doc.addImage(sliceDataUrl, 'PNG', drawX, 30, drawW, drawH);
       }
-    }
+    });
+  }
 
-    // 10x10 lines
-    tempCtx.strokeStyle = '#111827';
-    tempCtx.lineWidth = 2;
-    for (let x = 0; x <= config.width; x += 10) {
-      tempCtx.beginPath();
-      tempCtx.moveTo(x * renderCellSize, 0);
-      tempCtx.lineTo(x * renderCellSize, config.height * renderCellSize);
-      tempCtx.stroke();
-    }
-    for (let y = 0; y <= config.height; y += 10) {
-      tempCtx.beginPath();
-      tempCtx.moveTo(0, y * renderCellSize);
-      tempCtx.lineTo(config.width * renderCellSize, y * renderCellSize);
-      tempCtx.stroke();
-    }
+  // Optional: Append Written Crochet Instructions
+  if (options.includeWritten) {
+    const instructions = generateCrochetInstructions(gridData, palette);
+    doc.addPage();
 
-    const imgData = tempCanvas.toDataURL('image/png');
-    const availableWidth = pageWidth - margin * 2;
-    const availableHeight = pageHeight - 35 - margin;
-    const aspect = (config.width * renderCellSize) / (config.height * renderCellSize);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(33, 37, 41);
+    doc.text('Written Row-by-Row Crochet Instructions', margin, 20);
 
-    let drawW = availableWidth;
-    let drawH = drawW / aspect;
-    if (drawH > availableHeight) {
-      drawH = availableHeight;
-      drawW = drawH * aspect;
-    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(108, 117, 125);
+    doc.text(`Tapestry Crochet • Total ${instructions.totalRows} Rows (Worked bottom to top, alternating turns)`, margin, 26);
+    doc.line(margin, 30, pageWidth - margin, 30);
 
-    const drawX = margin + (availableWidth - drawW) / 2;
-    doc.addImage(imgData, 'PNG', drawX, 30, drawW, drawH);
+    let textY = 38;
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(17, 24, 39);
+
+    instructions.rows.forEach((row) => {
+      if (textY > pageHeight - 20) {
+        doc.addPage();
+        textY = 20;
+      }
+      doc.text(row.fullText, margin, textY);
+      textY += 5.5;
+    });
   }
 
   doc.save(`${projectName.toLowerCase().replace(/\s+/g, '-')}-chart.pdf`);
