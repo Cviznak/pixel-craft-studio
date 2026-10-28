@@ -59,6 +59,7 @@ interface ControlsPanelProps {
   onSelectUploadItem?: (item: UploadHistoryItem) => void;
   onOpenHistoryModal?: () => void;
   aspectRatio: number;
+  hasTransparency?: boolean;
 }
 
 export const ControlsPanel: React.FC<ControlsPanelProps> = ({
@@ -79,6 +80,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onSelectUploadItem,
   onOpenHistoryModal,
   aspectRatio,
+  hasTransparency = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'grid' | 'colors'>('grid');
   const [thumbTab, setThumbTab] = useState<'presets' | 'uploads' | 'ai'>('presets');
@@ -432,6 +434,52 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                   />
                 </button>
               </div>
+            </div>
+
+            {/* PNG Transparency & Background Fill */}
+            <div className={`p-3 rounded-xl border transition space-y-2.5 ${
+              hasTransparency 
+                ? 'bg-indigo-950/20 border-indigo-500/40' 
+                : 'bg-slate-950/50 border-slate-800/80'
+            }`}>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                  <span>✨</span> PNG Transparency
+                </span>
+                {hasTransparency && (
+                  <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-full font-bold">
+                    Transparent PNG
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
+                {[
+                  { id: 'white' as const, label: '⚪ White', desc: 'Crisp black lines' },
+                  { id: 'empty' as const, label: '🔲 No Stitch', desc: 'Empty canvas' },
+                  { id: 'dark' as const, label: '⚫ Dark', desc: 'For light sprites' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => onUpdateConfig({ transparentMode: mode.id })}
+                    className={`py-2 px-1 rounded-lg border text-center transition flex flex-col items-center justify-center gap-0.5 ${
+                      (config.transparentMode || 'white') === mode.id
+                        ? 'bg-indigo-600/25 border-indigo-500 text-indigo-200 ring-1 ring-indigo-500/50 font-bold'
+                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    }`}
+                  >
+                    <span className="text-xs font-semibold">{mode.label}</span>
+                    <span className="text-[9px] text-slate-500">{mode.desc}</span>
+                  </button>
+                ))}
+              </div>
+
+              {config.transparentMode === 'empty' && (
+                <div className="text-[10px] text-indigo-300/90 bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-500/20">
+                  Background cells are transparent/empty. Only the subject character will be beaded/stitched!
+                </div>
+              )}
             </div>
 
             {/* Quick Craft Presets */}

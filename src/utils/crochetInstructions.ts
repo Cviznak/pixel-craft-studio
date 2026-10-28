@@ -120,34 +120,58 @@ export function generateCrochetInstructions(
       if (cIdx === currentIdx) {
         currentCount++;
       } else {
-        if (currentCount > 0 && currentIdx >= 0) {
-          const col = palette[currentIdx];
-          segments.push({
-            colorIndex: currentIdx,
-            colorName: col?.name || `Color ${currentIdx + 1}`,
-            colorCode: col?.code || col?.hex || '',
-            colorHex: col?.hex || '#ffffff',
-            colorSymbol: col?.symbol || '?',
-            abbreviation: getColorAbbreviation(currentIdx),
-            count: currentCount,
-          });
+        if (currentCount > 0) {
+          if (currentIdx === -1) {
+            segments.push({
+              colorIndex: -1,
+              colorName: 'Skip / Empty',
+              colorCode: 'Skip',
+              colorHex: '#475569',
+              colorSymbol: '—',
+              abbreviation: 'Skip',
+              count: currentCount,
+            });
+          } else {
+            const col = palette[currentIdx];
+            segments.push({
+              colorIndex: currentIdx,
+              colorName: col?.name || `Color ${currentIdx + 1}`,
+              colorCode: col?.code || col?.hex || '',
+              colorHex: col?.hex || '#ffffff',
+              colorSymbol: col?.symbol || '?',
+              abbreviation: getColorAbbreviation(currentIdx),
+              count: currentCount,
+            });
+          }
         }
         currentIdx = cIdx;
         currentCount = 1;
       }
     }
 
-    if (currentCount > 0 && currentIdx >= 0) {
-      const col = palette[currentIdx];
-      segments.push({
-        colorIndex: currentIdx,
-        colorName: col?.name || `Color ${currentIdx + 1}`,
-        colorCode: col?.code || col?.hex || '',
-        colorHex: col?.hex || '#ffffff',
-        colorSymbol: col?.symbol || '?',
-        abbreviation: getColorAbbreviation(currentIdx),
-        count: currentCount,
-      });
+    if (currentCount > 0) {
+      if (currentIdx === -1) {
+        segments.push({
+          colorIndex: -1,
+          colorName: 'Skip / Empty',
+          colorCode: 'Skip',
+          colorHex: '#475569',
+          colorSymbol: '—',
+          abbreviation: 'Skip',
+          count: currentCount,
+        });
+      } else {
+        const col = palette[currentIdx];
+        segments.push({
+          colorIndex: currentIdx,
+          colorName: col?.name || `Color ${currentIdx + 1}`,
+          colorCode: col?.code || col?.hex || '',
+          colorHex: col?.hex || '#ffffff',
+          colorSymbol: col?.symbol || '?',
+          abbreviation: getColorAbbreviation(currentIdx),
+          count: currentCount,
+        });
+      }
     }
 
     // Format texts

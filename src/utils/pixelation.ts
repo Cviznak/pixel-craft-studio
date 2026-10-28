@@ -36,7 +36,7 @@ export function processImageToGrid(
   gridWidth: number,
   gridHeight: number,
   palette: PaletteColor[],
-  config: Pick<GridConfig, 'brightness' | 'contrast' | 'saturation' | 'dither'>
+  config: Pick<GridConfig, 'brightness' | 'contrast' | 'saturation' | 'dither' | 'transparentMode' | 'transparentCustomColor'>
 ): PixelationResult {
   if (palette.length === 0 || gridWidth <= 0 || gridHeight <= 0) {
     return {
@@ -44,6 +44,8 @@ export function processImageToGrid(
       paletteWithCounts: palette,
     };
   }
+
+  const transparentMode = config.transparentMode || 'white';
 
   // 1. Render scaled down image onto an offscreen canvas
   const canvas = document.createElement('canvas');
@@ -53,6 +55,19 @@ export function processImageToGrid(
   if (!ctx) {
     throw new Error('Could not create offscreen canvas context');
   }
+
+  // Pre-fill background for transparent PNGs so black details never disappear into the void
+  if (transparentMode === 'white') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, gridWidth, gridHeight);
+  } else if (transparentMode === 'dark') {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, gridWidth, gridHeight);
+  } else if (transparentMode === 'custom' && config.transparentCustomColor) {
+    ctx.fillStyle = config.transparentCustomColor;
+    ctx.fillRect(0, 0, gridWidth, gridHeight);
+  }
+  // When transparentMode === 'empty', canvas stays transparent to detect empty cells
 
   // Use crisp image smoothing settings for nice downsample
   ctx.imageSmoothingEnabled = true;
@@ -94,6 +109,15 @@ export function processImageToGrid(
 
   for (let y = 0; y < gridHeight; y++) {
     for (let x = 0; x < gridWidth; x++) {
+      const idx = (y * gridWidth + x) * 4;
+      const alpha = data[idx + 3];
+
+      // If empty mode selected and pixel is transparent, mark cell as empty (-1)
+      if (transparentMode === 'empty' && alpha < 64) {
+        grid[y][x] = -1;
+        continue;
+      }
+
       const bIdx = y * gridWidth + x;
       let r = bufferR[bIdx];
       let g = bufferG[bIdx];
@@ -147,10 +171,10 @@ export function processImageToGrid(
   }
 
   // 4. Update counts and percentages
-  const totalCells = gridWidth * gridHeight;
+  const totalOccupiedCells = counts.reduce((sum, c) => sum + c, 0);
   const paletteWithCounts = palette.map((color, idx) => {
     const count = counts[idx] || 0;
-    const percentage = totalCells > 0 ? parseFloat(((count / totalCells) * 100).toFixed(1)) : 0;
+    const percentage = totalOccupiedCells > 0 ? parseFloat(((count / totalOccupiedCells) * 100).toFixed(1)) : 0;
     return {
       ...color,
       count,

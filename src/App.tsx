@@ -45,6 +45,7 @@ const DEFAULT_CONFIG: GridConfig = {
   showRulers: true,
   showSymbols: true,
   cellSize: 24,
+  transparentMode: 'white',
   crochetGauge: DEFAULT_CROCHET_GAUGE,
 };
 
@@ -59,6 +60,7 @@ export default function App() {
   const [spotlightColorId, setSpotlightColorId] = useState<string | null>(null);
   const [activeColorIndex, setActiveColorIndex] = useState<number>(0);
   const [completedCells, setCompletedCells] = useState<CellProgress>({});
+  const [hasTransparency, setHasTransparency] = useState<boolean>(false);
   const [isInitialLoaded, setIsInitialLoaded] = useState<boolean>(false);
   
   // Undo & Redo History for Pencil
@@ -243,6 +245,24 @@ export default function App() {
     latestConfigRef.current = activeConfig;
     setConfig(activeConfig);
 
+    // Detect transparency in loaded image
+    const checkCanvas = document.createElement('canvas');
+    checkCanvas.width = Math.min(100, img.width);
+    checkCanvas.height = Math.min(100, img.height);
+    const checkCtx = checkCanvas.getContext('2d');
+    let detectedTransparency = false;
+    if (checkCtx) {
+      checkCtx.drawImage(img, 0, 0, checkCanvas.width, checkCanvas.height);
+      const checkData = checkCtx.getImageData(0, 0, checkCanvas.width, checkCanvas.height).data;
+      for (let i = 3; i < checkData.length; i += 4) {
+        if (checkData[i] < 240) {
+          detectedTransparency = true;
+          break;
+        }
+      }
+    }
+    setHasTransparency(detectedTransparency);
+
     const tempCanvas = document.createElement('canvas');
     const maxDimension = 300;
     let sampleW = img.width;
@@ -262,6 +282,20 @@ export default function App() {
     tempCanvas.height = sampleH;
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
+
+    // Fill background for transparent PNGs so black details never disappear into black void
+    const transparentMode = activeConfig.transparentMode || 'white';
+    if (transparentMode === 'white') {
+      tempCtx.fillStyle = '#ffffff';
+      tempCtx.fillRect(0, 0, sampleW, sampleH);
+    } else if (transparentMode === 'dark') {
+      tempCtx.fillStyle = '#000000';
+      tempCtx.fillRect(0, 0, sampleW, sampleH);
+    } else if (transparentMode === 'custom' && activeConfig.transparentCustomColor) {
+      tempCtx.fillStyle = activeConfig.transparentCustomColor;
+      tempCtx.fillRect(0, 0, sampleW, sampleH);
+    }
+    // If 'empty', leave transparent!
 
     tempCtx.drawImage(img, 0, 0, sampleW, sampleH);
     const imgData = tempCtx.getImageData(0, 0, sampleW, sampleH);
@@ -572,6 +606,24 @@ export default function App() {
 
     const activeConfig = targetConfig || latestConfigRef.current;
 
+    // Detect transparency in loaded image
+    const checkCanvas = document.createElement('canvas');
+    checkCanvas.width = Math.min(100, img.width);
+    checkCanvas.height = Math.min(100, img.height);
+    const checkCtx = checkCanvas.getContext('2d');
+    let detectedTransparency = false;
+    if (checkCtx) {
+      checkCtx.drawImage(img, 0, 0, checkCanvas.width, checkCanvas.height);
+      const checkData = checkCtx.getImageData(0, 0, checkCanvas.width, checkCanvas.height).data;
+      for (let i = 3; i < checkData.length; i += 4) {
+        if (checkData[i] < 240) {
+          detectedTransparency = true;
+          break;
+        }
+      }
+    }
+    setHasTransparency(detectedTransparency);
+
     const tempCanvas = document.createElement('canvas');
     const maxDimension = 300;
     let sampleW = img.width;
@@ -591,6 +643,20 @@ export default function App() {
     tempCanvas.height = sampleH;
     const tempCtx = tempCanvas.getContext('2d');
     if (!tempCtx) return;
+
+    // Fill background for transparent PNGs so black details never disappear into black void
+    const transparentMode = activeConfig.transparentMode || 'white';
+    if (transparentMode === 'white') {
+      tempCtx.fillStyle = '#ffffff';
+      tempCtx.fillRect(0, 0, sampleW, sampleH);
+    } else if (transparentMode === 'dark') {
+      tempCtx.fillStyle = '#000000';
+      tempCtx.fillRect(0, 0, sampleW, sampleH);
+    } else if (transparentMode === 'custom' && activeConfig.transparentCustomColor) {
+      tempCtx.fillStyle = activeConfig.transparentCustomColor;
+      tempCtx.fillRect(0, 0, sampleW, sampleH);
+    }
+    // If 'empty', leave transparent!
 
     tempCtx.drawImage(img, 0, 0, sampleW, sampleH);
     const imgData = tempCtx.getImageData(0, 0, sampleW, sampleH);
@@ -629,6 +695,8 @@ export default function App() {
       newConfig.colorsCount !== undefined ||
       newConfig.extractionMode !== undefined ||
       newConfig.craftStandard !== undefined ||
+      newConfig.transparentMode !== undefined ||
+      newConfig.transparentCustomColor !== undefined ||
       newConfig.dither !== undefined ||
       newConfig.brightness !== undefined ||
       newConfig.contrast !== undefined ||
@@ -848,6 +916,7 @@ export default function App() {
               }}
               onOpenWrittenInstructions={() => setIsWrittenInstructionsOpen(true)}
               aspectRatio={aspectRatio}
+              hasTransparency={hasTransparency}
             />
           </div>
         )}

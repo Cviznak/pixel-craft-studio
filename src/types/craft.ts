@@ -4,6 +4,8 @@ export type ExtractionMode = 'vibrant' | 'balanced' | 'dominant' | 'pastel';
 
 export type DitherType = 'none' | 'floyd-steinberg' | 'atkinson' | 'bayer';
 
+export type TransparentBackgroundMode = 'white' | 'empty' | 'dark' | 'custom';
+
 export type CraftStandard = 'custom' | 'dmc' | 'perler';
 
 export type CrochetStitchType = 'sc' | 'hdc' | 'wc' | 'c2c';
@@ -49,6 +51,8 @@ export interface GridConfig {
   showRulers: boolean;
   showSymbols: boolean;
   cellSize: number; // visual scale in canvas
+  transparentMode: TransparentBackgroundMode;
+  transparentCustomColor?: string;
   crochetGauge?: CrochetGaugeConfig;
 }
 

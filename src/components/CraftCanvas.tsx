@@ -165,11 +165,48 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     for (let y = 0; y < gridHeight; y++) {
       for (let x = 0; x < gridWidth; x++) {
         const colorIdx = gridData[y][x];
+        const px = x * cellSize;
+        const py = y * cellSize;
+
+        if (colorIdx === -1) {
+          // Empty transparent cell (no stitch/bead placed)
+          if (config.craftType === 'perler') {
+            // Draw empty peg on the pegboard
+            const radius = cellSize * 0.44;
+            const centerX = px + cellSize / 2;
+            const centerY = py + cellSize / 2;
+            ctx.fillStyle = '#cbd5e1';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#94a3b8';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius * 0.16, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (config.craftType === 'cross-stitch') {
+            // Empty Aida fabric weave
+            ctx.fillStyle = '#f1ece1';
+            ctx.fillRect(px, py, cellSize, cellSize);
+            ctx.fillStyle = '#d5cebf';
+            ctx.fillRect(px + cellSize * 0.46, py + cellSize * 0.46, cellSize * 0.08, cellSize * 0.08);
+          } else {
+            // Subtle transparent checkerboard
+            const isEven = (x + y) % 2 === 0;
+            ctx.fillStyle = isEven ? '#1e293b' : '#0f172a';
+            ctx.fillRect(px, py, cellSize, cellSize);
+          }
+
+          if (config.showGridLines && cellSize * zoom >= 6) {
+            ctx.strokeStyle = 'rgba(150, 150, 150, 0.15)';
+            ctx.lineWidth = 1 / zoom;
+            ctx.strokeRect(px, py, cellSize, cellSize);
+          }
+          continue;
+        }
+
         const color = palette[colorIdx];
         if (!color) continue;
 
-        const px = x * cellSize;
-        const py = y * cellSize;
         const isDone = !!completedCells[`${x},${y}`];
         const isSpotlightMatch = spotlightIndex === null || spotlightIndex === colorIdx;
 
@@ -896,7 +933,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           <span className="font-semibold text-slate-200">
             Col: {hoverCoord.x + 1}/{gridWidth} • Row: {hoverCoord.y + 1}/{gridHeight}
           </span>
-          {gridData[hoverCoord.y]?.[hoverCoord.x] !== undefined && (
+          {gridData[hoverCoord.y]?.[hoverCoord.x] === -1 ? (
+            <>
+              <span className="text-slate-600">•</span>
+              <span className="text-slate-400 italic">Empty (No stitch)</span>
+            </>
+          ) : gridData[hoverCoord.y]?.[hoverCoord.x] !== undefined && palette[gridData[hoverCoord.y][hoverCoord.x]] ? (
             <>
               <span className="text-slate-600">•</span>
               <div 
@@ -910,7 +952,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
                 [{palette[gridData[hoverCoord.y][hoverCoord.x]]?.symbol}]
               </span>
             </>
-          )}
+          ) : null}
         </div>
       )}
     </div>

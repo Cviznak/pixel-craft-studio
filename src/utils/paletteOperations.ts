@@ -97,6 +97,10 @@ export function cleanConfettiColors(
     newGrid[y] = new Array(width);
     for (let x = 0; x < width; x++) {
       const oldIdx = gridData[y][x];
+      if (oldIdx < 0) {
+        newGrid[y][x] = -1;
+        continue;
+      }
       const targetKeeper = targetIndexMap[oldIdx] ?? 0;
       const finalNewIdx = oldToNewIndexMap[targetKeeper] ?? 0;
       newGrid[y][x] = finalNewIdx;
@@ -159,6 +163,10 @@ export function mergeColors(
     newGrid[y] = new Array(width);
     for (let x = 0; x < width; x++) {
       const oldIdx = gridData[y][x];
+      if (oldIdx < 0) {
+        newGrid[y][x] = -1;
+        continue;
+      }
       const newIdx = oldToNewMap[oldIdx] ?? 0;
       newGrid[y][x] = newIdx;
       newCounts[newIdx]++;
