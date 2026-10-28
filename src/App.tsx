@@ -1,0 +1,755 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import type { 
+  GridConfig, 
+  PaletteColor, 
+  CellProgress, 
+  SampleImage, 
+  CraftProject,
+  AiHistoryItem 
+} from './types/craft';
+import { SAMPLE_IMAGES } from './utils/sampleImages';
+import { extractBeautifulPalette } from './utils/paletteExtractor';
+import { processImageToGrid } from './utils/pixelation';
+import { saveAppState, loadAppState, clearSavedAppState } from './utils/storage';
+import { Header } from './components/Header';
+import { ControlsPanel } from './components/ControlsPanel';
+import { CraftCanvas } from './components/CraftCanvas';
+import { PaletteLegend } from './components/PaletteLegend';
+import { ExportModal } from './components/ExportModal';
+import { HelpModal } from './components/HelpModal';
+import { AiGenerateModal } from './components/AiGenerateModal';
+import { ImageInspectModal } from './components/ImageInspectModal';
+
+const DEFAULT_CONFIG: GridConfig = {
+  width: 32,
+  height: 32,
+  lockAspectRatio: true,
+  colorsCount: 14,
+  craftType: 'perler',
+  extractionMode: 'vibrant',
+  dither: 'none',
+  craftStandard: 'dmc',
+  brightness: 0,
+  contrast: 0,
+  saturation: 15,
+  showGridLines: true,
+  show10x10MajorLines: true,
+  showRulers: true,
+  showSymbols: true,
+  cellSize: 24,
+};
+
+export default function App() {
+  const [config, setConfig] = useState<GridConfig>(DEFAULT_CONFIG);
+  const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
+  const [sourceImageDataUrl, setSourceImageDataUrl] = useState<string | null>(null);
+  const [sampleImageId, setSampleImageId] = useState<string>('flower');
+  const [aspectRatio, setAspectRatio] = useState<number>(1);
+  const [palette, setPalette] = useState<PaletteColor[]>([]);
+  const [gridData, setGridData] = useState<number[][]>([]);
+  const [spotlightColorId, setSpotlightColorId] = useState<string | null>(null);
+  const [activeColorIndex, setActiveColorIndex] = useState<number>(0);
+  const [completedCells, setCompletedCells] = useState<CellProgress>({});
+  const [isInitialLoaded, setIsInitialLoaded] = useState<boolean>(false);
+  
+  // Undo & Redo History for Pencil
+  const [gridHistory, setGridHistory] = useState<number[][][]>([]);
+  const [gridFuture, setGridFuture] = useState<number[][][]>([]);
+
+  // AI generation state & history
+  const [lastAiPrompt, setLastAiPrompt] = useState<string>('');
+  const [lastAiStyle, setLastAiStyle] = useState<string>('pixel-art');
+  const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([]);
+
+  // Modals
+  const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
+  const [inspectModalOpen, setInspectModalOpen] = useState<boolean>(false);
+  const [inspectData, setInspectData] = useState<{
+    url: string;
+    title?: string;
+    prompt?: string;
+    styleName?: string;
+  } | null>(null);
+
+  // Drag and drop state
+  const [isDraggingFile, setIsDraggingFile] = useState<boolean>(false);
+
+  // Reference for synchronous beforeunload save
+  const currentStateRef = useRef({
+    config,
+    palette,
+    gridData,
+    completedCells,
+    spotlightColorId,
+    activeColorIndex,
+    sourceImageDataUrl,
+    sampleImageId,
+    lastAiPrompt,
+    lastAiStyle,
+    aiHistory,
+  });
+
+  useEffect(() => {
+    currentStateRef.current = {
+      config,
+      palette,
+      gridData,
+      completedCells,
+      spotlightColorId,
+      activeColorIndex,
+      sourceImageDataUrl,
+      sampleImageId,
+      lastAiPrompt,
+      lastAiStyle,
+      aiHistory,
+    };
+  }, [
+    config,
+    palette,
+    gridData,
+    completedCells,
+    spotlightColorId,
+    activeColorIndex,
+    sourceImageDataUrl,
+    sampleImageId,
+    lastAiPrompt,
+    lastAiStyle,
+    aiHistory,
+  ]);
+
+  // Push snapshot to undo history before pencil stroke begins
+  const handleBeforePencilStroke = useCallback(() => {
+    if (gridData.length === 0) return;
+    setGridHistory((prev) => [...prev.slice(-49), gridData.map((row) => [...row])]);
+    setGridFuture([]); // clear redo stack on new action
+  }, [gridData]);
+
+  // Undo (Ctrl+Z)
+  const handleUndo = useCallback(() => {
+    if (gridHistory.length === 0) return;
+    const previous = gridHistory[gridHistory.length - 1];
+    setGridHistory((prev) => prev.slice(0, prev.length - 1));
+    setGridFuture((prev) => [...prev.slice(-49), gridData.map((row) => [...row])]);
+    setGridData(previous);
+  }, [gridHistory, gridData]);
+
+  // Redo (Ctrl+Y or Ctrl+Shift+Z)
+  const handleRedo = useCallback(() => {
+    if (gridFuture.length === 0) return;
+    const next = gridFuture[gridFuture.length - 1];
+    setGridFuture((prev) => prev.slice(0, prev.length - 1));
+    setGridHistory((prev) => [...prev.slice(-49), gridData.map((row) => [...row])]);
+    setGridData(next);
+  }, [gridFuture, gridData]);
+
+  // Global Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  // Open inspect lightbox
+  const handleOpenInspect = (url: string, title?: string, prompt?: string, styleName?: string) => {
+    if (!url) return;
+    setInspectData({ url, title, prompt, styleName });
+    setInspectModalOpen(true);
+  };
+
+  // Direct pipeline to apply a new image and build the grid
+  const applyImageAndProcess = useCallback((
+    img: HTMLImageElement,
+    dataUrl: string,
+    sampleId = '',
+    targetConfig = config
+  ) => {
+    const aspect = img.width / img.height;
+    setAspectRatio(aspect);
+    setSourceImage(img);
+    setSourceImageDataUrl(dataUrl);
+    setSampleImageId(sampleId);
+
+    let targetWidth = targetConfig.width;
+    let targetHeight = targetConfig.height;
+
+    if (targetConfig.lockAspectRatio) {
+      targetHeight = Math.max(8, Math.min(160, Math.round(targetWidth / aspect)));
+      setConfig((prev) => ({ ...prev, height: targetHeight }));
+    }
+
+    const tempCanvas = document.createElement('canvas');
+    const maxDimension = 300;
+    let sampleW = img.width;
+    let sampleH = img.height;
+
+    if (sampleW > maxDimension || sampleH > maxDimension) {
+      if (sampleW > sampleH) {
+        sampleH = Math.round((sampleH * maxDimension) / sampleW);
+        sampleW = maxDimension;
+      } else {
+        sampleW = Math.round((sampleW * maxDimension) / sampleH);
+        sampleH = maxDimension;
+      }
+    }
+
+    tempCanvas.width = sampleW;
+    tempCanvas.height = sampleH;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+
+    tempCtx.drawImage(img, 0, 0, sampleW, sampleH);
+    const imgData = tempCtx.getImageData(0, 0, sampleW, sampleH);
+
+    // Extract palette using vibrant aesthetic algorithm
+    const newPalette = extractBeautifulPalette(
+      imgData,
+      targetConfig.colorsCount,
+      targetConfig.extractionMode,
+      targetConfig.craftStandard,
+      []
+    );
+
+    // Quantize onto craft grid
+    const { gridData: newGrid, paletteWithCounts } = processImageToGrid(
+      img,
+      targetWidth,
+      targetHeight,
+      newPalette,
+      targetConfig
+    );
+
+    setPalette(paletteWithCounts);
+    setGridData(newGrid);
+    setCompletedCells({});
+    setGridHistory([]);
+    setGridFuture([]);
+  }, [config]);
+
+  // Load saved state on mount (restores on page refresh)
+  useEffect(() => {
+    const restoreState = async () => {
+      try {
+        const saved = await loadAppState();
+        if (saved) {
+          setConfig(saved.config || DEFAULT_CONFIG);
+          if (saved.palette && saved.palette.length > 0) {
+            setPalette(saved.palette);
+          }
+          if (saved.gridData && saved.gridData.length > 0) {
+            setGridData(saved.gridData);
+          }
+          setCompletedCells(saved.completedCells || {});
+          setSpotlightColorId(saved.spotlightColorId || null);
+          setActiveColorIndex(saved.activeColorIndex || 0);
+          setLastAiPrompt(saved.lastAiPrompt || '');
+          setLastAiStyle(saved.lastAiStyle || 'pixel-art');
+          if (saved.aiHistory) {
+            setAiHistory(saved.aiHistory);
+          }
+
+          if (saved.sourceImageDataUrl) {
+            setSourceImageDataUrl(saved.sourceImageDataUrl);
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              setAspectRatio(img.width / img.height);
+              setSourceImage(img);
+              setIsInitialLoaded(true);
+            };
+            img.onerror = () => {
+              loadInitialDefault();
+            };
+            img.src = saved.sourceImageDataUrl;
+            return;
+          } else if (saved.sampleImageId) {
+            const found = SAMPLE_IMAGES.find((s) => s.id === saved.sampleImageId) || SAMPLE_IMAGES[0];
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              setAspectRatio(img.width / img.height);
+              setSourceImage(img);
+              setSourceImageDataUrl(found.url);
+              setSampleImageId(found.id);
+              setIsInitialLoaded(true);
+            };
+            img.src = found.url;
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not restore saved app state:', e);
+      }
+
+      loadInitialDefault();
+    };
+
+    const loadInitialDefault = () => {
+      const defaultSample = SAMPLE_IMAGES[0];
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        applyImageAndProcess(img, defaultSample.url, defaultSample.id, DEFAULT_CONFIG);
+        setIsInitialLoaded(true);
+      };
+      img.src = defaultSample.url;
+    };
+
+    restoreState();
+  }, []);
+
+  // Save state continuously (debounced)
+  useEffect(() => {
+    if (!isInitialLoaded || !sourceImage || gridData.length === 0) return;
+
+    const timer = setTimeout(() => {
+      saveAppState({
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        config,
+        palette,
+        gridData,
+        completedCells,
+        spotlightColorId,
+        activeColorIndex,
+        sourceImageDataUrl,
+        sampleImageId,
+        lastAiPrompt,
+        lastAiStyle,
+        aiHistory,
+      });
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [
+    isInitialLoaded,
+    sourceImage,
+    config,
+    palette,
+    gridData,
+    completedCells,
+    spotlightColorId,
+    activeColorIndex,
+    sourceImageDataUrl,
+    sampleImageId,
+    lastAiPrompt,
+    lastAiStyle,
+    aiHistory,
+  ]);
+
+  // Synchronous beforeunload backup save
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      const cur = currentStateRef.current;
+      if (cur.gridData.length > 0) {
+        saveAppState({
+          version: 1,
+          updatedAt: new Date().toISOString(),
+          ...cur,
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
+
+  const handleSelectSample = (sample: SampleImage) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      applyImageAndProcess(img, sample.url, sample.id);
+    };
+    img.src = sample.url;
+  };
+
+  const handleUploadFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        applyImageAndProcess(img, dataUrl, '');
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Turn into Pixel Craft Grid from AI Generator
+  const handleAiImageGenerated = (dataUrl: string, promptUsed: string, styleUsed: string) => {
+    setLastAiPrompt(promptUsed);
+    setLastAiStyle(styleUsed);
+
+    // Save to AI Generation History
+    const historyItem: AiHistoryItem = {
+      id: `ai-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      prompt: promptUsed,
+      styleId: styleUsed,
+      dataUrl,
+      createdAt: new Date().toISOString(),
+    };
+    setAiHistory((prev) => [historyItem, ...prev.filter((p) => p.dataUrl !== dataUrl)].slice(0, 40));
+
+    // Instantly load image and turn into pixel craft grid!
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      applyImageAndProcess(img, dataUrl, '');
+    };
+    img.src = dataUrl;
+  };
+
+  const handleSelectHistoryImage = (item: AiHistoryItem) => {
+    setLastAiPrompt(item.prompt);
+    setLastAiStyle(item.styleId);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      applyImageAndProcess(img, item.dataUrl, '');
+    };
+    img.src = item.dataUrl;
+  };
+
+  const handleDeleteHistoryItem = (id: string) => {
+    setAiHistory((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleClearHistory = () => {
+    if (window.confirm('Clear all AI picture generation history?')) {
+      setAiHistory([]);
+    }
+  };
+
+  // Re-run color extraction and grid quantization on existing image
+  const reprocessCurrentImage = useCallback(() => {
+    if (!sourceImage) return;
+
+    const tempCanvas = document.createElement('canvas');
+    const maxDimension = 300;
+    let sampleW = sourceImage.width;
+    let sampleH = sourceImage.height;
+
+    if (sampleW > maxDimension || sampleH > maxDimension) {
+      if (sampleW > sampleH) {
+        sampleH = Math.round((sampleH * maxDimension) / sampleW);
+        sampleW = maxDimension;
+      } else {
+        sampleW = Math.round((sampleW * maxDimension) / sampleH);
+        sampleH = maxDimension;
+      }
+    }
+
+    tempCanvas.width = sampleW;
+    tempCanvas.height = sampleH;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) return;
+
+    tempCtx.drawImage(sourceImage, 0, 0, sampleW, sampleH);
+    const imgData = tempCtx.getImageData(0, 0, sampleW, sampleH);
+
+    const locked = palette.filter((c) => c.isLocked);
+    const newPalette = extractBeautifulPalette(
+      imgData,
+      config.colorsCount,
+      config.extractionMode,
+      config.craftStandard,
+      locked
+    );
+
+    const { gridData: newGrid, paletteWithCounts } = processImageToGrid(
+      sourceImage,
+      config.width,
+      config.height,
+      newPalette,
+      config
+    );
+
+    setPalette(paletteWithCounts);
+    setGridData(newGrid);
+  }, [
+    sourceImage,
+    config,
+    palette,
+  ]);
+
+  // Update Config Helper
+  const handleUpdateConfig = (newConfig: Partial<GridConfig>) => {
+    setConfig((prev) => {
+      const next = { ...prev, ...newConfig };
+      return next;
+    });
+
+    const needsReprocess = 
+      newConfig.width !== undefined ||
+      newConfig.height !== undefined ||
+      newConfig.colorsCount !== undefined ||
+      newConfig.extractionMode !== undefined ||
+      newConfig.craftStandard !== undefined ||
+      newConfig.dither !== undefined ||
+      newConfig.brightness !== undefined ||
+      newConfig.contrast !== undefined ||
+      newConfig.saturation !== undefined;
+
+    if (needsReprocess && sourceImage) {
+      setTimeout(() => {
+        reprocessCurrentImage();
+      }, 30);
+    }
+  };
+
+  // Cell Interaction Handlers
+  const handleToggleCellCompleted = (x: number, y: number) => {
+    const key = `${x},${y}`;
+    setCompletedCells((prev) => {
+      const next = { ...prev };
+      if (next[key]) {
+        delete next[key];
+      } else {
+        next[key] = true;
+      }
+      return next;
+    });
+  };
+
+  const handlePaintCell = (x: number, y: number, colorIndex: number) => {
+    if (y < 0 || y >= gridData.length || x < 0 || x >= gridData[0].length) return;
+    setGridData((prev) => {
+      const next = prev.map((row) => [...row]);
+      next[y][x] = colorIndex;
+      return next;
+    });
+  };
+
+  // Palette Handlers
+  const handleToggleSpotlight = (colorId: string) => {
+    setSpotlightColorId((prev) => (prev === colorId ? null : colorId));
+  };
+
+  const handleUpdateColorHex = (index: number, newHex: string) => {
+    setPalette((prev) => {
+      const next = [...prev];
+      if (next[index]) {
+        const clean = newHex.replace('#', '');
+        const r = parseInt(clean.substring(0, 2), 16);
+        const g = parseInt(clean.substring(2, 4), 16);
+        const b = parseInt(clean.substring(4, 6), 16);
+        next[index] = { ...next[index], hex: newHex, r, g, b, isLocked: true };
+      }
+      return next;
+    });
+
+    if (sourceImage) {
+      setTimeout(() => {
+        const { gridData: newGrid, paletteWithCounts } = processImageToGrid(
+          sourceImage,
+          config.width,
+          config.height,
+          palette,
+          config
+        );
+        setGridData(newGrid);
+        setPalette(paletteWithCounts);
+      }, 50);
+    }
+  };
+
+  const handleToggleLockColor = (index: number) => {
+    setPalette((prev) => {
+      const next = [...prev];
+      if (next[index]) {
+        next[index] = { ...next[index], isLocked: !next[index].isLocked };
+      }
+      return next;
+    });
+  };
+
+  const handleResetProgress = () => {
+    if (Object.keys(completedCells).length === 0) return;
+    if (window.confirm('Reset all completed stitches/beads progress?')) {
+      setCompletedCells({});
+    }
+  };
+
+  const handleClearEverything = async () => {
+    if (window.confirm('Start fresh with default sample image? This will reset custom edits.')) {
+      await clearSavedAppState();
+      setCompletedCells({});
+      setSpotlightColorId(null);
+      setGridHistory([]);
+      setGridFuture([]);
+      setConfig(DEFAULT_CONFIG);
+      handleSelectSample(SAMPLE_IMAGES[0]);
+    }
+  };
+
+  const handleLoadProjectJSON = (project: CraftProject) => {
+    setConfig(project.gridConfig);
+    setGridData(project.gridData);
+    setPalette(project.palette);
+    setCompletedCells(project.completedCells || {});
+    setGridHistory([]);
+    setGridFuture([]);
+  };
+
+  // Drag & drop picture over window
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDraggingFile(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingFile(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleUploadFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  return (
+    <div 
+      className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 select-none touch-none"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Top Header */}
+      <Header
+        config={config}
+        onUpdateConfig={handleUpdateConfig}
+        onOpenExportModal={() => setIsExportOpen(true)}
+        onOpenAiModal={() => setIsAiModalOpen(true)}
+        onResetProgress={handleResetProgress}
+        onClearEverything={handleClearEverything}
+        onLoadProjectJSON={handleLoadProjectJSON}
+        onToggleHelpModal={() => setIsHelpOpen(true)}
+      />
+
+      {/* Main Workspace: Left Controls + Center Canvas + Right Palette */}
+      <main className="flex-1 flex overflow-hidden relative">
+        {/* Left Controls (Grid, Colors amount, Craft style, AI) */}
+        <ControlsPanel
+          config={config}
+          onUpdateConfig={handleUpdateConfig}
+          onSelectSampleImage={handleSelectSample}
+          onUploadImage={handleUploadFile}
+          onRegenerate={reprocessCurrentImage}
+          onOpenAiModal={() => setIsAiModalOpen(true)}
+          onInspectCurrentPhoto={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
+          aiHistory={aiHistory}
+          onSelectHistoryImage={handleSelectHistoryImage}
+          aspectRatio={aspectRatio}
+        />
+
+        {/* Center Interactive Craft Canvas */}
+        <CraftCanvas
+          gridData={gridData}
+          palette={palette}
+          config={config}
+          spotlightColorId={spotlightColorId}
+          activeColorIndex={activeColorIndex}
+          completedCells={completedCells}
+          onToggleCellCompleted={handleToggleCellCompleted}
+          onPaintCell={handlePaintCell}
+          canUndo={gridHistory.length > 0}
+          canRedo={gridFuture.length > 0}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onBeforePencilStroke={handleBeforePencilStroke}
+          onInspectSourceImage={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
+        />
+
+        {/* Right Palette Legend & Material Shopping List */}
+        <PaletteLegend
+          palette={palette}
+          gridData={gridData}
+          spotlightColorId={spotlightColorId}
+          activeColorIndex={activeColorIndex}
+          completedCells={completedCells}
+          craftType={config.craftType}
+          onSelectColor={(idx) => setActiveColorIndex(idx)}
+          onToggleSpotlight={handleToggleSpotlight}
+          onUpdateColorHex={handleUpdateColorHex}
+          onToggleLockColor={handleToggleLockColor}
+        />
+
+        {/* Drag & Drop Overlay */}
+        {isDraggingFile && (
+          <div className="absolute inset-0 bg-indigo-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center border-4 border-dashed border-indigo-400">
+            <span className="text-4xl mb-2">📸</span>
+            <h3 className="text-xl font-bold text-white">Drop picture here to pixelate!</h3>
+            <p className="text-sm text-indigo-300">Supports PNG, JPG, WebP, SVG</p>
+          </div>
+        )}
+      </main>
+
+      {/* Export & Print Modal */}
+      <ExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        config={config}
+        completedCells={completedCells}
+      />
+
+      {/* Ask AI to Generate Picture Modal with History */}
+      <AiGenerateModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        onImageGenerated={handleAiImageGenerated}
+        history={aiHistory}
+        onDeleteHistoryItem={handleDeleteHistoryItem}
+        onClearHistory={handleClearHistory}
+        onInspectImage={(url, prompt, style) => handleOpenInspect(url, 'AI Picture Inspection', prompt, style)}
+        initialPrompt={lastAiPrompt}
+        initialStyleId={lastAiStyle}
+      />
+
+      {/* Full High-Resolution Image Inspection Modal */}
+      <ImageInspectModal
+        isOpen={inspectModalOpen}
+        onClose={() => setInspectModalOpen(false)}
+        imageUrl={inspectData?.url || null}
+        title={inspectData?.title}
+        prompt={inspectData?.prompt}
+        styleName={inspectData?.styleName}
+        onUseForCraft={(url) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            applyImageAndProcess(img, url, '');
+          };
+          img.src = url;
+        }}
+      />
+
+      {/* Help & Guide Modal */}
+      <HelpModal
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+      />
+    </div>
+  );
+}
