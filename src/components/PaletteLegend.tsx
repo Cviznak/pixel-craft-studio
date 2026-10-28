@@ -280,7 +280,11 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
                     rel="noopener noreferrer"
                     onClick={(e) => e.stopPropagation()}
                     className="p-1 rounded-md text-slate-500 hover:text-amber-400 hover:bg-slate-700/60 transition"
-                    title={`Find ${color.name || color.code || 'supplies'} on Amazon`}
+                    title={
+                      craftType === 'crochet'
+                        ? `Find ${color.name || ''} crochet yarn on Amazon`
+                        : `Find ${color.name || color.code || 'supplies'} on Amazon`
+                    }
                   >
                     <ShoppingCart className="w-3.5 h-3.5" />
                   </a>
@@ -332,7 +336,9 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
           className="w-full py-1.5 px-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded-lg border border-amber-500/30 flex items-center justify-center gap-1.5 font-semibold transition"
         >
           <ShoppingCart className="w-3.5 h-3.5 text-amber-400" />
-          <span>Shop Craft Supplies on Amazon</span>
+          <span>
+            {craftType === 'crochet' ? 'Shop Crochet Yarn on Amazon' : 'Shop Craft Supplies on Amazon'}
+          </span>
           <ExternalLink className="w-3 h-3 text-amber-400" />
         </a>
         <div className="text-[9px] text-slate-500 text-center">

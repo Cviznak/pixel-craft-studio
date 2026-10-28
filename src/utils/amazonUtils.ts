@@ -28,7 +28,9 @@ export function setCustomAffiliateTag(tag: string): void {
 
 export function buildAmazonColorSearchUrl(color: PaletteColor, craftType: CraftType = 'perler'): string {
   let query = '';
-  if (craftType === 'perler') {
+  if (craftType === 'crochet') {
+    query = `${color.name || ''} crochet yarn skein`.trim();
+  } else if (craftType === 'perler') {
     query = `perler beads ${color.name || color.code || ''}`.trim();
   } else if (craftType === 'cross-stitch') {
     const codeOnly = color.code ? color.code.replace('DMC', '').replace('~', '').trim() : '';
@@ -46,7 +48,9 @@ export function buildAmazonColorSearchUrl(color: PaletteColor, craftType: CraftT
 
 export function buildAmazonSuppliesUrl(craftType: CraftType = 'perler'): string {
   let query = 'perler beads bucket 10000 with pegboards';
-  if (craftType === 'cross-stitch') {
+  if (craftType === 'crochet') {
+    query = 'crochet yarn pack with ergonomic hooks set';
+  } else if (craftType === 'cross-stitch') {
     query = 'dmc embroidery floss kit with 14 count aida cloth';
   } else if (craftType === 'diamond') {
     query = 'diamond painting tools kit with tray';

@@ -245,8 +245,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     <ShoppingCart className="w-4 h-4" />
                   </div>
                   <div>
-                    <h5 className="font-bold text-slate-200 text-xs">Craft Supplies on Amazon</h5>
-                    <p className="text-[10px] text-slate-400">Find beads, thread & boards</p>
+                    <h5 className="font-bold text-slate-200 text-xs">
+                      {config.craftType === 'crochet' ? 'Crochet Yarn on Amazon' : 'Craft Supplies on Amazon'}
+                    </h5>
+                    <p className="text-[10px] text-slate-400">
+                      {config.craftType === 'crochet' ? 'Find yarn skeins & hook kits' : 'Find beads, thread & boards'}
+                    </p>
                   </div>
                 </div>
                 <ExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 transition" />
