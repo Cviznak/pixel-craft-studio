@@ -90,6 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
   const craftTypes: { id: CraftType; label: string; icon: string }[] = [
     { id: 'perler', label: 'Beads', icon: '🔘' },
     { id: 'cross-stitch', label: 'Cross-Stitch', icon: '🧵' },
+    { id: 'crochet', label: 'Crochet', icon: '🧶' },
     { id: 'diamond', label: 'Diamond', icon: '💎' },
     { id: 'pixel', label: 'Pixel', icon: '🔲' },
   ];

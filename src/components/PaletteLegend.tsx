@@ -265,6 +265,11 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
                           • {Math.max(1, Math.ceil(total / 1000))} pk
                         </span>
                       )}
+                      {craftType === 'crochet' && (
+                        <span className="text-[9px] text-pink-400 font-sans" title="Estimated yarn yardage & 100g skeins">
+                          • ~{Math.round(total * 0.9)} yd ({Math.max(1, Math.ceil((total * 0.9) / 200))} sk)
+                        </span>
+                      )}
                     </div>
                   </div>
 

@@ -5,12 +5,14 @@ import type {
   CellProgress, 
   SampleImage, 
   CraftProject,
-  AiHistoryItem 
+  AiHistoryItem,
+  UploadHistoryItem 
 } from './types/craft';
 import { SAMPLE_IMAGES } from './utils/sampleImages';
 import { extractBeautifulPalette } from './utils/paletteExtractor';
 import { processImageToGrid } from './utils/pixelation';
 import { saveAppState, loadAppState, clearSavedAppState } from './utils/storage';
+import { DEFAULT_CROCHET_GAUGE } from './utils/craftCalculator';
 import { Header } from './components/Header';
 import { ControlsPanel } from './components/ControlsPanel';
 import { CraftCanvas } from './components/CraftCanvas';
@@ -20,6 +22,8 @@ import { HelpModal } from './components/HelpModal';
 import { AiGenerateModal } from './components/AiGenerateModal';
 import { ImageInspectModal } from './components/ImageInspectModal';
 import { StarterGalleryModal } from './components/StarterGalleryModal';
+import { ImageCropModal } from './components/ImageCropModal';
+import { ImageHistoryModal } from './components/ImageHistoryModal';
 import { cleanConfettiColors } from './utils/paletteOperations';
 import { SlidersHorizontal, Sparkles, Wand2, Palette } from 'lucide-react';
 
@@ -40,6 +44,7 @@ const DEFAULT_CONFIG: GridConfig = {
   showRulers: true,
   showSymbols: true,
   cellSize: 24,
+  crochetGauge: DEFAULT_CROCHET_GAUGE,
 };
 
 export default function App() {
@@ -64,11 +69,17 @@ export default function App() {
   const [lastAiStyle, setLastAiStyle] = useState<string>('pixel-art');
   const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([]);
 
+  // User uploaded pictures history
+  const [uploadHistory, setUploadHistory] = useState<UploadHistoryItem[]>([]);
+
   // Modals
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [isStarterGalleryOpen, setIsStarterGalleryOpen] = useState<boolean>(false);
+  const [isCropModalOpen, setIsCropModalOpen] = useState<boolean>(false);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
@@ -98,6 +109,7 @@ export default function App() {
     lastAiPrompt,
     lastAiStyle,
     aiHistory,
+    uploadHistory,
   });
 
   useEffect(() => {
@@ -113,6 +125,7 @@ export default function App() {
       lastAiPrompt,
       lastAiStyle,
       aiHistory,
+      uploadHistory,
     };
   }, [
     config,
@@ -126,6 +139,7 @@ export default function App() {
     lastAiPrompt,
     lastAiStyle,
     aiHistory,
+    uploadHistory,
   ]);
 
   // Push snapshot to undo history before pencil stroke begins
@@ -273,6 +287,9 @@ export default function App() {
           if (saved.aiHistory) {
             setAiHistory(saved.aiHistory);
           }
+          if (saved.uploadHistory) {
+            setUploadHistory(saved.uploadHistory);
+          }
 
           if (saved.sourceImageDataUrl) {
             setSourceImageDataUrl(saved.sourceImageDataUrl);
@@ -396,10 +413,67 @@ export default function App() {
       const img = new Image();
       img.onload = () => {
         applyImageAndProcess(img, dataUrl, '');
+        const newItem: UploadHistoryItem = {
+          id: `upload-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name: file.name,
+          dataUrl,
+          timestamp: Date.now(),
+          width: img.width,
+          height: img.height,
+        };
+        setUploadHistory((prev) => [newItem, ...prev.filter((p) => p.dataUrl !== dataUrl)].slice(0, 25));
       };
       img.src = dataUrl;
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleOpenCropModal = () => {
+    const currentUrl = sourceImageDataUrl || sourceImage?.src;
+    if (currentUrl) {
+      setCropImageUrl(currentUrl);
+      setIsCropModalOpen(true);
+    }
+  };
+
+  const handleApplyCrop = (croppedDataUrl: string) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      applyImageAndProcess(img, croppedDataUrl, '');
+      const newItem: UploadHistoryItem = {
+        id: `crop-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: `Cropped Image`,
+        dataUrl: croppedDataUrl,
+        timestamp: Date.now(),
+        width: img.width,
+        height: img.height,
+      };
+      setUploadHistory((prev) => [newItem, ...prev.filter((p) => p.dataUrl !== croppedDataUrl)].slice(0, 25));
+    };
+    img.src = croppedDataUrl;
+  };
+
+  const handleSelectUploadItem = (item: UploadHistoryItem) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      applyImageAndProcess(img, item.dataUrl, '');
+    };
+    img.src = item.dataUrl;
+  };
+
+  const handleDeleteUploadItem = (id: string) => {
+    setUploadHistory((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleClearAllUploadHistory = () => {
+    setUploadHistory([]);
+  };
+
+  const handleOpenCropForImage = (url: string) => {
+    setCropImageUrl(url);
+    setIsCropModalOpen(true);
   };
 
   // Turn into Pixel Craft Grid from AI Generator
@@ -717,6 +791,7 @@ export default function App() {
                 setIsMobileControlsOpen(false);
                 setIsAiModalOpen(true);
               }}
+              onOpenCropModal={handleOpenCropModal}
               onInspectCurrentPhoto={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
               onOpenStarterGallery={() => {
                 setIsMobileControlsOpen(false);
@@ -727,6 +802,15 @@ export default function App() {
               onSelectHistoryImage={(item) => {
                 handleSelectHistoryImage(item);
                 setIsMobileControlsOpen(false);
+              }}
+              uploadHistory={uploadHistory}
+              onSelectUploadItem={(item) => {
+                handleSelectUploadItem(item);
+                setIsMobileControlsOpen(false);
+              }}
+              onOpenHistoryModal={() => {
+                setIsMobileControlsOpen(false);
+                setIsHistoryModalOpen(true);
               }}
               aspectRatio={aspectRatio}
             />
@@ -902,6 +986,29 @@ export default function App() {
           };
           img.src = url;
         }}
+      />
+
+      {/* Image Crop & Cut Modal */}
+      <ImageCropModal
+        isOpen={isCropModalOpen}
+        onClose={() => setIsCropModalOpen(false)}
+        imageUrl={cropImageUrl || sourceImageDataUrl || sourceImage?.src || ''}
+        onApplyCrop={handleApplyCrop}
+        gridAspectRatio={config.width / Math.max(1, config.height)}
+      />
+
+      {/* Uploaded & AI Picture History Gallery Modal */}
+      <ImageHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        uploadHistory={uploadHistory}
+        aiHistory={aiHistory}
+        onSelectUploadItem={handleSelectUploadItem}
+        onSelectAiItem={handleSelectHistoryImage}
+        onDeleteUploadItem={handleDeleteUploadItem}
+        onDeleteAiItem={handleDeleteHistoryItem}
+        onClearAllUploadHistory={handleClearAllUploadHistory}
+        onOpenCropForImage={handleOpenCropForImage}
       />
 
       {/* Help & Guide Modal */}

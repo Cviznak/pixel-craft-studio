@@ -1,10 +1,21 @@
-export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel';
+export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel' | 'crochet';
 
 export type ExtractionMode = 'vibrant' | 'balanced' | 'dominant' | 'pastel';
 
 export type DitherType = 'none' | 'floyd-steinberg' | 'atkinson' | 'bayer';
 
 export type CraftStandard = 'custom' | 'dmc' | 'perler';
+
+export type CrochetStitchType = 'sc' | 'hdc' | 'wc' | 'c2c';
+export type CrochetYarnWeight = 'fingering' | 'dk' | 'worsted' | 'bulky' | 'super-bulky';
+
+export interface CrochetGaugeConfig {
+  stitchType: CrochetStitchType;
+  yarnWeight: CrochetYarnWeight;
+  stitchesPer4Inches: number; // e.g. 15 sts
+  rowsPer4Inches: number;     // e.g. 17 rows
+  hookSizeMm?: number;        // e.g. 5.0
+}
 
 export interface PaletteColor {
   id: string;
@@ -38,6 +49,7 @@ export interface GridConfig {
   showRulers: boolean;
   showSymbols: boolean;
   cellSize: number; // visual scale in canvas
+  crochetGauge?: CrochetGaugeConfig;
 }
 
 export interface CellProgress {
@@ -58,6 +70,15 @@ export interface AiHistoryItem {
   styleId: string;
   dataUrl: string;
   createdAt: string;
+}
+
+export interface UploadHistoryItem {
+  id: string;
+  name: string;
+  dataUrl: string;
+  timestamp: number;
+  width?: number;
+  height?: number;
 }
 
 export interface CraftProject {

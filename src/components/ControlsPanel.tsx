@@ -5,13 +5,18 @@ import type {
   CraftStandard, 
   GridConfig, 
   SampleImage, 
-  AiHistoryItem 
+  AiHistoryItem,
+  UploadHistoryItem,
+  CrochetYarnWeight
 } from '../types/craft';
 import { SAMPLE_IMAGES } from '../utils/sampleImages';
 import { 
   calculateCrossStitchDimensions, 
   calculatePerlerDimensions, 
   calculateDiamondDimensions,
+  calculateCrochetDimensions,
+  CROCHET_YARN_PRESETS,
+  DEFAULT_CROCHET_GAUGE,
   type CrossStitchClothCount 
 } from '../utils/craftCalculator';
 import { 
@@ -29,7 +34,8 @@ import {
   SlidersHorizontal, 
   ChevronDown, 
   ChevronUp,
-  Ruler
+  Ruler,
+  Crop
 } from 'lucide-react';
 
 interface ControlsPanelProps {
@@ -39,11 +45,15 @@ interface ControlsPanelProps {
   onUploadImage: (file: File) => void;
   onRegenerate: () => void;
   onOpenAiModal: () => void;
+  onOpenCropModal?: () => void;
   onInspectCurrentPhoto?: () => void;
   onOpenStarterGallery?: () => void;
   onClose?: () => void;
   aiHistory?: AiHistoryItem[];
   onSelectHistoryImage?: (item: AiHistoryItem) => void;
+  uploadHistory?: UploadHistoryItem[];
+  onSelectUploadItem?: (item: UploadHistoryItem) => void;
+  onOpenHistoryModal?: () => void;
   aspectRatio: number;
 }
 
@@ -54,14 +64,19 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onUploadImage,
   onRegenerate,
   onOpenAiModal,
+  onOpenCropModal,
   onInspectCurrentPhoto,
   onOpenStarterGallery,
   onClose,
   aiHistory = [],
   onSelectHistoryImage,
+  uploadHistory = [],
+  onSelectUploadItem,
+  onOpenHistoryModal,
   aspectRatio,
 }) => {
   const [activeTab, setActiveTab] = useState<'grid' | 'colors'>('grid');
+  const [thumbTab, setThumbTab] = useState<'presets' | 'uploads' | 'ai'>('presets');
   const [showPreFilters, setShowPreFilters] = useState<boolean>(false);
   const [clothCount, setClothCount] = useState<CrossStitchClothCount>(14);
 
@@ -100,6 +115,16 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             <span>📷</span> Source Image
           </span>
           <div className="flex items-center gap-1.5">
+            {onOpenHistoryModal && (
+              <button
+                type="button"
+                onClick={onOpenHistoryModal}
+                className="p-1 rounded-md text-slate-400 hover:text-pink-300 hover:bg-slate-800 transition"
+                title="View picture library & upload history"
+              >
+                <History className="w-3.5 h-3.5 text-pink-400" />
+              </button>
+            )}
             {onInspectCurrentPhoto && (
               <button
                 type="button"
@@ -123,9 +148,9 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
           </div>
         </div>
 
-        {/* Action Button Row: Upload / AI Draw / Starters */}
-        <div className="grid grid-cols-3 gap-1.5 mb-2.5">
-          <label className="cursor-pointer py-1.5 px-2 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-center">
+        {/* Action Button Row: Upload / Crop / AI Draw / Starters */}
+        <div className="grid grid-cols-4 gap-1 mb-2.5">
+          <label className="cursor-pointer py-1.5 px-1 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-center">
             <Upload className="w-3 h-3" />
             <span>Upload</span>
             <input
@@ -136,10 +161,22 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             />
           </label>
 
+          {onOpenCropModal && (
+            <button
+              type="button"
+              onClick={onOpenCropModal}
+              className="py-1.5 px-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
+              title="Cut & crop the image"
+            >
+              <Crop className="w-3 h-3" />
+              <span>Crop</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onOpenAiModal}
-            className="py-1.5 px-2 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
+            className="py-1.5 px-1 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
           >
             <Wand2 className="w-3 h-3" />
             <span>AI Draw</span>
@@ -149,7 +186,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             <button
               type="button"
               onClick={onOpenStarterGallery}
-              className="py-1.5 px-2 bg-pink-600/15 hover:bg-pink-600/25 border border-pink-500/30 text-pink-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
+              className="py-1.5 px-1 bg-pink-600/15 hover:bg-pink-600/25 border border-pink-500/30 text-pink-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
             >
               <Sparkles className="w-3 h-3" />
               <span>Starters</span>
@@ -157,48 +194,93 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
           )}
         </div>
 
-        {/* Sample Thumbnails Carousel */}
+        {/* Thumbnail Selector Strip with Presets / Uploads / AI Tabs */}
         <div>
           <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold mb-1">
-            <span>Presets</span>
-            {aiHistory.length > 0 && (
-              <span className="text-purple-300 flex items-center gap-0.5">
-                <History className="w-2.5 h-2.5" /> {aiHistory.length} AI
-              </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setThumbTab('presets')}
+                className={`transition ${thumbTab === 'presets' ? 'text-indigo-300 font-bold' : 'hover:text-slate-300'}`}
+              >
+                Presets
+              </button>
+              {uploadHistory.length > 0 && (
+                <button
+                  onClick={() => setThumbTab('uploads')}
+                  className={`transition ${thumbTab === 'uploads' ? 'text-indigo-300 font-bold' : 'hover:text-slate-300'}`}
+                >
+                  Uploads ({uploadHistory.length})
+                </button>
+              )}
+              {aiHistory.length > 0 && (
+                <button
+                  onClick={() => setThumbTab('ai')}
+                  className={`transition ${thumbTab === 'ai' ? 'text-purple-300 font-bold' : 'hover:text-slate-300'}`}
+                >
+                  AI ({aiHistory.length})
+                </button>
+              )}
+            </div>
+
+            {onOpenHistoryModal && (
+              <button
+                onClick={onOpenHistoryModal}
+                className="text-pink-400 hover:text-pink-300 underline font-semibold flex items-center gap-0.5"
+              >
+                All
+              </button>
             )}
           </div>
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-            {SAMPLE_IMAGES.map((sample) => (
-              <button
-                key={sample.id}
-                onClick={() => onSelectSampleImage(sample)}
-                className="group relative w-10 h-10 rounded-lg overflow-hidden border border-slate-700/80 hover:border-indigo-500 transition shrink-0 shadow-sm"
-                title={`${sample.name} - ${sample.description}`}
-              >
-                <img
-                  src={sample.url}
-                  alt={sample.name}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
 
-            {/* AI History if any */}
-            {aiHistory.slice(0, 4).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onSelectHistoryImage?.(item)}
-                className="group relative w-10 h-10 rounded-lg overflow-hidden border border-purple-500/50 hover:border-pink-500 transition shrink-0 shadow-sm"
-                title={`Load AI picture: "${item.prompt}"`}
-              >
-                <img
-                  src={item.dataUrl}
-                  alt={item.prompt}
-                  className="w-full h-full object-cover"
-                />
-              </button>
-            ))}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+            {thumbTab === 'presets' &&
+              SAMPLE_IMAGES.map((sample) => (
+                <button
+                  key={sample.id}
+                  onClick={() => onSelectSampleImage(sample)}
+                  className="group relative w-10 h-10 rounded-lg overflow-hidden border border-slate-700/80 hover:border-indigo-500 transition shrink-0 shadow-sm"
+                  title={`${sample.name} - ${sample.description}`}
+                >
+                  <img
+                    src={sample.url}
+                    alt={sample.name}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+
+            {thumbTab === 'uploads' &&
+              uploadHistory.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => onSelectUploadItem?.(item)}
+                  className="group relative w-10 h-10 rounded-lg overflow-hidden border border-indigo-500/50 hover:border-pink-500 transition shrink-0 shadow-sm"
+                  title={`Uploaded: ${item.name}`}
+                >
+                  <img
+                    src={item.dataUrl}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
+
+            {thumbTab === 'ai' &&
+              aiHistory.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onSelectHistoryImage?.(item)}
+                  className="group relative w-10 h-10 rounded-lg overflow-hidden border border-purple-500/50 hover:border-pink-500 transition shrink-0 shadow-sm"
+                  title={`AI picture: "${item.prompt}"`}
+                >
+                  <img
+                    src={item.dataUrl}
+                    alt={item.prompt}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
           </div>
         </div>
       </div>
@@ -338,11 +420,11 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             </div>
 
             {/* Real-World Sizing Calculator Card */}
-            <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2">
+            <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
                   <Ruler className="w-3.5 h-3.5 text-amber-400" />
-                  Physical Size
+                  {config.craftType === 'crochet' ? 'Crochet Tapestry Gauge' : 'Physical Size'}
                 </span>
                 {config.craftType === 'cross-stitch' && (
                   <select
@@ -357,6 +439,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 )}
               </div>
 
+              {/* Cross Stitch Sizing */}
               {config.craftType === 'cross-stitch' && (() => {
                 const res = calculateCrossStitchDimensions(config.width, config.height, clothCount);
                 return (
@@ -371,6 +454,118 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 );
               })()}
 
+              {/* Crochet Tapestry Gauge Calculator */}
+              {config.craftType === 'crochet' && (() => {
+                const currentGauge = config.crochetGauge || DEFAULT_CROCHET_GAUGE;
+                const res = calculateCrochetDimensions(config.width, config.height, currentGauge);
+
+                return (
+                  <div className="space-y-2.5 text-xs">
+                    <div className="text-amber-200 font-bold font-mono">
+                      {res.dimensions.summary}
+                    </div>
+
+                    {/* Yarn Weight Preset */}
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-1 font-semibold">Yarn Weight & Hook</label>
+                      <select
+                        value={currentGauge.yarnWeight}
+                        onChange={(e) => {
+                          const weight = e.target.value as CrochetYarnWeight;
+                          const preset = CROCHET_YARN_PRESETS[weight];
+                          onUpdateConfig({
+                            crochetGauge: {
+                              ...currentGauge,
+                              yarnWeight: weight,
+                              stitchesPer4Inches: preset.defaultStsPer4In,
+                              rowsPer4Inches: preset.defaultRowsPer4In,
+                              hookSizeMm: preset.hookMm,
+                            },
+                          });
+                        }}
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-indigo-300 font-medium focus:outline-none"
+                      >
+                        {Object.entries(CROCHET_YARN_PRESETS).map(([key, val]) => (
+                          <option key={key} value={key}>
+                            {val.name} ({val.hookMm}mm hook)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Swatch Gauge Inputs */}
+                    <div className="grid grid-cols-2 gap-2 bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-0.5">Stitches in 4" (10cm)</div>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="2"
+                            max="60"
+                            value={currentGauge.stitchesPer4Inches}
+                            onChange={(e) => {
+                              onUpdateConfig({
+                                crochetGauge: {
+                                  ...currentGauge,
+                                  stitchesPer4Inches: Math.max(2, parseInt(e.target.value) || 15),
+                                },
+                              });
+                            }}
+                            className="w-14 bg-slate-950 border border-slate-700 rounded text-center py-0.5 text-slate-100 font-mono text-xs focus:outline-none"
+                          />
+                          <span className="text-[10px] text-slate-500">sts</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-[10px] text-slate-400 mb-0.5">Rows in 4" (10cm)</div>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="2"
+                            max="60"
+                            value={currentGauge.rowsPer4Inches}
+                            onChange={(e) => {
+                              onUpdateConfig({
+                                crochetGauge: {
+                                  ...currentGauge,
+                                  rowsPer4Inches: Math.max(2, parseInt(e.target.value) || 17),
+                                },
+                              });
+                            }}
+                            className="w-14 bg-slate-950 border border-slate-700 rounded text-center py-0.5 text-slate-100 font-mono text-xs focus:outline-none"
+                          />
+                          <span className="text-[10px] text-slate-500">rows</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stitch Aspect Ratio & Yarn Estimate */}
+                    <div className="text-[10px] text-slate-400 space-y-1 bg-slate-900/50 p-2 rounded-lg border border-slate-800/80">
+                      <div className="flex justify-between items-center">
+                        <span>Stitch Aspect Ratio:</span>
+                        <span className="text-amber-300 font-bold font-mono">
+                          {res.stitchAspectRatio} : 1
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span>Total Yarn Needed:</span>
+                        <span className="text-emerald-400 font-bold font-mono">
+                          ~{res.estimatedYardsTotal} yds ({res.estimatedMetersTotal} m)
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-400">
+                        <span>Estimated Skeins:</span>
+                        <span className="text-slate-200 font-semibold font-mono">
+                          ~{res.estimatedSkeinsTotal} sk (100g standard)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Perler Beads Sizing */}
               {config.craftType === 'perler' && (() => {
                 const res = calculatePerlerDimensions(config.width, config.height, 'midi-5mm');
                 return (
@@ -385,6 +580,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 );
               })()}
 
+              {/* Diamond Painting Sizing */}
               {config.craftType === 'diamond' && (() => {
                 const res = calculateDiamondDimensions(config.width, config.height, 'square-2.5mm');
                 return (
@@ -399,6 +595,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 );
               })()}
 
+              {/* Pixel Art Sizing */}
               {config.craftType === 'pixel' && (
                 <div className="text-xs text-amber-200 font-bold font-mono">
                   {config.width} × {config.height} pixels

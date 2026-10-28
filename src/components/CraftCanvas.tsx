@@ -249,6 +249,37 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           ctx.moveTo(px + pad + 1, py + pad);
           ctx.lineTo(px + cellSize - pad, py + cellSize - pad - 1);
           ctx.stroke();
+        } else if (config.craftType === 'crochet') {
+          // Authentic Tapestry Crochet Stitch Look
+          // Base yarn fill
+          ctx.fillStyle = color.hex;
+          ctx.fillRect(px, py, cellSize, cellSize);
+
+          // Crochet yarn V-stitch strands and loop texture
+          const yarnWidth = Math.max(1.5, cellSize * 0.18);
+          ctx.lineWidth = yarnWidth;
+          ctx.lineCap = 'round';
+
+          // Strand shadow
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+          ctx.beginPath();
+          ctx.moveTo(px + cellSize * 0.22, py + cellSize * 0.2);
+          ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.88);
+          ctx.lineTo(px + cellSize * 0.78, py + cellSize * 0.2);
+          ctx.stroke();
+
+          // Strand yarn sheen / highlight
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+          ctx.beginPath();
+          ctx.moveTo(px + cellSize * 0.25, py + cellSize * 0.16);
+          ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.84);
+          ctx.stroke();
+
+          // Top stitch loop
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+          ctx.beginPath();
+          ctx.arc(px + cellSize * 0.5, py + cellSize * 0.18, cellSize * 0.28, Math.PI, 0);
+          ctx.stroke();
         } else if (config.craftType === 'diamond') {
           // Diamond painting faceted drill
           const pad = cellSize * 0.06;

@@ -1,4 +1,4 @@
-import type { GridConfig, PaletteColor, CellProgress, AiHistoryItem } from '../types/craft';
+import type { GridConfig, PaletteColor, CellProgress, AiHistoryItem, UploadHistoryItem } from '../types/craft';
 
 export interface SavedAppState {
   version: number;
@@ -14,6 +14,7 @@ export interface SavedAppState {
   lastAiPrompt?: string;
   lastAiStyle?: string;
   aiHistory?: AiHistoryItem[];
+  uploadHistory?: UploadHistoryItem[];
 }
 
 const DB_NAME = 'PixelCraftStudioDB';
