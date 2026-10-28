@@ -12,7 +12,10 @@ import {
   PanelLeft,
   PanelRight,
   MoreHorizontal,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone,
+  Share2,
+  X
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -51,6 +54,57 @@ export const Header: React.FC<HeaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // PWA installation state
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState<boolean>(false);
+  const [showIosInstallModal, setShowIosInstallModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Check if running in standalone mode (already installed)
+    if (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true
+    ) {
+      setIsInstalled(true);
+      return;
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    });
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice?.outcome === 'accepted') {
+        setIsInstalled(true);
+      }
+      setInstallPrompt(null);
+    } else {
+      const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      if (isIos) {
+        setShowIosInstallModal(true);
+      } else {
+        alert("To install Pixel Craft Studio, click the install icon (⊕) in your browser address bar or menu (⋮) -> 'Install App'.");
+      }
+    }
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -236,6 +290,19 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Start Fresh (Reset All)</span>
                 </button>
               )}
+
+              {!isInstalled && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    handleInstallClick();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left border-t border-slate-800/80 pt-2"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Install Web App</span>
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -276,6 +343,18 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
+        {/* Install App Button */}
+        {!isInstalled && (
+          <button
+            onClick={handleInstallClick}
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 transition"
+            title="Install Pixel Craft Studio on your computer or phone"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Install App</span>
+          </button>
+        )}
+
         {/* Primary Call to Action: Export & Print */}
         <button
           onClick={onOpenExportModal}
@@ -285,6 +364,57 @@ export const Header: React.FC<HeaderProps> = ({
           <span>Export & Print</span>
         </button>
       </div>
+
+      {/* iOS Safari Installation Guide Modal */}
+      {showIosInstallModal && (
+        <div 
+          onClick={() => setShowIosInstallModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-slate-100 text-sm">Install on iPhone / iPad</h3>
+              </div>
+              <button 
+                onClick={() => setShowIosInstallModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Install Pixel Craft Studio to your home screen for the full-screen app experience:
+            </p>
+
+            <ol className="text-xs text-slate-300 space-y-2.5 list-decimal list-inside bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+              <li>
+                Tap the <strong className="text-indigo-300">Share</strong> icon <Share2 className="w-3.5 h-3.5 inline mx-1 text-indigo-400" /> at the bottom of Safari.
+              </li>
+              <li>
+                Scroll down and select <strong className="text-white">"Add to Home Screen"</strong>.
+              </li>
+              <li>
+                Tap <strong className="text-emerald-400">Add</strong> in the top right.
+              </li>
+            </ol>
+
+            <button
+              onClick={() => setShowIosInstallModal(false)}
+              className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

@@ -1,0 +1,148 @@
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+
+const publicDir = path.resolve('public');
+
+// 1. Generate og-preview.png (1200x630)
+const ogSvgPath = path.join(publicDir, 'og-preview.svg');
+const ogPngPath = path.join(publicDir, 'og-preview.png');
+
+console.log('Rendering og-preview.png...');
+const ogSvgBuffer = fs.readFileSync(ogSvgPath);
+await sharp(ogSvgBuffer)
+  .resize(1200, 630)
+  .png({ quality: 95, compressionLevel: 8 })
+  .toFile(ogPngPath);
+console.log('og-preview.png created successfully!');
+
+// 2. App Icon SVG for PWA (512x512)
+const appIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19"/>
+      <stop offset="50%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#311042"/>
+    </linearGradient>
+
+    <linearGradient id="glowHeart" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fb7185"/>
+      <stop offset="50%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#be123c"/>
+    </linearGradient>
+
+    <linearGradient id="borderGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- App Rounded Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="url(#borderGlow)" stroke-width="6" opacity="0.4"/>
+
+  <!-- Pixel Grid Backdrop Lines (Subtle) -->
+  <g opacity="0.08" stroke="#ffffff" stroke-width="2">
+    <line x1="96" y1="96" x2="416" y2="96"/>
+    <line x1="96" y1="160" x2="416" y2="160"/>
+    <line x1="96" y1="224" x2="416" y2="224"/>
+    <line x1="96" y1="288" x2="416" y2="288"/>
+    <line x1="96" y1="352" x2="416" y2="352"/>
+    <line x1="96" y1="416" x2="416" y2="416"/>
+    <line x1="96" y1="96" x2="96" y2="416"/>
+    <line x1="160" y1="96" x2="160" y2="416"/>
+    <line x1="224" y1="96" x2="224" y2="416"/>
+    <line x1="288" y1="96" x2="288" y2="416"/>
+    <line x1="352" y1="96" x2="352" y2="416"/>
+    <line x1="416" y1="96" x2="416" y2="416"/>
+  </g>
+
+  <!-- Iconic Pixel Craft Heart with Shadow -->
+  <g filter="url(#shadow)" transform="translate(96, 96)">
+    <!-- 7x7 pixel heart matrix (each pixel is 40x40 with rounded corners) -->
+    <!-- Row 0 -->
+    <rect x="46" y="0" width="40" height="40" rx="8" fill="#fda4af"/>
+    <rect x="92" y="0" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="184" y="0" width="40" height="40" rx="8" fill="#fda4af"/>
+    <rect x="230" y="0" width="40" height="40" rx="8" fill="#f43f5e"/>
+
+    <!-- Row 1 -->
+    <rect x="0" y="46" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="46" y="46" width="40" height="40" rx="8" fill="#fff1f2"/>
+    <rect x="92" y="46" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="138" y="46" width="40" height="40" rx="8" fill="#fb7185"/>
+    <rect x="184" y="46" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="230" y="46" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="276" y="46" width="40" height="40" rx="8" fill="#e11d48"/>
+
+    <!-- Row 2 -->
+    <rect x="0" y="92" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="46" y="92" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="92" y="92" width="40" height="40" rx="8" fill="#fb7185"/>
+    <rect x="138" y="92" width="40" height="40" rx="8" fill="#fb7185"/>
+    <rect x="184" y="92" width="40" height="40" rx="8" fill="#fb7185"/>
+    <rect x="230" y="92" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="276" y="92" width="40" height="40" rx="8" fill="#be123c"/>
+
+    <!-- Row 3 -->
+    <rect x="0" y="138" width="40" height="40" rx="8" fill="#e11d48"/>
+    <rect x="46" y="138" width="40" height="40" rx="8" fill="#fb7185"/>
+    <rect x="92" y="138" width="40" height="40" rx="8" fill="#fb7185"/>
+    <rect x="138" y="138" width="40" height="40" rx="8" fill="#fb7185"/>
+    <rect x="184" y="138" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="230" y="138" width="40" height="40" rx="8" fill="#e11d48"/>
+    <rect x="276" y="138" width="40" height="40" rx="8" fill="#9f1239"/>
+
+    <!-- Row 4 -->
+    <rect x="46" y="184" width="40" height="40" rx="8" fill="#e11d48"/>
+    <rect x="92" y="184" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="138" y="184" width="40" height="40" rx="8" fill="#f43f5e"/>
+    <rect x="184" y="184" width="40" height="40" rx="8" fill="#e11d48"/>
+    <rect x="230" y="184" width="40" height="40" rx="8" fill="#be123c"/>
+
+    <!-- Row 5 -->
+    <rect x="92" y="230" width="40" height="40" rx="8" fill="#be123c"/>
+    <rect x="138" y="230" width="40" height="40" rx="8" fill="#e11d48"/>
+    <rect x="184" y="230" width="40" height="40" rx="8" fill="#9f1239"/>
+
+    <!-- Row 6 -->
+    <rect x="138" y="276" width="40" height="40" rx="8" fill="#881337"/>
+  </g>
+
+  <!-- Sparkle Stars -->
+  <path d="M 400 80 Q 400 110 430 110 Q 400 110 400 140 Q 400 110 370 110 Q 400 110 400 80" fill="#fef08a"/>
+  <path d="M 90 380 Q 90 400 110 400 Q 90 400 90 420 Q 90 400 70 400 Q 90 400 90 380" fill="#a7f3d0"/>
+</svg>`;
+
+const iconSvgBuffer = Buffer.from(appIconSvg);
+
+// Generate 512x512
+console.log('Rendering icon-512.png...');
+await sharp(iconSvgBuffer)
+  .resize(512, 512)
+  .png()
+  .toFile(path.join(publicDir, 'icon-512.png'));
+
+// Generate 192x192
+console.log('Rendering icon-192.png...');
+await sharp(iconSvgBuffer)
+  .resize(192, 192)
+  .png()
+  .toFile(path.join(publicDir, 'icon-192.png'));
+
+// Generate apple-touch-icon.png (180x180)
+console.log('Rendering apple-touch-icon.png...');
+await sharp(iconSvgBuffer)
+  .resize(180, 180)
+  .png()
+  .toFile(path.join(publicDir, 'apple-touch-icon.png'));
+
+// Also write favicon.svg replacement with this gorgeous icon
+fs.writeFileSync(path.join(publicDir, 'app-icon.svg'), appIconSvg);
+
+console.log('All icons & OG images generated successfully!');

@@ -1,153 +1,215 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#030712"/>
-      <stop offset="50%" stop-color="#0f172a"/>
-      <stop offset="100%" stop-color="#1e1b4b"/>
+      <stop offset="0%" stop-color="#050713"/>
+      <stop offset="50%" stop-color="#0b1120"/>
+      <stop offset="100%" stop-color="#150f2e"/>
     </linearGradient>
-    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#ec4899"/>
-      <stop offset="50%" stop-color="#8b5cf6"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
+
+    <linearGradient id="glowBrand" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="45%" stop-color="#d946ef"/>
+      <stop offset="100%" stop-color="#6366f1"/>
     </linearGradient>
+
+    <linearGradient id="glowCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#818cf8"/>
+    </linearGradient>
+
     <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1e293b"/>
-      <stop offset="100%" stop-color="#0f172a"/>
+      <stop offset="0%" stop-color="#161f36"/>
+      <stop offset="100%" stop-color="#0a0f1d"/>
     </linearGradient>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="60" result="blur"/>
+    </filter>
+
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="25" stdDeviation="30" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
   </defs>
 
-  <!-- Background -->
+  <!-- Base Canvas Background -->
   <rect width="1200" height="630" fill="url(#bg)"/>
 
-  <!-- Subtle Pixel Grid pattern in background -->
-  <g opacity="0.08" stroke="#ffffff" stroke-width="1">
-    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-      <rect width="30" height="30" fill="none"/>
-      <path d="M 30 0 L 0 0 0 30"/>
+  <!-- Ambient Light Orbs -->
+  <circle cx="200" cy="120" r="280" fill="#ec4899" opacity="0.12" filter="url(#softGlow)"/>
+  <circle cx="1050" cy="200" r="320" fill="#6366f1" opacity="0.16" filter="url(#softGlow)"/>
+  <circle cx="650" cy="550" r="260" fill="#a855f7" opacity="0.10" filter="url(#softGlow)"/>
+
+  <!-- Subtle Pixel Grid Rulers in Background -->
+  <g opacity="0.05" stroke="#ffffff" stroke-width="1">
+    <pattern id="gridPattern" width="28" height="28" patternUnits="userSpaceOnUse">
+      <rect width="28" height="28" fill="none"/>
+      <path d="M 28 0 L 0 0 0 28"/>
     </pattern>
-    <rect width="1200" height="630" fill="url(#grid)"/>
+    <rect width="1200" height="630" fill="url(#gridPattern)"/>
   </g>
 
-  <!-- Left Side: Typography & Badges -->
-  <g transform="translate(80, 100)">
-    <!-- Pill Badge -->
-    <rect width="280" height="36" rx="18" fill="#4f46e5" fill-opacity="0.25" stroke="#6366f1" stroke-width="1.5"/>
-    <text x="140" y="23" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#a5b4fc" text-anchor="middle">
-      ✨ FREE PATTERN MAKER
+  <!-- LEFT COLUMN: Typography & Badges -->
+  <g transform="translate(80, 85)">
+    <!-- Top Pill Badge -->
+    <rect width="310" height="38" rx="19" fill="#6366f1" fill-opacity="0.18" stroke="#818cf8" stroke-width="1.5"/>
+    <text x="155" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="800" fill="#c7d2fe" text-anchor="middle" letter-spacing="1">
+      ✨ 100% FREE PATTERN GENERATOR
     </text>
 
-    <!-- Main Title -->
-    <text x="0" y="95" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="900" fill="#ffffff" letter-spacing="-1">
+    <!-- App Title -->
+    <text x="0" y="105" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="58" font-weight="900" fill="#ffffff" letter-spacing="-1.5">
       Pixel Craft Studio
     </text>
 
-    <!-- Gradient Tagline -->
-    <text x="0" y="145" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="700" fill="url(#glow)">
-      Turn Pictures into Beautiful Craft Charts
+    <!-- Tagline with Vibrant Gradient -->
+    <text x="0" y="158" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="800" fill="url(#glowBrand)" letter-spacing="-0.5">
+      Turn Any Picture into Craft Patterns
     </text>
 
-    <!-- Subtitle description -->
-    <text x="0" y="195" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" fill="#94a3b8">
-      DMC Embroidery Floss • Perler Beads • Diamond Painting
-    </text>
-    <text x="0" y="225" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" fill="#94a3b8">
-      AI Image Generator • Physical Sizing • Printable PDF Charts
+    <!-- Description Paragraph -->
+    <text x="0" y="210" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="500" fill="#94a3b8">
+      The all-in-one studio for yarn &amp; bead crafters:
     </text>
 
-    <!-- Feature Tags -->
-    <g transform="translate(0, 270)">
-      <!-- Tag 1 -->
-      <rect x="0" y="0" width="130" height="34" rx="8" fill="#1e293b" stroke="#334155"/>
-      <text x="65" y="21" font-family="sans-serif" font-size="13" font-weight="600" fill="#f8fafc" text-anchor="middle">🧵 Cross-Stitch</text>
+    <!-- Feature Bullet Cards -->
+    <g transform="translate(0, 240)">
+      <!-- Row 1: Crochet & Cross Stitch -->
+      <g transform="translate(0, 0)">
+        <rect width="260" height="42" rx="12" fill="#1e1b4b" fill-opacity="0.6" stroke="#4338ca" stroke-width="1.2"/>
+        <text x="130" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">
+          🧶 Tapestry Crochet (Rows)
+        </text>
+      </g>
 
-      <!-- Tag 2 -->
-      <rect x="140" y="0" width="130" height="34" rx="8" fill="#1e293b" stroke="#334155"/>
-      <text x="205" y="21" font-family="sans-serif" font-size="13" font-weight="600" fill="#f8fafc" text-anchor="middle">🔘 Perler Beads</text>
+      <g transform="translate(275, 0)">
+        <rect width="250" height="42" rx="12" fill="#1e1b4b" fill-opacity="0.6" stroke="#4338ca" stroke-width="1.2"/>
+        <text x="125" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">
+          🧵 Cross-Stitch (DMC Floss)
+        </text>
+      </g>
 
-      <!-- Tag 3 -->
-      <rect x="280" y="0" width="140" height="34" rx="8" fill="#1e293b" stroke="#334155"/>
-      <text x="350" y="21" font-family="sans-serif" font-size="13" font-weight="600" fill="#f8fafc" text-anchor="middle">💎 Diamond Paint</text>
+      <!-- Row 2: Perler Beads & Diamond Painting -->
+      <g transform="translate(0, 52)">
+        <rect width="260" height="42" rx="12" fill="#1e1b4b" fill-opacity="0.6" stroke="#4338ca" stroke-width="1.2"/>
+        <text x="130" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">
+          🔘 Perler &amp; Artkal Beads
+        </text>
+      </g>
 
-      <!-- Tag 4 -->
-      <rect x="430" y="0" width="110" height="34" rx="8" fill="#1e293b" stroke="#334155"/>
-      <text x="485" y="21" font-family="sans-serif" font-size="13" font-weight="600" fill="#f8fafc" text-anchor="middle">🔲 Pixel Art</text>
+      <g transform="translate(275, 52)">
+        <rect width="250" height="42" rx="12" fill="#1e1b4b" fill-opacity="0.6" stroke="#4338ca" stroke-width="1.2"/>
+        <text x="125" y="26" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">
+          💎 Diamond Painting
+        </text>
+      </g>
     </g>
 
-    <!-- URL pill -->
-    <g transform="translate(0, 345)">
-      <text x="0" y="16" font-family="monospace" font-size="16" font-weight="600" fill="#818cf8">
-        pixel-craft-studio-ten.vercel.app
+    <!-- Highlights Banner -->
+    <g transform="translate(0, 365)">
+      <text x="0" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="600" fill="#38bdf8">
+        ✓ Row-by-Row Tracker  •  ✓ 2×2 Poster PDF Print  •  ✓ AI Image Generator
+      </text>
+    </g>
+
+    <!-- Live Website URL Pill -->
+    <g transform="translate(0, 415)">
+      <rect width="270" height="38" rx="10" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+      <circle cx="20" cy="19" r="5" fill="#10b981"/>
+      <text x="35" y="24" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#f8fafc">
+        pixel-craft-studio.com
       </text>
     </g>
   </g>
 
-  <!-- Right Side: Graphic Card Illustration -->
-  <g transform="translate(680, 80)">
-    <!-- Glow behind card -->
-    <rect x="-10" y="-10" width="460" height="460" rx="30" fill="#6366f1" opacity="0.15" filter="blur(20px)"/>
+  <!-- RIGHT COLUMN: Interactive Studio Graphic Showcase Card -->
+  <g transform="translate(680, 75)" filter="url(#cardShadow)">
+    <!-- Container Card -->
+    <rect width="440" height="480" rx="28" fill="url(#cardBg)" stroke="#334155" stroke-width="1.8"/>
 
-    <!-- Main Card Container -->
-    <rect width="440" height="440" rx="24" fill="url(#cardBg)" stroke="#334155" stroke-width="2"/>
+    <!-- Card Header / Title Bar -->
+    <rect width="440" height="52" rx="28" fill="#1e293b" fill-opacity="0.6"/>
+    <rect y="40" width="440" height="12" fill="#1e293b" fill-opacity="0.6"/>
+    <circle cx="32" cy="26" r="6" fill="#ef4444"/>
+    <circle cx="50" cy="26" r="6" fill="#f59e0b"/>
+    <circle cx="68" cy="26" r="6" fill="#10b981"/>
+    <text x="220" y="31" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#cbd5e1" text-anchor="middle">
+      Pixel Craft Studio Pattern View
+    </text>
 
-    <!-- Mini Pixel Grid Simulation inside Card -->
-    <g transform="translate(30, 30)">
-      <!-- Grid Cells (Simulating a cute retro heart/flower) -->
+    <!-- Visual 10x10 Pixel Grid (Cute Retro Heart with Craft Coordinates) -->
+    <g transform="translate(45, 75)">
+      <!-- Grid outer border -->
+      <rect width="350" height="280" rx="12" fill="#030712" stroke="#334155" stroke-width="1.5"/>
+
+      <!-- 10x10 Cells Simulation -->
       <!-- Row 0 -->
-      <rect x="90" y="0" width="45" height="45" rx="6" fill="#e11d48"/>
-      <rect x="140" y="0" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="240" y="0" width="45" height="45" rx="6" fill="#e11d48"/>
-      <rect x="290" y="0" width="45" height="45" rx="6" fill="#f43f5e"/>
+      <rect x="75" y="25" width="30" height="30" fill="#e11d48" rx="4"/>
+      <rect x="110" y="25" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="210" y="25" width="30" height="30" fill="#e11d48" rx="4"/>
+      <rect x="245" y="25" width="30" height="30" fill="#f43f5e" rx="4"/>
 
       <!-- Row 1 -->
-      <rect x="40" y="50" width="45" height="45" rx="6" fill="#fb7185"/>
-      <rect x="90" y="50" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="140" y="50" width="45" height="45" rx="6" fill="#fda4af"/>
-      <rect x="190" y="50" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="240" y="50" width="45" height="45" rx="6" fill="#fda4af"/>
-      <rect x="290" y="50" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="340" y="50" width="45" height="45" rx="6" fill="#fb7185"/>
+      <rect x="40" y="60" width="30" height="30" fill="#e11d48" rx="4"/>
+      <rect x="75" y="60" width="30" height="30" fill="#fda4af" rx="4"/>
+      <rect x="110" y="60" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="145" y="60" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="175" y="60" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="210" y="60" width="30" height="30" fill="#fda4af" rx="4"/>
+      <rect x="245" y="60" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="280" y="60" width="30" height="30" fill="#e11d48" rx="4"/>
 
       <!-- Row 2 -->
-      <rect x="40" y="100" width="45" height="45" rx="6" fill="#e11d48"/>
-      <rect x="90" y="100" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="140" y="100" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="190" y="100" width="45" height="45" rx="6" fill="#e11d48"/>
-      <rect x="240" y="100" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="290" y="100" width="45" height="45" rx="6" fill="#e11d48"/>
-      <rect x="340" y="100" width="45" height="45" rx="6" fill="#be123c"/>
+      <rect x="40" y="95" width="30" height="30" fill="#e11d48" rx="4"/>
+      <rect x="75" y="95" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="110" y="95" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="145" y="95" width="30" height="30" fill="#fb7185" rx="4"/>
+      <rect x="175" y="95" width="30" height="30" fill="#fb7185" rx="4"/>
+      <rect x="210" y="95" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="245" y="95" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="280" y="95" width="30" height="30" fill="#e11d48" rx="4"/>
 
       <!-- Row 3 -->
-      <rect x="90" y="150" width="45" height="45" rx="6" fill="#be123c"/>
-      <rect x="140" y="150" width="45" height="45" rx="6" fill="#e11d48"/>
-      <rect x="190" y="150" width="45" height="45" rx="6" fill="#f43f5e"/>
-      <rect x="240" y="150" width="45" height="45" rx="6" fill="#e11d48"/>
-      <rect x="290" y="150" width="45" height="45" rx="6" fill="#be123c"/>
+      <rect x="75" y="130" width="30" height="30" fill="#e11d48" rx="4"/>
+      <rect x="110" y="130" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="145" y="130" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="175" y="130" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="210" y="130" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="245" y="130" width="30" height="30" fill="#e11d48" rx="4"/>
 
       <!-- Row 4 -->
-      <rect x="140" y="200" width="45" height="45" rx="6" fill="#9f1239"/>
-      <rect x="190" y="200" width="45" height="45" rx="6" fill="#be123c"/>
-      <rect x="240" y="200" width="45" height="45" rx="6" fill="#9f1239"/>
+      <rect x="110" y="165" width="30" height="30" fill="#e11d48" rx="4"/>
+      <rect x="145" y="165" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="175" y="165" width="30" height="30" fill="#f43f5e" rx="4"/>
+      <rect x="210" y="165" width="30" height="30" fill="#e11d48" rx="4"/>
 
-      <!-- Row 5 -->
-      <rect x="190" y="250" width="45" height="45" rx="6" fill="#881337"/>
+      <!-- Row 5 Tip -->
+      <rect x="145" y="200" width="30" height="30" fill="#e11d48" rx="4"/>
+      <rect x="175" y="200" width="30" height="30" fill="#be123c" rx="4"/>
 
-      <!-- Symbols on beads -->
-      <text x="112" y="27" font-family="monospace" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle">✕</text>
-      <text x="162" y="27" font-family="monospace" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle">●</text>
-      <text x="262" y="27" font-family="monospace" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle">✕</text>
-      <text x="312" y="27" font-family="monospace" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle">●</text>
-      <text x="212" y="177" font-family="monospace" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle">▲</text>
+      <!-- Craft Ruler lines -->
+      <line x1="20" y1="240" x2="330" y2="240" stroke="#334155" stroke-dasharray="4,4"/>
+      <text x="175" y="260" font-family="monospace" font-size="11" fill="#64748b" text-anchor="middle">
+        32 × 32 cells • 10×10 numbered grid
+      </text>
     </g>
 
-    <!-- Color Palette Swatch bar in card footer -->
-    <g transform="translate(30, 360)">
-      <rect x="0" y="0" width="45" height="30" rx="6" fill="#881337"/>
-      <rect x="55" y="0" width="45" height="30" rx="6" fill="#be123c"/>
-      <rect x="110" y="0" width="45" height="30" rx="6" fill="#e11d48"/>
-      <rect x="165" y="0" width="45" height="30" rx="6" fill="#f43f5e"/>
-      <rect x="220" y="0" width="45" height="30" rx="6" fill="#fb7185"/>
-      <rect x="275" y="0" width="45" height="30" rx="6" fill="#fda4af"/>
-      <text x="350" y="20" font-family="sans-serif" font-size="12" font-weight="700" fill="#a5b4fc">DMC 666</text>
+    <!-- Palette Swatch Footer Bar -->
+    <g transform="translate(45, 380)">
+      <rect width="350" height="65" rx="14" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+
+      <!-- Swatches -->
+      <circle cx="35" cy="32" r="14" fill="#e11d48" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="75" cy="32" r="14" fill="#f43f5e" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="115" cy="32" r="14" fill="#fb7185" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="155" cy="32" r="14" fill="#fda4af" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="195" cy="32" r="14" fill="#1e293b" stroke="#ffffff" stroke-width="2"/>
+
+      <text x="235" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#f1f5f9">
+        DMC &amp; Yarn Palette
+      </text>
+      <text x="235" y="44" font-family="monospace" font-size="11" fill="#10b981" font-weight="600">
+        ✓ Exact Codes Matched
+      </text>
     </g>
   </g>
 </svg>

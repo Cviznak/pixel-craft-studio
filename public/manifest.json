@@ -1,19 +1,37 @@
 {
-  "name": "Pixel Craft Studio — Pattern Maker",
+  "name": "Pixel Craft Studio — Pattern Generator",
   "short_name": "PixelCraft",
-  "description": "Turn pictures into pixel art craft charts with the most beautiful colors for Perler beads, cross-stitch, diamond painting, and pixel art.",
+  "description": "Free pattern generator for Tapestry Crochet, DMC Cross-Stitch, Perler Beads, and Diamond Painting.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#030712",
+  "background_color": "#060814",
   "theme_color": "#4f46e5",
   "categories": ["crafts", "lifestyle", "utilities"],
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/app-icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
