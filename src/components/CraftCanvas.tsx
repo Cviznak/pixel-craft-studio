@@ -61,6 +61,20 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Persistent refs for smooth 60fps pinch-to-zoom on touchscreens without listener resets
+  const currentZoomRef = useRef(zoom);
+  currentZoomRef.current = zoom;
+
+  const currentPanRef = useRef(pan);
+  currentPanRef.current = pan;
+
+  const pinchStateRef = useRef<{
+    initialDist: number;
+    startZoom: number;
+    initialMidpoint: { x: number; y: number };
+    startPan: { x: number; y: number };
+  } | null>(null);
   
   // Active tool
   const [tool, setTool] = useState<CanvasTool>('pan');
@@ -368,8 +382,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     baseCellSize,
   ]);
 
-  // Coordinate conversion helper from mouse event to cell [x, y]
-  const getCellFromMouse = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Coordinate conversion helper from pointer/mouse event to cell [x, y]
+  const getCellFromPointer = (e: React.MouseEvent<HTMLCanvasElement> | React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
@@ -386,19 +400,32 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     return null;
   };
 
-  // Handle Mouse Events for interaction, painting, and panning
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Handle Pointer Events (Mouse, Touch, and Apple Pencil/Stylus)
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // If two fingers are actively pinching, let pinch handler take precedence
+    if (pinchStateRef.current) return;
+
     if (e.button === 1 || tool === 'pan' || e.shiftKey) {
       // Middle click or Pan tool
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      try {
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        // Ignore
+      }
       return;
     }
 
-    const cell = getCellFromMouse(e);
+    const cell = getCellFromPointer(e);
     if (!cell) return;
 
     setIsInteracting(true);
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore
+    }
 
     if (tool === 'tracker') {
       onToggleCellCompleted(cell.x, cell.y);
@@ -408,8 +435,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const cell = getCellFromMouse(e);
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (pinchStateRef.current) return;
+
+    const cell = getCellFromPointer(e);
     setHoverCoord(cell);
 
     if (isDragging) {
@@ -430,12 +459,17 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     setIsDragging(false);
     setIsInteracting(false);
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore
+    }
   };
 
-  // Native non-passive Wheel & Touch Pinch listener (fixes passive preventDefault error and page zoom)
+  // Native non-passive Wheel & Touch Pinch listener (persistent across zoom renders)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -460,42 +494,88 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       });
     };
 
-    let initialDist = 0;
-    let startZoom = 1;
+    const initPinch = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dx = t1.clientX - t2.clientX;
+      const dy = t1.clientY - t2.clientY;
+      const dist = Math.hypot(dx, dy);
+
+      const rect = canvas.getBoundingClientRect();
+      const midX = (t1.clientX + t2.clientX) / 2 - rect.left;
+      const midY = (t1.clientY + t2.clientY) / 2 - rect.top;
+
+      pinchStateRef.current = {
+        initialDist: Math.max(dist, 1),
+        startZoom: currentZoomRef.current,
+        initialMidpoint: { x: midX, y: midY },
+        startPan: { ...currentPanRef.current },
+      };
+    };
 
     const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
+      if (e.touches.length >= 2) {
         e.preventDefault();
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        initialDist = Math.hypot(dx, dy);
-        startZoom = zoom;
+        initPinch(e);
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && initialDist > 0) {
+      if (e.touches.length >= 2) {
         e.preventDefault();
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        if (!pinchStateRef.current) {
+          initPinch(e);
+          return;
+        }
+
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
         const currentDist = Math.hypot(dx, dy);
+
+        const { initialDist, startZoom, initialMidpoint, startPan } = pinchStateRef.current;
+        if (initialDist <= 0) return;
+
         const factor = currentDist / initialDist;
         const newZoom = Math.max(0.15, Math.min(8, startZoom * factor));
+
+        const rect = canvas.getBoundingClientRect();
+        const currentMidX = (t1.clientX + t2.clientX) / 2 - rect.left;
+        const currentMidY = (t1.clientY + t2.clientY) / 2 - rect.top;
+
+        // Scale and pan around pinch midpoint
+        const scaleRatio = newZoom / startZoom;
+        const newPanX = currentMidX - (initialMidpoint.x - startPan.x) * scaleRatio;
+        const newPanY = currentMidY - (initialMidpoint.y - startPan.y) * scaleRatio;
+
         setZoom(newZoom);
+        setPan({ x: newPanX, y: newPanY });
         onSetZoom?.(newZoom);
+      }
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        pinchStateRef.current = null;
       }
     };
 
     canvas.addEventListener('wheel', handleWheelNative, { passive: false });
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+    canvas.addEventListener('touchcancel', handleTouchEnd, { passive: false });
 
     return () => {
       canvas.removeEventListener('wheel', handleWheelNative);
       canvas.removeEventListener('touchstart', handleTouchStart);
       canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
+      canvas.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, [onSetZoom, zoom]);
+  }, [onSetZoom]);
 
   // Progress stats
   const totalCells = gridWidth * gridHeight;
@@ -650,10 +730,11 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       {/* Main Canvas */}
       <canvas
         ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onPointerLeave={handlePointerUp}
         className={`w-full h-full block touch-none ${
           tool === 'pan' ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') :
           tool === 'tracker' ? 'cursor-cell' : 'cursor-crosshair'
