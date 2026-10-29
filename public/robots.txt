@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://pixel-craft-studio.com/sitemap.xml
+Sitemap: https://www.pixel-craft-studio.com/sitemap.xml
