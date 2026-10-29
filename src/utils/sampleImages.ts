@@ -400,6 +400,27 @@ const swordSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg
 
 export const SAMPLE_IMAGES: SampleImage[] = [
   {
+    id: 'starter-pokeball',
+    name: 'Pokéball (Heat Beads)',
+    category: 'Pixel Gaming',
+    url: '/starter_crafts/pokeball_beads.png',
+    description: '16x16 pixel-calibrated sprite ready for Perler & heat beads'
+  },
+  {
+    id: 'starter-checkerboard',
+    name: 'Checkerboard Coaster',
+    category: 'Pop & Cozy',
+    url: '/starter_crafts/checkerboard_crochet.png',
+    description: '20x20 4-stitch checks coaster for Tapestry Crochet'
+  },
+  {
+    id: 'starter-flower',
+    name: 'Poppy Bloom (Cross-Stitch)',
+    category: 'Nature & Botanical',
+    url: '/starter_crafts/flower_crossstitch.png',
+    description: '20x20 botanical blossom with DMC embroidery floss matching'
+  },
+  {
     id: 'flower',
     name: 'Vibrant Hibiscus',
     category: 'Nature & Botanical',
