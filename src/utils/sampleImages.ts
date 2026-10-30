@@ -421,6 +421,34 @@ export const SAMPLE_IMAGES: SampleImage[] = [
     description: '20x20 botanical blossom with DMC embroidery floss matching'
   },
   {
+    id: 'starter-strawberry',
+    name: 'Kawaii Strawberry',
+    category: 'Pop & Cozy',
+    url: '/starter_crafts/cute_strawberry.png',
+    description: '16x16 sweet strawberry with blush cheeks and DMC floss matching'
+  },
+  {
+    id: 'starter-duckling',
+    name: 'Chubby Duckling',
+    category: 'Animals & Pets',
+    url: '/starter_crafts/cute_duckling.png',
+    description: '16x16 bright yellow baby chick with orange beak'
+  },
+  {
+    id: 'starter-mushroom',
+    name: 'Retro 8-bit Mushroom',
+    category: 'Pixel Gaming',
+    url: '/starter_crafts/cute_mushroom.png',
+    description: '16x16 arcade red mushroom cap with cartoon eyes'
+  },
+  {
+    id: 'starter-kitty',
+    name: 'Ginger Kitty',
+    category: 'Animals & Pets',
+    url: '/starter_crafts/cute_kitty.png',
+    description: '16x16 cute peach cat with pink nose and inner ears'
+  },
+  {
     id: 'flower',
     name: 'Vibrant Hibiscus',
     category: 'Nature & Botanical',
