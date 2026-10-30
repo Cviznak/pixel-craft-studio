@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { PaletteColor, CellProgress, CraftType } from '../types/craft';
 import { getContrastingTextColor } from '../utils/colorUtils';
 import { 
@@ -33,7 +33,7 @@ interface PaletteLegendProps {
   onClose?: () => void;
 }
 
-export const PaletteLegend: React.FC<PaletteLegendProps> = ({
+const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   palette,
   gridData,
   spotlightColorId,
@@ -54,37 +54,42 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
     return buildAmazonColorSearchUrl(color, craftType);
   };
 
-  // Compute completed count per color
-  const completedCounts: { [colorIdx: number]: number } = {};
-  for (const key of Object.keys(completedCells)) {
-    const [xStr, yStr] = key.split(',');
-    const x = parseInt(xStr, 10);
-    const y = parseInt(yStr, 10);
-    const colorIdx = gridData[y]?.[x];
-    if (colorIdx !== undefined) {
-      completedCounts[colorIdx] = (completedCounts[colorIdx] || 0) + 1;
+  // Compute completed count per color (memoized to prevent lag during drag/tracking)
+  const completedCounts = useMemo(() => {
+    const counts: { [colorIdx: number]: number } = {};
+    for (const key of Object.keys(completedCells)) {
+      const [xStr, yStr] = key.split(',');
+      const x = parseInt(xStr, 10);
+      const y = parseInt(yStr, 10);
+      const colorIdx = gridData[y]?.[x];
+      if (colorIdx !== undefined) {
+        counts[colorIdx] = (counts[colorIdx] || 0) + 1;
+      }
     }
-  }
+    return counts;
+  }, [completedCells, gridData]);
 
   // Filter palette based on search and progress mode
-  const filteredPalette = palette.filter((c) => {
-    const originalIndex = palette.findIndex((item) => item.id === c.id);
-    const done = completedCounts[originalIndex] || 0;
-    const total = c.count || 0;
-    const isComplete = total > 0 && done >= total;
+  const filteredPalette = useMemo(() => {
+    return palette.filter((c) => {
+      const originalIndex = palette.findIndex((item) => item.id === c.id);
+      const done = completedCounts[originalIndex] || 0;
+      const total = c.count || 0;
+      const isComplete = total > 0 && done >= total;
 
-    if (filterMode === 'todo' && isComplete) return false;
-    if (filterMode === 'done' && !isComplete) return false;
+      if (filterMode === 'todo' && isComplete) return false;
+      if (filterMode === 'done' && !isComplete) return false;
 
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      c.symbol.toLowerCase().includes(term) ||
-      (c.name && c.name.toLowerCase().includes(term)) ||
-      (c.code && c.code.toLowerCase().includes(term)) ||
-      c.hex.toLowerCase().includes(term)
-    );
-  });
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return (
+        c.symbol.toLowerCase().includes(term) ||
+        (c.name && c.name.toLowerCase().includes(term)) ||
+        (c.code && c.code.toLowerCase().includes(term)) ||
+        c.hex.toLowerCase().includes(term)
+      );
+    });
+  }, [palette, completedCounts, filterMode, searchTerm]);
 
   return (
     <aside className="w-80 max-w-[88vw] h-full bg-slate-900 border-l border-slate-800/90 flex flex-col z-10 shrink-0 shadow-2xl lg:shadow-none select-none overflow-hidden">
@@ -348,3 +353,5 @@ export const PaletteLegend: React.FC<PaletteLegendProps> = ({
     </aside>
   );
 };
+
+export const PaletteLegend = React.memo(PaletteLegendComponent);

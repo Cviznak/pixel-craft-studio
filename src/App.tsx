@@ -726,14 +726,55 @@ export default function App() {
     });
   };
 
+  const handleBatchSetCellsCompleted = useCallback((updates: { x: number; y: number; completed: boolean }[]) => {
+    if (updates.length === 0) return;
+    setCompletedCells((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const { x, y, completed } of updates) {
+        const key = `${x},${y}`;
+        if (completed && !next[key]) {
+          next[key] = true;
+          changed = true;
+        } else if (!completed && next[key]) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
   const handlePaintCell = (x: number, y: number, colorIndex: number) => {
     if (y < 0 || y >= gridData.length || x < 0 || x >= gridData[0].length) return;
     setGridData((prev) => {
+      if (prev[y]?.[x] === colorIndex) return prev;
       const next = prev.map((row) => [...row]);
       next[y][x] = colorIndex;
       return next;
     });
   };
+
+  const handleBatchPaintCells = useCallback((updates: { x: number; y: number; colorIndex: number }[]) => {
+    if (updates.length === 0) return;
+    setGridData((prev) => {
+      if (prev.length === 0) return prev;
+      let next: number[][] | null = null;
+      let changed = false;
+      for (const { x, y, colorIndex } of updates) {
+        if (y >= 0 && y < prev.length && x >= 0 && x < prev[0].length) {
+          if (prev[y][x] !== colorIndex) {
+            if (!next) {
+              next = prev.map((row) => [...row]);
+            }
+            next[y][x] = colorIndex;
+            changed = true;
+          }
+        }
+      }
+      return changed && next ? next : prev;
+    });
+  }, []);
 
   // Palette Handlers
   const handleToggleSpotlight = (colorId: string) => {
@@ -930,7 +971,9 @@ export default function App() {
           activeColorIndex={activeColorIndex}
           completedCells={completedCells}
           onToggleCellCompleted={handleToggleCellCompleted}
+          onBatchSetCellsCompleted={handleBatchSetCellsCompleted}
           onPaintCell={handlePaintCell}
+          onBatchPaintCells={handleBatchPaintCells}
           canUndo={gridHistory.length > 0}
           canRedo={gridFuture.length > 0}
           onUndo={handleUndo}

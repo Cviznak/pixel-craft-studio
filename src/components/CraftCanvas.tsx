@@ -24,7 +24,9 @@ interface CraftCanvasProps {
   activeColorIndex: number;
   completedCells: CellProgress;
   onToggleCellCompleted: (x: number, y: number) => void;
+  onBatchSetCellsCompleted?: (updates: { x: number; y: number; completed: boolean }[]) => void;
   onPaintCell: (x: number, y: number, colorIndex: number) => void;
+  onBatchPaintCells?: (updates: { x: number; y: number; colorIndex: number }[]) => void;
   onSetZoom?: (zoom: number) => void;
   canUndo?: boolean;
   canRedo?: boolean;
@@ -36,6 +38,35 @@ interface CraftCanvasProps {
 
 export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eyedropper';
 
+// Bresenham's line algorithm for smooth continuous drag-tracking and drawing without gaps
+function getLineCells(x0: number, y0: number, x1: number, y1: number): { x: number; y: number }[] {
+  const cells: { x: number; y: number }[] = [];
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+
+  let currX = x0;
+  let currY = y0;
+
+  while (true) {
+    cells.push({ x: currX, y: currY });
+    if (currX === x1 && currY === y1) break;
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      currX += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      currY += sy;
+    }
+  }
+
+  return cells;
+}
+
 export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   gridData,
   palette,
@@ -44,7 +75,9 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   activeColorIndex,
   completedCells,
   onToggleCellCompleted,
+  onBatchSetCellsCompleted,
   onPaintCell,
+  onBatchPaintCells,
   onSetZoom,
   canUndo = false,
   canRedo = false,
@@ -81,6 +114,11 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   const [isInteracting, setIsInteracting] = useState<boolean>(false);
   const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
 
+  // Drag-and-track and drag-and-draw gesture state
+  const dragTrackModeRef = useRef<boolean | null>(null);
+  const lastTrackedCellRef = useRef<{ x: number; y: number } | null>(null);
+  const lastPaintedCellRef = useRef<{ x: number; y: number } | null>(null);
+
   const gridHeight = gridData.length;
   const gridWidth = gridHeight > 0 ? gridData[0].length : 0;
   const baseCellSize = config.cellSize || 24;
@@ -114,56 +152,70 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
   // Main Render Loop onto Canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || gridWidth === 0 || gridHeight === 0) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    let animId: number;
 
-    const dpr = window.devicePixelRatio || 1;
-    const container = containerRef.current;
-    const width = container ? container.clientWidth : 800;
-    const height = container ? container.clientHeight : 600;
+    const render = () => {
+      const canvas = canvasRef.current;
+      if (!canvas || gridWidth === 0 || gridHeight === 0) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+      const dpr = window.devicePixelRatio || 1;
+      const container = containerRef.current;
+      const width = container ? container.clientWidth : 800;
+      const height = container ? container.clientHeight : 600;
 
-    ctx.save();
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, width, height);
+      // Only resize canvas buffer when dimensions actually change (prevents GPU memory reallocation lag)
+      const targetW = Math.round(width * dpr);
+      const targetH = Math.round(height * dpr);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
+      }
+      if (canvas.style.width !== `${width}px`) canvas.style.width = `${width}px`;
+      if (canvas.style.height !== `${height}px`) canvas.style.height = `${height}px`;
 
-    // Apply pan and zoom transforms
-    ctx.translate(pan.x, pan.y);
-    ctx.scale(zoom, zoom);
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
 
-    const cellSize = baseCellSize;
-    const totalW = gridWidth * cellSize;
-    const totalH = gridHeight * cellSize;
+      // Apply pan and zoom transforms
+      ctx.translate(pan.x, pan.y);
+      ctx.scale(zoom, zoom);
 
-    // Draw Background Pegboard / Fabric Texture
-    if (config.craftType === 'perler') {
-      // Perler pegboard transparent frosted acrylic style
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(0, 0, totalW, totalH);
-    } else if (config.craftType === 'cross-stitch') {
-      // Natural Aida cloth oatmeal/cream
-      ctx.fillStyle = '#faf8f5';
-      ctx.fillRect(0, 0, totalW, totalH);
-    } else {
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(0, 0, totalW, totalH);
-    }
+      const cellSize = baseCellSize;
+      const totalW = gridWidth * cellSize;
+      const totalH = gridHeight * cellSize;
 
-    // Determine if spotlight mode is active
-    let spotlightIndex: number | null = null;
-    if (spotlightColorId !== null) {
-      spotlightIndex = palette.findIndex(c => c.id === spotlightColorId);
-    }
+      // Draw Background Pegboard / Fabric Texture
+      if (config.craftType === 'perler') {
+        // Perler pegboard transparent frosted acrylic style
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(0, 0, totalW, totalH);
+      } else if (config.craftType === 'cross-stitch') {
+        // Natural Aida cloth oatmeal/cream
+        ctx.fillStyle = '#faf8f5';
+        ctx.fillRect(0, 0, totalW, totalH);
+      } else {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, totalW, totalH);
+      }
 
-    // Draw each cell
-    for (let y = 0; y < gridHeight; y++) {
-      for (let x = 0; x < gridWidth; x++) {
+      // Determine if spotlight mode is active
+      let spotlightIndex: number | null = null;
+      if (spotlightColorId !== null) {
+        spotlightIndex = palette.findIndex(c => c.id === spotlightColorId);
+      }
+
+      // Viewport culling: only draw cells visible within viewport (+1 buffer margin)
+      const minCol = Math.max(0, Math.floor(-pan.x / (cellSize * zoom)) - 1);
+      const maxCol = Math.min(gridWidth - 1, Math.ceil((width - pan.x) / (cellSize * zoom)) + 1);
+      const minRow = Math.max(0, Math.floor(-pan.y / (cellSize * zoom)) - 1);
+      const maxRow = Math.min(gridHeight - 1, Math.ceil((height - pan.y) / (cellSize * zoom)) + 1);
+
+      // Draw each visible cell
+      for (let y = minRow; y <= maxRow; y++) {
+        for (let x = minCol; x <= maxCol; x++) {
         const colorIdx = gridData[y][x];
         const px = x * cellSize;
         const py = y * cellSize;
@@ -535,7 +587,11 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       ctx.strokeRect(hoverCoord.x * cellSize, hoverCoord.y * cellSize, cellSize, cellSize);
     }
 
-    ctx.restore();
+      ctx.restore();
+    };
+
+    animId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animId);
   }, [
     gridData,
     palette,
@@ -596,10 +652,24 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     }
 
     if (tool === 'tracker') {
-      onToggleCellCompleted(cell.x, cell.y);
+      const isDone = !!completedCells[`${cell.x},${cell.y}`];
+      const targetMode = !isDone;
+      dragTrackModeRef.current = targetMode;
+      lastTrackedCellRef.current = cell;
+
+      if (onBatchSetCellsCompleted) {
+        onBatchSetCellsCompleted([{ x: cell.x, y: cell.y, completed: targetMode }]);
+      } else {
+        onToggleCellCompleted(cell.x, cell.y);
+      }
     } else if (tool === 'pencil') {
       onBeforePencilStroke?.();
-      onPaintCell(cell.x, cell.y, activeColorIndex);
+      lastPaintedCellRef.current = cell;
+      if (onBatchPaintCells) {
+        onBatchPaintCells([{ x: cell.x, y: cell.y, colorIndex: activeColorIndex }]);
+      } else {
+        onPaintCell(cell.x, cell.y, activeColorIndex);
+      }
     }
   };
 
@@ -607,7 +677,13 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     if (pinchStateRef.current) return;
 
     const cell = getCellFromPointer(e);
-    setHoverCoord(cell);
+
+    // Only trigger hover state change when the pointer actually crosses cell boundaries
+    setHoverCoord((prev) => {
+      if (!prev && !cell) return null;
+      if (prev && cell && prev.x === cell.x && prev.y === cell.y) return prev;
+      return cell;
+    });
 
     if (isDragging) {
       setPan({
@@ -619,10 +695,48 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
     if (isInteracting && cell) {
       if (tool === 'tracker') {
-        // Drag to complete
-        onToggleCellCompleted(cell.x, cell.y);
+        if (dragTrackModeRef.current !== null && lastTrackedCellRef.current) {
+          if (cell.x !== lastTrackedCellRef.current.x || cell.y !== lastTrackedCellRef.current.y) {
+            const lineCells = getLineCells(lastTrackedCellRef.current.x, lastTrackedCellRef.current.y, cell.x, cell.y);
+            lastTrackedCellRef.current = cell;
+            const targetMode = dragTrackModeRef.current;
+            const updates = lineCells
+              .filter((c) => c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight)
+              .filter((c) => !!completedCells[`${c.x},${c.y}`] !== targetMode)
+              .map((c) => ({ x: c.x, y: c.y, completed: targetMode }));
+
+            if (updates.length > 0) {
+              if (onBatchSetCellsCompleted) {
+                onBatchSetCellsCompleted(updates);
+              } else {
+                for (const u of updates) {
+                  onToggleCellCompleted(u.x, u.y);
+                }
+              }
+            }
+          }
+        }
       } else if (tool === 'pencil') {
-        onPaintCell(cell.x, cell.y, activeColorIndex);
+        if (lastPaintedCellRef.current) {
+          if (cell.x !== lastPaintedCellRef.current.x || cell.y !== lastPaintedCellRef.current.y) {
+            const lineCells = getLineCells(lastPaintedCellRef.current.x, lastPaintedCellRef.current.y, cell.x, cell.y);
+            lastPaintedCellRef.current = cell;
+            const updates = lineCells
+              .filter((c) => c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight)
+              .filter((c) => gridData[c.y]?.[c.x] !== activeColorIndex)
+              .map((c) => ({ x: c.x, y: c.y, colorIndex: activeColorIndex }));
+
+            if (updates.length > 0) {
+              if (onBatchPaintCells) {
+                onBatchPaintCells(updates);
+              } else {
+                for (const u of updates) {
+                  onPaintCell(u.x, u.y, activeColorIndex);
+                }
+              }
+            }
+          }
+        }
       }
     }
   };
@@ -630,6 +744,9 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     setIsDragging(false);
     setIsInteracting(false);
+    dragTrackModeRef.current = null;
+    lastTrackedCellRef.current = null;
+    lastPaintedCellRef.current = null;
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
@@ -819,7 +936,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
               tool === 'tracker' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Tracker: Tap beads/stitches to mark them done"
+            title="Tracker: Tap or drag across beads/stitches to mark them done"
           >
             <CheckSquare className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Track</span>
@@ -830,7 +947,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
               tool === 'pencil' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Pencil: Tap to paint with current active color"
+            title="Draw: Tap or drag to paint with active color"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Draw</span>
