@@ -12,9 +12,12 @@ import {
   Sparkles,
   Undo2,
   Redo2,
+  Volume2,
+  VolumeX,
   Image as ImageIcon
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { audioFeedback } from '../utils/audioFeedback';
 
 interface CraftCanvasProps {
   gridData: number[][];
@@ -657,6 +660,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       dragTrackModeRef.current = targetMode;
       lastTrackedCellRef.current = cell;
 
+      audioFeedback.playStitchSound(targetMode);
+
       if (onBatchSetCellsCompleted) {
         onBatchSetCellsCompleted([{ x: cell.x, y: cell.y, completed: targetMode }]);
       } else {
@@ -706,6 +711,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
               .map((c) => ({ x: c.x, y: c.y, completed: targetMode }));
 
             if (updates.length > 0) {
+              audioFeedback.playStitchSound(targetMode);
               if (onBatchSetCellsCompleted) {
                 onBatchSetCellsCompleted(updates);
               } else {
@@ -867,13 +873,57 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   const doneCount = Object.keys(completedCells).length;
   const progressPercent = totalCells > 0 ? ((doneCount / totalCells) * 100).toFixed(1) : '0';
 
-  const triggerConfetti = () => {
+  // Audio feedback toggle
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => audioFeedback.isEnabled());
+  const handleToggleSound = () => {
+    const next = audioFeedback.toggleSound();
+    setSoundEnabled(next);
+  };
+
+  // Real-world physical dimensions based on craft type & gauge
+  const physicalSize = React.useMemo(() => {
+    if (gridWidth === 0 || gridHeight === 0) return null;
+    if (config.craftType === 'perler') {
+      const wIn = ((gridWidth * 5.0) / 25.4).toFixed(1);
+      const hIn = ((gridHeight * 5.0) / 25.4).toFixed(1);
+      const wCm = (gridWidth * 0.5).toFixed(1);
+      const hCm = (gridHeight * 0.5).toFixed(1);
+      return `${wIn}"×${hIn}" (${wCm}×${hCm}cm)`;
+    }
+    if (config.craftType === 'cross-stitch') {
+      const wIn = (gridWidth / 14).toFixed(1);
+      const hIn = (gridHeight / 14).toFixed(1);
+      const wCm = ((gridWidth / 14) * 2.54).toFixed(1);
+      const hCm = ((gridHeight / 14) * 2.54).toFixed(1);
+      return `${wIn}"×${hIn}" (14ct Aida • ${wCm}×${hCm}cm)`;
+    }
+    if (config.craftType === 'crochet') {
+      const stsPerIn = (config.crochetGauge?.stitchesPer4Inches || 16) / 4;
+      const rowsPerIn = (config.crochetGauge?.rowsPer4Inches || 18) / 4;
+      const wIn = (gridWidth / stsPerIn).toFixed(1);
+      const hIn = (gridHeight / rowsPerIn).toFixed(1);
+      return `${wIn}"×${hIn}" crochet`;
+    }
+    return null;
+  }, [gridWidth, gridHeight, config.craftType, config.crochetGauge]);
+
+  const triggerConfetti = useCallback(() => {
     confetti({
       particleCount: 100,
       spread: 70,
       origin: { y: 0.6 }
     });
-  };
+  }, []);
+
+  // Auto celebrate pattern completion once when hitting 100%
+  const prevDoneRef = useRef<number>(doneCount);
+  useEffect(() => {
+    if (totalCells > 0 && doneCount === totalCells && prevDoneRef.current < totalCells) {
+      triggerConfetti();
+      audioFeedback.playCelebrationChime();
+    }
+    prevDoneRef.current = doneCount;
+  }, [doneCount, totalCells, triggerConfetti]);
 
   return (
     <div className="relative flex-1 h-full w-full bg-slate-900/90 overflow-hidden flex flex-col select-none touch-none pb-14 lg:pb-0" ref={containerRef}>
@@ -912,6 +962,11 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+            {physicalSize && (
+              <div className="text-[9px] text-slate-400 font-mono mt-1 text-right">
+                {physicalSize}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1027,6 +1082,19 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
               <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
             </button>
           )}
+
+          {/* Stitch Sound & Haptics Toggle */}
+          <button
+            onClick={handleToggleSound}
+            className={`p-1.5 rounded-lg transition ${
+              soundEnabled
+                ? 'text-emerald-400 hover:text-emerald-300 hover:bg-slate-800'
+                : 'text-slate-500 hover:text-slate-400 hover:bg-slate-800'
+            }`}
+            title={soundEnabled ? 'Stitch sound effects ON (click to mute)' : 'Stitch sound effects MUTED (click to enable)'}
+          >
+            {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          </button>
         </div>
       </div>
 
