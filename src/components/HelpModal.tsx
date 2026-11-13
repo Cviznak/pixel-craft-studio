@@ -130,6 +130,21 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               </p>
             </div>
           </div>
+
+          {/* Tip 6: Fast Import & Paste */}
+          <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 flex gap-3">
+            <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 shrink-0 h-fit font-mono font-bold text-xs flex items-center justify-center">
+              <span>⌘V</span>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-100 text-sm mb-1">
+                Instant Image Paste (Ctrl+V & Drag-and-Drop)
+              </h4>
+              <p className="text-slate-400 leading-relaxed">
+                Copy any picture or take a screenshot with Snipping Tool, then press <strong>Ctrl+V</strong> (or <strong>Cmd+V</strong> on Mac) anywhere on the page to import it instantly into your studio! You can also drag and drop images directly onto the canvas.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Footer */}

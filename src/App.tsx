@@ -466,7 +466,18 @@ export default function App() {
     img.src = sample.url;
   };
 
-  const handleUploadFile = (file: File) => {
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  const showToast = useCallback((msg: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastMessage(msg);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 2500);
+  }, []);
+
+  const handleUploadFile = useCallback((file: File, customName?: string) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
@@ -475,7 +486,7 @@ export default function App() {
         applyImageAndProcess(img, dataUrl, '');
         const newItem: UploadHistoryItem = {
           id: `upload-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          name: file.name,
+          name: customName || file.name,
           dataUrl,
           timestamp: Date.now(),
           width: img.width,
@@ -486,7 +497,91 @@ export default function App() {
       img.src = dataUrl;
     };
     reader.readAsDataURL(file);
-  };
+  }, [applyImageAndProcess]);
+
+  // Global clipboard Paste (Ctrl+V / Cmd+V) support
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const activeEl = document.activeElement;
+      const isInputFocused =
+        activeEl instanceof HTMLInputElement ||
+        activeEl instanceof HTMLTextAreaElement ||
+        activeEl?.getAttribute('contenteditable') === 'true';
+
+      const clipboardData = e.clipboardData;
+      if (!clipboardData) return;
+
+      // 1. Check for image files in clipboardData.items or clipboardData.files
+      let imageFile: File | null = null;
+
+      if (clipboardData.items && clipboardData.items.length > 0) {
+        for (let i = 0; i < clipboardData.items.length; i++) {
+          const item = clipboardData.items[i];
+          if (item.type.startsWith('image/')) {
+            imageFile = item.getAsFile();
+            break;
+          }
+        }
+      }
+
+      if (!imageFile && clipboardData.files && clipboardData.files.length > 0) {
+        for (let i = 0; i < clipboardData.files.length; i++) {
+          const file = clipboardData.files[i];
+          if (file.type.startsWith('image/')) {
+            imageFile = file;
+            break;
+          }
+        }
+      }
+
+      if (imageFile) {
+        e.preventDefault();
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const customName =
+          !imageFile.name || imageFile.name === 'image.png' || imageFile.name === 'blob'
+            ? `Pasted Image (${timeStr})`
+            : imageFile.name;
+        handleUploadFile(imageFile, customName);
+        showToast('📋 Pasted image imported!');
+        return;
+      }
+
+      // 2. If not actively typing in an input field, check if clipboard contains an image URL or data URL
+      if (!isInputFocused) {
+        const text = clipboardData.getData('text/plain')?.trim();
+        if (text) {
+          const isDataUrl = text.startsWith('data:image/');
+          const isImageUrl = /\.(png|jpe?g|webp|svg|gif)(\?.*)?$/i.test(text);
+
+          if (isDataUrl || isImageUrl) {
+            e.preventDefault();
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              applyImageAndProcess(img, text, '');
+              const newItem: UploadHistoryItem = {
+                id: `paste-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+                name: `Pasted Image (${timeStr})`,
+                dataUrl: text,
+                timestamp: Date.now(),
+                width: img.width,
+                height: img.height,
+              };
+              setUploadHistory((prev) => [newItem, ...prev.filter((p) => p.dataUrl !== text)].slice(0, 25));
+              showToast('📋 Pasted image URL imported!');
+            };
+            img.src = text;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [handleUploadFile, applyImageAndProcess, showToast]);
 
   const handleOpenCropModal = () => {
     const currentUrl = sourceImageDataUrl || sourceImage?.src;
@@ -1076,10 +1171,17 @@ export default function App() {
           <div className="absolute inset-0 bg-indigo-950/80 backdrop-blur-md z-50 flex flex-col items-center justify-center border-4 border-dashed border-indigo-400">
             <span className="text-4xl mb-2">📸</span>
             <h3 className="text-xl font-bold text-white">Drop picture here to pixelate!</h3>
-            <p className="text-sm text-indigo-300">Supports PNG, JPG, WebP, SVG</p>
+            <p className="text-sm text-indigo-300">Supports drag & drop, file upload, or Ctrl+V paste</p>
           </div>
         )}
       </main>
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-indigo-950/95 text-indigo-100 border border-indigo-400/50 backdrop-blur-xl px-4 py-2 rounded-xl shadow-2xl text-xs font-semibold flex items-center gap-2 pointer-events-none transition-all duration-200 animate-in fade-in slide-in-from-top-2">
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Export & Print Modal */}
       <ExportModal

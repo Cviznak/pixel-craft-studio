@@ -165,7 +165,10 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
 
         {/* Action Button Row: Upload / Crop / AI Draw / Starters */}
         <div className="grid grid-cols-4 gap-1 mb-2.5">
-          <label className="cursor-pointer py-1.5 px-1 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-center">
+          <label 
+            className="cursor-pointer py-1.5 px-1 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-center"
+            title="Upload image (or press Ctrl+V anywhere to paste)"
+          >
             <Upload className="w-3 h-3" />
             <span>Upload</span>
             <input
