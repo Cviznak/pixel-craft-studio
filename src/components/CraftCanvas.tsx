@@ -20,10 +20,29 @@ import {
   Pipette,
   Slash,
   Square,
-  FlipHorizontal2
+  FlipHorizontal2,
+  FlipVertical2,
+  RotateCw,
+  RotateCcw,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Focus,
+  Tv,
+  Check
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
+import {
+  autoCenterGrid,
+  shiftGrid,
+  flipGridHorizontal,
+  flipGridVertical,
+  rotateGrid
+} from '../utils/canvasTransform';
+
+export type DisplayShader = 'craft' | 'crt' | 'gameboy' | 'aida' | 'glossy_bead';
 
 interface CraftCanvasProps {
   gridData: number[][];
@@ -44,6 +63,12 @@ interface CraftCanvasProps {
   onBeforePencilStroke?: () => void;
   onInspectSourceImage?: () => void;
   onSelectColor?: (index: number) => void;
+  onTransformGrid?: (
+    newGrid: number[][],
+    newCompletedCells?: CellProgress,
+    newWidth?: number,
+    newHeight?: number
+  ) => void;
 }
 
 export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eraser' | 'bucket' | 'eyedropper' | 'line' | 'rectangle';
@@ -123,9 +148,18 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   onBeforePencilStroke,
   onInspectSourceImage,
   onSelectColor,
+  onTransformGrid,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Transform popover & wrap state
+  const [isTransformOpen, setIsTransformOpen] = useState(false);
+  const [wrapShift, setWrapShift] = useState(false);
+
+  // Retro display shaders & authentic textures
+  const [activeShader, setActiveShader] = useState<DisplayShader>('craft');
+  const [isShaderOpen, setIsShaderOpen] = useState(false);
 
   // Viewport transforms: pan and zoom
   const [zoom, setZoom] = useState<number>(1);
@@ -161,6 +195,48 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   const [isMirrorMode, setIsMirrorMode] = useState<boolean>(false);
   const [previewCells, setPreviewCells] = useState<{ x: number; y: number }[] | null>(null);
   const dragShapeStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Transform actions with automatic undo snapshotting & sound feedback
+  const handleAutoCenter = useCallback(() => {
+    if (!onTransformGrid) return;
+    const { newGrid, newCompletedCells, moved } = autoCenterGrid(gridData, completedCells);
+    if (!moved) return;
+    onBeforePencilStroke?.();
+    onTransformGrid(newGrid, newCompletedCells);
+    audioFeedback.playCelebrationChime();
+  }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
+
+  const handleNudge = useCallback((dx: number, dy: number) => {
+    if (!onTransformGrid) return;
+    const { newGrid, newCompletedCells } = shiftGrid(gridData, dx, dy, completedCells, wrapShift);
+    onBeforePencilStroke?.();
+    onTransformGrid(newGrid, newCompletedCells);
+    audioFeedback.playStitchSound(true);
+  }, [gridData, completedCells, wrapShift, onTransformGrid, onBeforePencilStroke]);
+
+  const handleFlipHorizontal = useCallback(() => {
+    if (!onTransformGrid) return;
+    onBeforePencilStroke?.();
+    const { newGrid, newCompletedCells } = flipGridHorizontal(gridData, completedCells);
+    onTransformGrid(newGrid, newCompletedCells);
+    audioFeedback.playStitchSound(true);
+  }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
+
+  const handleFlipVertical = useCallback(() => {
+    if (!onTransformGrid) return;
+    onBeforePencilStroke?.();
+    const { newGrid, newCompletedCells } = flipGridVertical(gridData, completedCells);
+    onTransformGrid(newGrid, newCompletedCells);
+    audioFeedback.playStitchSound(true);
+  }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
+
+  const handleRotate = useCallback((direction: 'cw' | 'ccw') => {
+    if (!onTransformGrid) return;
+    onBeforePencilStroke?.();
+    const { newGrid, newCompletedCells, newWidth, newHeight } = rotateGrid(gridData, direction, completedCells);
+    onTransformGrid(newGrid, newCompletedCells, newWidth, newHeight);
+    audioFeedback.playCelebrationChime();
+  }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
 
   const [isInteracting, setIsInteracting] = useState<boolean>(false);
   const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
@@ -689,6 +765,71 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     }
 
       ctx.restore();
+
+      // Display Shaders & Authentic Textures post-processing overlay
+      if (activeShader === 'crt') {
+        ctx.save();
+        const dpr = window.devicePixelRatio || 1;
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Scanlines
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+        for (let y = 0; y < h; y += 4 * dpr) {
+          ctx.fillRect(0, y, w, 1.8 * dpr);
+        }
+
+        // Phosphor ambiance
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.04)';
+        ctx.fillRect(0, 0, w, h);
+
+        // Radial Vignette
+        const radGrad = ctx.createRadialGradient(
+          w / 2, h / 2, Math.min(w, h) * 0.42,
+          w / 2, h / 2, Math.max(w, h) * 0.75
+        );
+        radGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        radGrad.addColorStop(1, 'rgba(0, 0, 0, 0.52)');
+        ctx.fillStyle = radGrad;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      } else if (activeShader === 'gameboy') {
+        ctx.save();
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.globalCompositeOperation = 'color';
+        ctx.fillStyle = '#8bac0f';
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = 'rgba(15, 56, 15, 0.12)';
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      } else if (activeShader === 'aida') {
+        ctx.save();
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.fillStyle = 'rgba(180, 160, 130, 0.09)';
+        for (let y = 0; y < h; y += 6) {
+          ctx.fillRect(0, y, w, 1);
+        }
+        for (let x = 0; x < w; x += 6) {
+          ctx.fillRect(x, 0, 1, h);
+        }
+        ctx.restore();
+      } else if (activeShader === 'glossy_bead') {
+        ctx.save();
+        const w = canvas.width;
+        const h = canvas.height;
+        const glossGrad = ctx.createLinearGradient(0, 0, w, h);
+        glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+        glossGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.02)');
+        glossGrad.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
+        ctx.fillStyle = glossGrad;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
     };
 
     animId = requestAnimationFrame(render);
@@ -709,6 +850,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     previewCells,
     activeColorIndex,
     tool,
+    activeShader,
   ]);
 
   // Coordinate conversion helper from pointer/mouse event to cell [x, y]
@@ -1029,6 +1171,31 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+
+      // Nudge shortcuts (Shift + Arrows)
+      if (e.shiftKey && onTransformGrid) {
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          handleNudge(0, -1);
+          return;
+        }
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          handleNudge(0, 1);
+          return;
+        }
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          handleNudge(-1, 0);
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          handleNudge(1, 0);
+          return;
+        }
+      }
+
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       const key = e.key.toLowerCase();
@@ -1055,7 +1222,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setTool]);
+  }, [setTool, onTransformGrid, handleNudge]);
 
   // Native non-passive Wheel & Touch Pinch listener (persistent across zoom renders)
   useEffect(() => {
@@ -1268,6 +1435,164 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         )}
       </div>
 
+      {/* Transform Popover Panel */}
+      {isTransformOpen && onTransformGrid && (
+        <div className="absolute bottom-32 lg:bottom-20 left-1/2 -translate-x-1/2 z-30 bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5 min-w-[270px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-slate-800/90 pb-2">
+            <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <Move className="w-3.5 h-3.5 text-indigo-400" />
+              Canvas Transforms
+            </span>
+            <button
+              onClick={() => setIsTransformOpen(false)}
+              className="text-slate-500 hover:text-slate-200 text-xs px-1"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Auto-Center */}
+          <button
+            onClick={handleAutoCenter}
+            className="w-full py-1.5 px-3 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/40 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+            title="Compute bounding box and shift artwork to exact center of canvas"
+          >
+            <Focus className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Auto-Center Artwork</span>
+          </button>
+
+          {/* 1-Pixel Nudge Controls */}
+          <div className="flex flex-col items-center gap-1 bg-slate-900/80 p-2 rounded-xl border border-slate-800/80">
+            <div className="flex items-center justify-between w-full text-[10px] text-slate-400 font-semibold mb-0.5">
+              <span>Nudge 1 Pixel (Shift+Arrows)</span>
+              <label className="flex items-center gap-1 text-[9px] cursor-pointer text-slate-400 hover:text-slate-200">
+                <input
+                  type="checkbox"
+                  checked={wrapShift}
+                  onChange={(e) => setWrapShift(e.target.checked)}
+                  className="rounded border-slate-700 text-indigo-600 focus:ring-0 w-3 h-3"
+                />
+                <span>Wrap</span>
+              </label>
+            </div>
+            <button
+              onClick={() => handleNudge(0, -1)}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+              title="Nudge Up 1px"
+            >
+              <ArrowUp className="w-3.5 h-3.5" />
+            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => handleNudge(-1, 0)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+                title="Nudge Left 1px"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
+              <div className="w-3 h-3 rounded-full bg-slate-700/60" />
+              <button
+                onClick={() => handleNudge(1, 0)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+                title="Nudge Right 1px"
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <button
+              onClick={() => handleNudge(0, 1)}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+              title="Nudge Down 1px"
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Flip & Rotate Grid */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={handleFlipHorizontal}
+              className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-800 transition"
+              title="Flip Horizontally"
+            >
+              <FlipHorizontal2 className="w-3.5 h-3.5 text-sky-400" />
+              <span>Flip Horiz</span>
+            </button>
+            <button
+              onClick={handleFlipVertical}
+              className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-800 transition"
+              title="Flip Vertically"
+            >
+              <FlipVertical2 className="w-3.5 h-3.5 text-sky-400" />
+              <span>Flip Vert</span>
+            </button>
+            <button
+              onClick={() => handleRotate('ccw')}
+              className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-800 transition"
+              title="Rotate 90° Counter-Clockwise"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+              <span>Rotate 90° CCW</span>
+            </button>
+            <button
+              onClick={() => handleRotate('cw')}
+              className="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-800 transition"
+              title="Rotate 90° Clockwise"
+            >
+              <RotateCw className="w-3.5 h-3.5 text-amber-400" />
+              <span>Rotate 90° CW</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Shaders Popover Panel */}
+      {isShaderOpen && (
+        <div className="absolute bottom-32 lg:bottom-20 left-1/2 -translate-x-1/2 z-30 bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-2.5 shadow-2xl flex flex-col gap-1 min-w-[240px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-slate-800/90 pb-1.5 px-1 mb-1">
+            <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <Tv className="w-3.5 h-3.5 text-emerald-400" />
+              Display Shaders
+            </span>
+            <button
+              onClick={() => setIsShaderOpen(false)}
+              className="text-slate-500 hover:text-slate-200 text-xs px-1"
+            >
+              ✕
+            </button>
+          </div>
+          {[
+            { id: 'craft', label: 'Default Craft Style', desc: 'Simulated stitches or perler beads', icon: '🖼️' },
+            { id: 'crt', label: 'Retro CRT Arcade', desc: 'Scanlines, phosphor glow & vignette', icon: '📺' },
+            { id: 'gameboy', label: 'Game Boy LCD', desc: 'Classic 4-tone DMG dot-matrix', icon: '🕹️' },
+            { id: 'aida', label: 'Woven Aida Cloth', desc: 'Cross-stitch woven fabric texture', icon: '🧵' },
+            { id: 'glossy_bead', label: 'Glossy Melted Beads', desc: 'Shiny Perler bead fused highlight', icon: '🔮' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveShader(item.id as DisplayShader);
+                setIsShaderOpen(false);
+              }}
+              className={`flex items-center justify-between p-2 rounded-xl text-left transition ${
+                activeShader === item.id
+                  ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-200'
+                  : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">{item.icon}</span>
+                <div>
+                  <div className="text-xs font-semibold">{item.label}</div>
+                  <div className="text-[10px] text-slate-400">{item.desc}</div>
+                </div>
+              </div>
+              {activeShader === item.id && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Floating Canvas Dock (Bottom-Center Ergonomic Bar) */}
       <div className="absolute bottom-18 lg:bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 sm:gap-1.5 bg-slate-950/90 backdrop-blur-xl p-1.5 rounded-2xl border border-slate-700/80 shadow-2xl max-w-[calc(100vw-2rem)] overflow-x-auto pointer-events-auto">
         {/* Navigation & Tracking Mode */}
@@ -1377,6 +1702,44 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           >
             <FlipHorizontal2 className="w-3.5 h-3.5" />
             <span className="hidden lg:inline">Mirror</span>
+          </button>
+
+          {/* Transform & Auto-Center Popover Toggle */}
+          {onTransformGrid && (
+            <button
+              onClick={() => {
+                setIsTransformOpen((prev) => !prev);
+                setIsShaderOpen(false);
+              }}
+              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+                isTransformOpen
+                  ? 'bg-indigo-600 text-white shadow-md ring-1 ring-indigo-400'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+              title="Transform Canvas: Auto-Center, 1px Nudge, Flip, and Rotate"
+            >
+              <Move className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Transform</span>
+            </button>
+          )}
+
+          {/* Retro Display Shaders & Authentic Textures Toggle */}
+          <button
+            onClick={() => {
+              setIsShaderOpen((prev) => !prev);
+              setIsTransformOpen(false);
+            }}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              isShaderOpen || activeShader !== 'craft'
+                ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title="Display Shaders: Retro CRT, Game Boy LCD, Woven Aida, Glossy Beads"
+          >
+            <Tv className="w-3.5 h-3.5" />
+            <span className="hidden xl:inline">
+              {activeShader === 'craft' ? 'Shader' : activeShader.toUpperCase()}
+            </span>
           </button>
         </div>
 

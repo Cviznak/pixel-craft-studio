@@ -23,6 +23,7 @@ interface HeaderProps {
   config: GridConfig;
   onUpdateConfig: (newConfig: Partial<GridConfig>) => void;
   onOpenExportModal: () => void;
+  onOpenSocialCardModal?: () => void;
   onOpenAiModal: () => void;
   onOpenStarterGallery?: () => void;
   onOpenNewCanvasModal?: () => void;
@@ -42,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   config,
   onUpdateConfig,
   onOpenExportModal,
+  onOpenSocialCardModal,
   onOpenAiModal,
   onOpenStarterGallery,
   onOpenNewCanvasModal,
@@ -380,6 +382,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
             <span>Install App</span>
+          </button>
+        )}
+
+        {/* Aesthetic Social Card Generator Button */}
+        {onOpenSocialCardModal && (
+          <button
+            onClick={onOpenSocialCardModal}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
+            title="Create an aesthetic social card for Pinterest, TikTok & Instagram"
+          >
+            <Share2 className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden md:inline">Share Card</span>
           </button>
         )}
 

@@ -20,7 +20,8 @@ import {
   ExternalLink,
   BookOpen,
   Layers,
-  Coffee
+  Coffee,
+  Share2
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -31,6 +32,7 @@ interface ExportModalProps {
   config: GridConfig;
   completedCells: CellProgress;
   onOpenWrittenInstructions?: () => void;
+  onOpenSocialCard?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -41,6 +43,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   config,
   completedCells,
   onOpenWrittenInstructions,
+  onOpenSocialCard,
 }) => {
   const [projectName, setProjectName] = useState('My Pixel Craft Pattern');
   const [scale, setScale] = useState(16);
@@ -335,7 +338,37 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </button>
             </div>
 
-            {/* 5. Craft Supplies & Support Banner */}
+            {/* 5. Aesthetic Social Card Generator */}
+            {onOpenSocialCard && (
+              <div className="p-3.5 rounded-xl border border-pink-500/30 bg-gradient-to-r from-pink-950/20 to-purple-950/20 hover:from-pink-950/30 hover:to-purple-950/30 transition flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-pink-500/20 text-pink-400 mt-0.5">
+                    <Share2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5">
+                      <span>Social Card Generator</span>
+                      <span className="px-1.5 py-0.5 bg-pink-500/20 text-pink-300 text-[9px] rounded-full font-bold">Pinterest • TikTok</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Create aesthetic shareable graphics with color palette dots & 1-click clipboard copy.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenSocialCard();
+                  }}
+                  className="px-3.5 py-2 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-500 hover:to-rose-500 text-white rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  Create Card
+                </button>
+              </div>
+            )}
+
+            {/* 6. Craft Supplies & Support Banner */}
             <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {/* Amazon Supplies Kit */}
               <a

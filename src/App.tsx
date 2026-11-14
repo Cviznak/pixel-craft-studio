@@ -26,6 +26,8 @@ import { ImageCropModal } from './components/ImageCropModal';
 import { ImageHistoryModal } from './components/ImageHistoryModal';
 import { CrochetWrittenInstructionsModal } from './components/CrochetWrittenInstructionsModal';
 import { NewCanvasModal } from './components/NewCanvasModal';
+import { SocialCardModal } from './components/SocialCardModal';
+import { hexToRgb } from './utils/colorUtils';
 import { 
   createPaletteFromPreset, 
   createBlankCanvasGrid, 
@@ -92,6 +94,7 @@ export default function App() {
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [isNewCanvasModalOpen, setIsNewCanvasModalOpen] = useState<boolean>(false);
+  const [isSocialCardOpen, setIsSocialCardOpen] = useState<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
@@ -976,6 +979,85 @@ export default function App() {
     });
   }, []);
 
+  // Feature 1: Canvas Transforms (Auto-Center, Nudge, Flip, Rotate)
+  const handleTransformGrid = useCallback(
+    (
+      newGrid: number[][],
+      newCompletedCells?: CellProgress,
+      newWidth?: number,
+      newHeight?: number
+    ) => {
+      setGridData(newGrid);
+      if (newCompletedCells !== undefined) {
+        setCompletedCells(newCompletedCells);
+      }
+      if (newWidth && newHeight && (newWidth !== config.width || newHeight !== config.height)) {
+        const updatedConfig = { ...config, width: newWidth, height: newHeight };
+        setConfig(updatedConfig);
+        latestConfigRef.current = updatedConfig;
+        setAspectRatio(newWidth / newHeight);
+      }
+      const previewDataUrl = generateCanvasDataUrl(newGrid, palette);
+      if (previewDataUrl) {
+        setSourceImageDataUrl(previewDataUrl);
+        const img = new Image();
+        img.onload = () => {
+          setSourceImage(img);
+          sourceImageRef.current = img;
+        };
+        img.src = previewDataUrl;
+      }
+      showToast('✨ Canvas transformed!');
+    },
+    [config, palette, showToast]
+  );
+
+  // Feature 2: Global Color Swap / Recolor Tool
+  const handleSwapColor = useCallback(
+    (sourceIndex: number, targetIndex: number) => {
+      if (sourceIndex === targetIndex) return;
+      handleBeforePencilStroke();
+      setGridData((prev) => {
+        return prev.map((row) =>
+          row.map((cell) => (cell === sourceIndex ? targetIndex : cell))
+        );
+      });
+      const sourceName = palette[sourceIndex]?.name || palette[sourceIndex]?.code || palette[sourceIndex]?.hex;
+      const targetName = palette[targetIndex]?.name || palette[targetIndex]?.code || palette[targetIndex]?.hex;
+      showToast(`🔄 Swapped all ${sourceName} stitches to ${targetName}!`);
+    },
+    [handleBeforePencilStroke, palette, showToast]
+  );
+
+  const handleSwapWithNewColor = useCallback(
+    (sourceIndex: number, newHex: string) => {
+      handleBeforePencilStroke();
+      const rgb = hexToRgb(newHex) || { r: 0, g: 0, b: 0 };
+      const newColor: PaletteColor = {
+        id: `custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        hex: newHex,
+        r: rgb.r,
+        g: rgb.g,
+        b: rgb.b,
+        symbol: getCraftSymbol(palette.length),
+        count: 0,
+        percentage: 0,
+        name: 'Custom Swapped Color',
+        code: newHex,
+        brand: 'Custom',
+      };
+      const newPalette = [...palette, newColor];
+      const targetIndex = newPalette.length - 1;
+      setPalette(newPalette);
+      paletteRef.current = newPalette;
+      setGridData((prev) =>
+        prev.map((row) => row.map((cell) => (cell === sourceIndex ? targetIndex : cell)))
+      );
+      showToast(`🎨 Recaptured stitches into new color ${newHex}!`);
+    },
+    [handleBeforePencilStroke, palette, showToast]
+  );
+
   // Palette Handlers
   const handleToggleSpotlight = (colorId: string) => {
     setSpotlightColorId((prev) => (prev === colorId ? null : colorId));
@@ -1084,6 +1166,7 @@ export default function App() {
         config={config}
         onUpdateConfig={handleUpdateConfig}
         onOpenExportModal={() => setIsExportOpen(true)}
+        onOpenSocialCardModal={() => setIsSocialCardOpen(true)}
         onOpenAiModal={() => setIsAiModalOpen(true)}
         onOpenStarterGallery={() => setIsStarterGalleryOpen(true)}
         onOpenNewCanvasModal={() => setIsNewCanvasModalOpen(true)}
@@ -1186,6 +1269,7 @@ export default function App() {
           onBeforePencilStroke={handleBeforePencilStroke}
           onInspectSourceImage={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
           onSelectColor={(idx) => setActiveColorIndex(idx)}
+          onTransformGrid={handleTransformGrid}
         />
 
         {/* Right Palette Legend (Desktop Sidebar & Mobile Drawer) */}
@@ -1220,6 +1304,8 @@ export default function App() {
               onCleanConfetti={handleCleanConfetti}
               onClose={() => setIsMobilePaletteOpen(false)}
               onAddColor={handleAddCustomColor}
+              onSwapColor={handleSwapColor}
+              onSwapWithNewColor={handleSwapWithNewColor}
             />
           </div>
         )}
@@ -1315,6 +1401,10 @@ export default function App() {
           setIsExportOpen(false);
           setIsWrittenInstructionsOpen(true);
         }}
+        onOpenSocialCard={() => {
+          setIsExportOpen(false);
+          setIsSocialCardOpen(true);
+        }}
       />
 
       {/* Tapestry Crochet Written Row-by-Row Instructions Modal */}
@@ -1406,6 +1496,16 @@ export default function App() {
         currentPalette={palette}
         currentCraftType={config.craftType}
         onCreateCanvas={handleCreateBlankCanvas}
+      />
+
+      {/* Aesthetic Social Card Generator Modal */}
+      <SocialCardModal
+        isOpen={isSocialCardOpen}
+        onClose={() => setIsSocialCardOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        config={config}
+        defaultTitle={lastAiPrompt || 'My Pixel Craft Pattern'}
       />
     </div>
   );

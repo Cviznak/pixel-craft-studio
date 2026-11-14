@@ -16,7 +16,8 @@ import {
   Sparkles, 
   X,
   ExternalLink,
-  Plus
+  Plus,
+  ArrowLeftRight
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -33,6 +34,8 @@ interface PaletteLegendProps {
   onCleanConfetti?: () => void;
   onClose?: () => void;
   onAddColor?: (hex: string) => void;
+  onSwapColor?: (sourceColorIndex: number, targetColorIndex: number) => void;
+  onSwapWithNewColor?: (sourceColorIndex: number, newHex: string) => void;
 }
 
 const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
@@ -49,9 +52,12 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onCleanConfetti,
   onClose,
   onAddColor,
+  onSwapColor,
+  onSwapWithNewColor,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'todo' | 'done'>('all');
+  const [swapSourceIndex, setSwapSourceIndex] = useState<number | null>(null);
 
   const getAmazonSearchUrl = (color: PaletteColor) => {
     return buildAmazonColorSearchUrl(color, craftType);
@@ -344,6 +350,20 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
                     {color.isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                   </button>
 
+                  {/* Swap / Recolor Color Button */}
+                  {(onSwapColor || onSwapWithNewColor) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSwapSourceIndex(originalIndex);
+                      }}
+                      className="p-1 rounded-md text-slate-500 hover:text-pink-400 hover:bg-slate-700/60 transition"
+                      title={`Swap / Replace all ${color.code || color.hex} stitches across canvas`}
+                    >
+                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
                   {/* Spotlight Isolation Button */}
                   <button
                     onClick={(e) => {
@@ -384,6 +404,120 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
           Affiliate disclosure: We may earn a small commission on qualifying purchases.
         </div>
       </div>
+
+      {/* Global Color Swap / Recolor Modal */}
+      {swapSourceIndex !== null && palette[swapSourceIndex] && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSwapSourceIndex(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150 select-none"
+        >
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-4 flex flex-col gap-3.5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div className="flex items-center gap-2">
+                <ArrowLeftRight className="w-4 h-4 text-pink-400" />
+                <h3 className="text-sm font-bold text-slate-100">Swap / Recolor Color</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSwapSourceIndex(null)}
+                className="text-slate-400 hover:text-white text-xs p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <span className="text-[11px] text-slate-400 font-semibold block mb-1">Source color to replace:</span>
+              <div className="flex items-center gap-2.5 p-2 bg-slate-950/80 rounded-xl border border-slate-800">
+                <div
+                  className="w-7 h-7 rounded-lg shadow-sm border border-white/20 flex items-center justify-center font-bold text-xs shrink-0"
+                  style={{
+                    backgroundColor: palette[swapSourceIndex].hex,
+                    color: getContrastingTextColor(
+                      palette[swapSourceIndex].r,
+                      palette[swapSourceIndex].g,
+                      palette[swapSourceIndex].b
+                    ),
+                  }}
+                >
+                  {palette[swapSourceIndex].symbol}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-slate-100 truncate">
+                    {palette[swapSourceIndex].code || palette[swapSourceIndex].hex}
+                  </div>
+                  <div className="text-[11px] text-slate-400 truncate">
+                    {palette[swapSourceIndex].name || 'Custom Color'} • {realCounts[swapSourceIndex] || 0} stitches
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[11px] text-slate-400 font-semibold block mb-1.5">
+                Replace with existing palette color:
+              </span>
+              <div className="grid grid-cols-4 gap-1.5 max-h-40 overflow-y-auto p-1.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+                {palette.map((targetColor, targetIdx) => {
+                  if (targetIdx === swapSourceIndex) return null;
+                  return (
+                    <button
+                      key={targetColor.id}
+                      type="button"
+                      onClick={() => {
+                        onSwapColor?.(swapSourceIndex, targetIdx);
+                        setSwapSourceIndex(null);
+                      }}
+                      className="group flex flex-col items-center gap-1 p-1 rounded-lg hover:bg-slate-800 border border-transparent hover:border-indigo-500/50 transition text-center"
+                      title={`Swap to ${targetColor.name || targetColor.code || targetColor.hex}`}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-md shadow-sm border border-white/20 flex items-center justify-center font-bold text-[10px] group-hover:scale-105 transition"
+                        style={{
+                          backgroundColor: targetColor.hex,
+                          color: getContrastingTextColor(targetColor.r, targetColor.g, targetColor.b),
+                        }}
+                      >
+                        {targetColor.symbol}
+                      </div>
+                      <span className="text-[9px] text-slate-300 font-mono truncate w-full">
+                        {targetColor.code || targetColor.symbol}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-800 pt-2.5 flex items-center justify-between">
+              {onSwapWithNewColor && (
+                <label className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 border border-pink-500/30 flex items-center gap-1.5 transition cursor-pointer">
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Swap to Custom Hex</span>
+                  <input
+                    type="color"
+                    defaultValue="#38BDF8"
+                    onChange={(e) => {
+                      onSwapWithNewColor(swapSourceIndex, e.target.value);
+                      setSwapSourceIndex(null);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              )}
+              <button
+                type="button"
+                onClick={() => setSwapSourceIndex(null)}
+                className="px-2.5 py-1 text-xs text-slate-400 hover:text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   );
 };
