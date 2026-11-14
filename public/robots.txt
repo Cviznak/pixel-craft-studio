@@ -1,4 +1,18 @@
 User-agent: *
 Allow: /
 
+# Explicit AI Search Engine Crawlers (Perplexity, ChatGPT, Claude, Gemini)
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
 Sitemap: https://www.pixel-craft-studio.com/sitemap.xml
+# LLMs documentation: https://www.pixel-craft-studio.com/llms.txt
