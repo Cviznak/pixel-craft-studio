@@ -1,7 +1,7 @@
 {
-  "name": "Pixel Craft Studio — Pattern Generator",
+  "name": "Pixel Craft Studio — Pixel Art & Pattern Maker",
   "short_name": "PixelCraft",
-  "description": "Free pattern generator for Tapestry Crochet, DMC Cross-Stitch, Perler Beads, and Diamond Painting.",
+  "description": "Free pixel art drawing studio and pattern generator for Tapestry Crochet, DMC Cross-Stitch, Perler Beads, and Diamond Painting.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
