@@ -30,7 +30,8 @@ import {
   ArrowRight,
   Focus,
   Tv,
-  Check
+  Check,
+  Type
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -69,6 +70,8 @@ interface CraftCanvasProps {
     newWidth?: number,
     newHeight?: number
   ) => void;
+  onOpenPixelTextModal?: () => void;
+  showPegboardLines?: boolean;
 }
 
 export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eraser' | 'bucket' | 'eyedropper' | 'line' | 'rectangle';
@@ -149,6 +152,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   onInspectSourceImage,
   onSelectColor,
   onTransformGrid,
+  onOpenPixelTextModal,
+  showPegboardLines = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -585,6 +590,29 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         ctx.lineTo(totalW, y * cellSize);
         ctx.stroke();
       }
+    }
+
+    // Draw 29x29 Interlocking Pegboard Seam Lines (Perler / Hama / Artkal)
+    if (showPegboardLines) {
+      ctx.save();
+      ctx.strokeStyle = '#f59e0b'; // Amber dashed line
+      ctx.lineWidth = 3 / zoom;
+      ctx.setLineDash([8 / zoom, 4 / zoom]);
+
+      for (let x = 29; x < gridWidth; x += 29) {
+        ctx.beginPath();
+        ctx.moveTo(x * cellSize, 0);
+        ctx.lineTo(x * cellSize, totalH);
+        ctx.stroke();
+      }
+
+      for (let y = 29; y < gridHeight; y += 29) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * cellSize);
+        ctx.lineTo(totalW, y * cellSize);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // Draw On-Canvas Labeled Rulers (Columns at Top & Rows at Left)
@@ -1681,6 +1709,17 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           >
             <Square className="w-3.5 h-3.5" />
           </button>
+
+          {/* Pixel Text & Monogram Tool */}
+          {onOpenPixelTextModal && (
+            <button
+              onClick={onOpenPixelTextModal}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-slate-800/60 transition-all"
+              title="Pixel Text & Monogram Tool: Stamp letters, names & dates"
+            >
+              <Type className="w-3.5 h-3.5 text-amber-400" />
+            </button>
+          )}
 
           {/* Symmetry / Mirror Drawing Mode */}
           <button

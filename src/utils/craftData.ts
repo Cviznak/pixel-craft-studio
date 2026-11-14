@@ -353,11 +353,15 @@ export function findClosestCraftColor(
   r: number,
   g: number,
   b: number,
-  brand: 'DMC' | 'Perler'
+  brand: 'DMC' | 'Perler',
+  allowedCodes?: Set<string>
 ): CraftStandardColor {
-  const list = brand === 'DMC' ? DMC_COLORS : PERLER_COLORS;
+  const fullList = brand === 'DMC' ? DMC_COLORS : PERLER_COLORS;
+  const list = (allowedCodes && allowedCodes.size > 0)
+    ? fullList.filter(c => allowedCodes.has(c.code))
+    : fullList;
   const targetLab = rgbToLab(r, g, b);
-  let best = list[0];
+  let best = list[0] || fullList[0];
   let minDistance = Infinity;
 
   for (let i = 0; i < list.length; i++) {

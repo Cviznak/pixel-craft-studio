@@ -21,7 +21,8 @@ export function extractBeautifulPalette(
   k: number,
   mode: ExtractionMode = 'balanced',
   craftStandard: CraftStandard = 'custom',
-  lockedColors: PaletteColor[] = []
+  lockedColors: PaletteColor[] = [],
+  stashCodes?: Set<string>
 ): PaletteColor[] {
   const { data, width, height } = imageData;
   const totalPixels = width * height;
@@ -244,7 +245,7 @@ export function extractBeautifulPalette(
     let brand: 'DMC' | 'Perler' | 'Custom' = 'Custom';
 
     if (craftStandard === 'dmc') {
-      const match = findClosestCraftColor(finalR, finalG, finalB, 'DMC');
+      const match = findClosestCraftColor(finalR, finalG, finalB, 'DMC', stashCodes);
       finalR = match.r;
       finalG = match.g;
       finalB = match.b;
@@ -252,7 +253,7 @@ export function extractBeautifulPalette(
       code = `DMC ${match.code}`;
       brand = 'DMC';
     } else if (craftStandard === 'perler') {
-      const match = findClosestCraftColor(finalR, finalG, finalB, 'Perler');
+      const match = findClosestCraftColor(finalR, finalG, finalB, 'Perler', stashCodes);
       finalR = match.r;
       finalG = match.g;
       finalB = match.b;
@@ -261,7 +262,7 @@ export function extractBeautifulPalette(
       brand = 'Perler';
     } else {
       // In Custom mode, keep exact true photo RGB colors, but provide nearest DMC match as reference tag
-      const match = findClosestCraftColor(finalR, finalG, finalB, 'DMC');
+      const match = findClosestCraftColor(finalR, finalG, finalB, 'DMC', stashCodes);
       name = match.name;
       code = `~DMC ${match.code}`;
       brand = 'Custom';

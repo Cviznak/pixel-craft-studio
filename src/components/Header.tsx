@@ -16,7 +16,11 @@ import {
   Smartphone,
   Share2,
   X,
-  Paintbrush
+  Paintbrush,
+  Ruler,
+  Video,
+  Type,
+  Package
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -27,6 +31,11 @@ interface HeaderProps {
   onOpenAiModal: () => void;
   onOpenStarterGallery?: () => void;
   onOpenNewCanvasModal?: () => void;
+  onOpenSizeAndFrameModal?: () => void;
+  onOpenTimelapseModal?: () => void;
+  onOpenPixelTextModal?: () => void;
+  onOpenMyStashModal?: () => void;
+  onOpenStitchCompanionModal?: () => void;
   isZenMode?: boolean;
   onToggleZenMode?: () => void;
   onResetProgress: () => void;
@@ -47,6 +56,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAiModal,
   onOpenStarterGallery,
   onOpenNewCanvasModal,
+  onOpenSizeAndFrameModal,
+  onOpenTimelapseModal,
+  onOpenPixelTextModal,
+  onOpenMyStashModal,
+  onOpenStitchCompanionModal,
   onResetProgress,
   onClearEverything,
   onLoadProjectJSON,
@@ -297,6 +311,76 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>Load Project JSON</span>
               </button>
 
+              {/* Size & Frame Calculator */}
+              {onOpenSizeAndFrameModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenSizeAndFrameModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 transition text-left"
+                >
+                  <Ruler className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Size & Framing Calculator</span>
+                </button>
+              )}
+
+              {/* Animated Timelapse Generator */}
+              {onOpenTimelapseModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenTimelapseModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-rose-300 hover:bg-slate-800 transition text-left"
+                >
+                  <Video className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Social Timelapse Video</span>
+                </button>
+              )}
+
+              {/* Pixel Text & Monogram Tool */}
+              {onOpenPixelTextModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenPixelTextModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
+                >
+                  <Type className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Pixel Text & Monogram</span>
+                </button>
+              )}
+
+              {/* My Stash Inventory */}
+              {onOpenMyStashModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenMyStashModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
+                >
+                  <Package className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>My Floss & Bead Stash</span>
+                </button>
+              )}
+
+              {/* Stitch Companion Focus Mode */}
+              {onOpenStitchCompanionModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenStitchCompanionModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-teal-300 hover:bg-slate-800 transition text-left"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Stitch Companion (Focus Mode)</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   setIsProjectMenuOpen(false);
@@ -382,6 +466,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
             <span>Install App</span>
+          </button>
+        )}
+
+        {/* Stitch Companion Focus Mode Button */}
+        {onOpenStitchCompanionModal && (
+          <button
+            onClick={onOpenStitchCompanionModal}
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition"
+            title="Hands-free Stitch Companion focus mode with wake-lock"
+          >
+            <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden xl:inline">Focus</span>
           </button>
         )}
 

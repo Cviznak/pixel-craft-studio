@@ -39,7 +39,8 @@ import {
   Ruler,
   Crop,
   FileText,
-  Paintbrush
+  Paintbrush,
+  Package
 } from 'lucide-react';
 
 interface ControlsPanelProps {
@@ -54,6 +55,11 @@ interface ControlsPanelProps {
   onOpenStarterGallery?: () => void;
   onOpenNewCanvasModal?: () => void;
   onOpenWrittenInstructions?: () => void;
+  onOpenSizeAndFrameModal?: () => void;
+  onOpenTimelapseModal?: () => void;
+  onOpenMyStashModal?: () => void;
+  useMyStashOnly?: boolean;
+  onToggleMyStashOnly?: (enabled: boolean) => void;
   onClose?: () => void;
   aiHistory?: AiHistoryItem[];
   onSelectHistoryImage?: (item: AiHistoryItem) => void;
@@ -76,6 +82,11 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onOpenStarterGallery,
   onOpenNewCanvasModal,
   onOpenWrittenInstructions,
+  onOpenSizeAndFrameModal,
+  onOpenTimelapseModal,
+  onOpenMyStashModal,
+  useMyStashOnly = false,
+  onToggleMyStashOnly,
   onClose,
   aiHistory = [],
   onSelectHistoryImage,
@@ -720,6 +731,30 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                   {config.width} × {config.height} pixels
                 </div>
               )}
+
+              {/* Quick Size & Frame Modal Trigger */}
+              {onOpenSizeAndFrameModal && (
+                <button
+                  type="button"
+                  onClick={onOpenSizeAndFrameModal}
+                  className="w-full mt-2 py-1.5 px-3 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                >
+                  <Ruler className="w-3.5 h-3.5" />
+                  <span>Preview in Frame & Hoop</span>
+                </button>
+              )}
+
+              {/* Quick Timelapse Video Trigger */}
+              {onOpenTimelapseModal && (
+                <button
+                  type="button"
+                  onClick={onOpenTimelapseModal}
+                  className="w-full mt-1.5 py-1.5 px-3 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Social Timelapse Video</span>
+                </button>
+              )}
             </div>
 
             {/* Pattern Chart Guides Toggles */}
@@ -830,6 +865,40 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* My Stash Restriction Mode */}
+            {config.craftStandard !== 'custom' && (
+              <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-200">
+                      Use My Stash Only
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      Match strictly to your owned floss/beads
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {onOpenMyStashModal && (
+                    <button
+                      onClick={onOpenMyStashModal}
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+                    >
+                      Manage
+                    </button>
+                  )}
+                  <input
+                    type="checkbox"
+                    checked={useMyStashOnly}
+                    onChange={(e) => onToggleMyStashOnly && onToggleMyStashOnly(e.target.checked)}
+                    className="w-4 h-4 accent-emerald-500 rounded cursor-pointer"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Color Beauty Harmony Engine */}
             <div>

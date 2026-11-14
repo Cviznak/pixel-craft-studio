@@ -27,6 +27,12 @@ import { ImageHistoryModal } from './components/ImageHistoryModal';
 import { CrochetWrittenInstructionsModal } from './components/CrochetWrittenInstructionsModal';
 import { NewCanvasModal } from './components/NewCanvasModal';
 import { SocialCardModal } from './components/SocialCardModal';
+import { SizeAndFrameModal } from './components/SizeAndFrameModal';
+import { TimelapseModal } from './components/TimelapseModal';
+import { PixelTextModal } from './components/PixelTextModal';
+import { MyStashModal } from './components/MyStashModal';
+import { StitchCompanionModal } from './components/StitchCompanionModal';
+import { getMyStash } from './utils/stashManager';
 import { hexToRgb } from './utils/colorUtils';
 import { 
   createPaletteFromPreset, 
@@ -95,6 +101,14 @@ export default function App() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [isNewCanvasModalOpen, setIsNewCanvasModalOpen] = useState<boolean>(false);
   const [isSocialCardOpen, setIsSocialCardOpen] = useState<boolean>(false);
+  const [isSizeAndFrameOpen, setIsSizeAndFrameOpen] = useState<boolean>(false);
+  const [isTimelapseOpen, setIsTimelapseOpen] = useState<boolean>(false);
+  const [isPixelTextOpen, setIsPixelTextOpen] = useState<boolean>(false);
+  const [isMyStashOpen, setIsMyStashOpen] = useState<boolean>(false);
+  const [isStitchCompanionOpen, setIsStitchCompanionOpen] = useState<boolean>(false);
+  const [showPegboardLines, setShowPegboardLines] = useState<boolean>(false);
+  const [useMyStashOnly, setUseMyStashOnly] = useState<boolean>(false);
+  const useMyStashOnlyRef = useRef<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
@@ -311,13 +325,18 @@ export default function App() {
     tempCtx.drawImage(img, 0, 0, sampleW, sampleH);
     const imgData = tempCtx.getImageData(0, 0, sampleW, sampleH);
 
+    const stashCodes = useMyStashOnlyRef.current
+      ? getMyStash(activeConfig.craftStandard === 'perler' ? 'Perler' : 'DMC')
+      : undefined;
+
     // Extract palette using vibrant aesthetic algorithm
     const newPalette = extractBeautifulPalette(
       imgData,
       activeConfig.colorsCount,
       activeConfig.extractionMode,
       activeConfig.craftStandard,
-      []
+      [],
+      stashCodes
     );
 
     // Quantize onto craft grid
@@ -865,12 +884,17 @@ export default function App() {
     const imgData = tempCtx.getImageData(0, 0, sampleW, sampleH);
 
     const locked = paletteRef.current.filter((c) => c.isLocked);
+    const stashCodes = useMyStashOnlyRef.current
+      ? getMyStash(activeConfig.craftStandard === 'perler' ? 'Perler' : 'DMC')
+      : undefined;
+
     const newPalette = extractBeautifulPalette(
       imgData,
       activeConfig.colorsCount,
       activeConfig.extractionMode,
       activeConfig.craftStandard,
-      locked
+      locked,
+      stashCodes
     );
 
     const { gridData: newGrid, paletteWithCounts } = processImageToGrid(
@@ -914,6 +938,56 @@ export default function App() {
       }, 35);
     }
   }, [reprocessCurrentImage]);
+
+  // Handle Stamping Pixel Text onto Canvas
+  const handleStampText = useCallback((textMatrix: number[][], colorIndex: number, startX: number, startY: number) => {
+    handleBeforePencilStroke();
+    setGridData((prev) => {
+      const next = prev.map((row) => [...row]);
+      for (let r = 0; r < textMatrix.length; r++) {
+        for (let c = 0; c < textMatrix[r].length; c++) {
+          if (textMatrix[r][c] === 1) {
+            const y = startY + r;
+            const x = startX + c;
+            if (y >= 0 && y < next.length && x >= 0 && x < next[0].length) {
+              next[y][x] = colorIndex;
+            }
+          }
+        }
+      }
+      return next;
+    });
+    showToast('Stamped pixel text onto canvas! ✨');
+  }, [handleBeforePencilStroke, showToast]);
+
+  // Handle Creating New Canvas from Pixel Text
+  const handleCreateNewFromText = useCallback((width: number, height: number, textMatrix: number[][], colorIndex: number) => {
+    handleBeforePencilStroke();
+    const newGrid: number[][] = Array.from({ length: height }, () => new Array(width).fill(0));
+    const startX = Math.floor((width - textMatrix[0].length) / 2);
+    const startY = Math.floor((height - textMatrix.length) / 2);
+    for (let r = 0; r < textMatrix.length; r++) {
+      for (let c = 0; c < textMatrix[r].length; c++) {
+        if (textMatrix[r][c] === 1) {
+          newGrid[startY + r][startX + c] = colorIndex;
+        }
+      }
+    }
+    handleUpdateConfig({ width, height });
+    setGridData(newGrid);
+    setCompletedCells({});
+    showToast(`Created new text canvas (${width}×${height}) ✨`);
+  }, [handleBeforePencilStroke, handleUpdateConfig, showToast]);
+
+  // Handle Stash Restriction Toggle
+  const handleToggleMyStashOnly = useCallback((enabled: boolean) => {
+    setUseMyStashOnly(enabled);
+    useMyStashOnlyRef.current = enabled;
+    if (sourceImageRef.current) {
+      reprocessCurrentImage();
+    }
+    showToast(enabled ? 'Matching strictly to your physical stash!' : 'Standard color catalog active');
+  }, [reprocessCurrentImage, showToast]);
 
   // Cell Interaction Handlers
   const handleToggleCellCompleted = (x: number, y: number) => {
@@ -1170,6 +1244,11 @@ export default function App() {
         onOpenAiModal={() => setIsAiModalOpen(true)}
         onOpenStarterGallery={() => setIsStarterGalleryOpen(true)}
         onOpenNewCanvasModal={() => setIsNewCanvasModalOpen(true)}
+        onOpenSizeAndFrameModal={() => setIsSizeAndFrameOpen(true)}
+        onOpenTimelapseModal={() => setIsTimelapseOpen(true)}
+        onOpenPixelTextModal={() => setIsPixelTextOpen(true)}
+        onOpenMyStashModal={() => setIsMyStashOpen(true)}
+        onOpenStitchCompanionModal={() => setIsStitchCompanionOpen(true)}
         isZenMode={isZenMode}
         onToggleZenMode={() => setIsZenMode((prev) => !prev)}
         onResetProgress={handleResetProgress}
@@ -1244,6 +1323,11 @@ export default function App() {
                 setIsHistoryModalOpen(true);
               }}
               onOpenWrittenInstructions={() => setIsWrittenInstructionsOpen(true)}
+              onOpenSizeAndFrameModal={() => setIsSizeAndFrameOpen(true)}
+              onOpenTimelapseModal={() => setIsTimelapseOpen(true)}
+              onOpenMyStashModal={() => setIsMyStashOpen(true)}
+              useMyStashOnly={useMyStashOnly}
+              onToggleMyStashOnly={handleToggleMyStashOnly}
               aspectRatio={aspectRatio}
               hasTransparency={hasTransparency}
             />
@@ -1270,6 +1354,8 @@ export default function App() {
           onInspectSourceImage={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
           onSelectColor={(idx) => setActiveColorIndex(idx)}
           onTransformGrid={handleTransformGrid}
+          onOpenPixelTextModal={() => setIsPixelTextOpen(true)}
+          showPegboardLines={showPegboardLines}
         />
 
         {/* Right Palette Legend (Desktop Sidebar & Mobile Drawer) */}
@@ -1506,6 +1592,65 @@ export default function App() {
         palette={palette}
         config={config}
         defaultTitle={lastAiPrompt || 'My Pixel Craft Pattern'}
+      />
+
+      {/* Finished Size & Framing Calculator Modal */}
+      <SizeAndFrameModal
+        isOpen={isSizeAndFrameOpen}
+        onClose={() => setIsSizeAndFrameOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        craftType={config.craftType}
+        showPegboardLines={showPegboardLines}
+        onTogglePegboardLines={() => setShowPegboardLines((prev) => !prev)}
+      />
+
+      {/* Social Media Animated Timelapse Video Generator */}
+      <TimelapseModal
+        isOpen={isTimelapseOpen}
+        onClose={() => setIsTimelapseOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        craftType={config.craftType}
+        defaultTitle={lastAiPrompt || 'Pixel Craft Pattern'}
+      />
+
+      {/* Pixel Text, Name & Monogram Tool */}
+      <PixelTextModal
+        isOpen={isPixelTextOpen}
+        onClose={() => setIsPixelTextOpen(false)}
+        palette={palette}
+        craftType={config.craftType}
+        canvasWidth={config.width}
+        canvasHeight={config.height}
+        onStampToCanvas={handleStampText}
+        onCreateNewFromText={handleCreateNewFromText}
+      />
+
+      {/* Physical Craft Floss & Bead Stash Inventory */}
+      <MyStashModal
+        isOpen={isMyStashOpen}
+        onClose={() => {
+          setIsMyStashOpen(false);
+          if (useMyStashOnly && sourceImageRef.current) {
+            reprocessCurrentImage();
+          }
+        }}
+        onStashUpdated={() => {
+          if (useMyStashOnly && sourceImageRef.current) {
+            reprocessCurrentImage();
+          }
+        }}
+      />
+
+      {/* Stitch Companion Hands-Free Focus Mode */}
+      <StitchCompanionModal
+        isOpen={isStitchCompanionOpen}
+        onClose={() => setIsStitchCompanionOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        completedCells={completedCells}
+        onBatchSetCellsCompleted={handleBatchSetCellsCompleted}
       />
     </div>
   );
