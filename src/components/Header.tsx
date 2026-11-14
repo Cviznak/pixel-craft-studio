@@ -15,7 +15,8 @@ import {
   CheckCircle2,
   Smartphone,
   Share2,
-  X
+  X,
+  Paintbrush
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -24,6 +25,7 @@ interface HeaderProps {
   onOpenExportModal: () => void;
   onOpenAiModal: () => void;
   onOpenStarterGallery?: () => void;
+  onOpenNewCanvasModal?: () => void;
   isZenMode?: boolean;
   onToggleZenMode?: () => void;
   onResetProgress: () => void;
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExportModal,
   onOpenAiModal,
   onOpenStarterGallery,
+  onOpenNewCanvasModal,
   onResetProgress,
   onClearEverything,
   onLoadProjectJSON,
@@ -222,6 +225,18 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
+        {/* Draw / Blank Canvas Button */}
+        {onOpenNewCanvasModal && (
+          <button
+            onClick={onOpenNewCanvasModal}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition"
+            title="Create a new blank canvas to draw freely"
+          >
+            <Paintbrush className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden md:inline">Draw</span>
+          </button>
+        )}
+
         {/* Ask AI Button */}
         <button
           onClick={onOpenAiModal}
@@ -257,6 +272,19 @@ export const Header: React.FC<HeaderProps> = ({
 
           {isProjectMenuOpen && (
             <div className="absolute right-0 mt-1.5 w-48 bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-xl shadow-2xl p-1 z-50 text-xs flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
+              {onOpenNewCanvasModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenNewCanvasModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
+                >
+                  <Paintbrush className="w-3.5 h-3.5 text-amber-400" />
+                  <span>New Blank Canvas</span>
+                </button>
+              )}
+
               <button
                 onClick={() => {
                   fileInputRef.current?.click();

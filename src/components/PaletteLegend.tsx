@@ -15,7 +15,8 @@ import {
   ShoppingCart, 
   Sparkles, 
   X,
-  ExternalLink
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -31,6 +32,7 @@ interface PaletteLegendProps {
   onToggleLockColor: (index: number) => void;
   onCleanConfetti?: () => void;
   onClose?: () => void;
+  onAddColor?: (hex: string) => void;
 }
 
 const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
@@ -46,6 +48,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onToggleLockColor,
   onCleanConfetti,
   onClose,
+  onAddColor,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'todo' | 'done'>('all');
@@ -53,6 +56,22 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   const getAmazonSearchUrl = (color: PaletteColor) => {
     return buildAmazonColorSearchUrl(color, craftType);
   };
+
+  // Real-time cell count per palette color from gridData (updates live while drawing)
+  const realCounts = useMemo(() => {
+    const counts: { [colorIdx: number]: number } = {};
+    for (let y = 0; y < gridData.length; y++) {
+      const row = gridData[y];
+      if (!row) continue;
+      for (let x = 0; x < row.length; x++) {
+        const idx = row[x];
+        if (idx >= 0) {
+          counts[idx] = (counts[idx] || 0) + 1;
+        }
+      }
+    }
+    return counts;
+  }, [gridData]);
 
   // Compute completed count per color (memoized to prevent lag during drag/tracking)
   const completedCounts = useMemo(() => {
@@ -74,7 +93,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
     return palette.filter((c) => {
       const originalIndex = palette.findIndex((item) => item.id === c.id);
       const done = completedCounts[originalIndex] || 0;
-      const total = c.count || 0;
+      const total = realCounts[originalIndex] ?? c.count ?? 0;
       const isComplete = total > 0 && done >= total;
 
       if (filterMode === 'todo' && isComplete) return false;
@@ -89,7 +108,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
         c.hex.toLowerCase().includes(term)
       );
     });
-  }, [palette, completedCounts, filterMode, searchTerm]);
+  }, [palette, realCounts, completedCounts, filterMode, searchTerm]);
 
   return (
     <aside className="w-80 max-w-[88vw] h-full bg-slate-900 border-l border-slate-800/90 flex flex-col z-10 shrink-0 shadow-2xl lg:shadow-none select-none overflow-hidden">
@@ -107,6 +126,21 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5">
+            {onAddColor && (
+              <label
+                className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 text-pink-300 border border-pink-500/30 flex items-center gap-1 transition cursor-pointer"
+                title="Add a new custom color to the palette"
+              >
+                <Plus className="w-3 h-3 text-pink-400" />
+                <span>Add</span>
+                <input
+                  type="color"
+                  defaultValue="#FF0055"
+                  onChange={(e) => onAddColor(e.target.value)}
+                  className="hidden"
+                />
+              </label>
+            )}
             {onCleanConfetti && (
               <button
                 onClick={onCleanConfetti}
@@ -197,7 +231,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
             const isSpotlit = spotlightColorId === color.id;
             const isSelected = activeColorIndex === originalIndex;
             const done = completedCounts[originalIndex] || 0;
-            const total = color.count || 0;
+            const total = realCounts[originalIndex] ?? color.count ?? 0;
             const isColorComplete = total > 0 && done >= total;
 
             return (

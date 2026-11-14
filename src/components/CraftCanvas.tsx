@@ -14,7 +14,13 @@ import {
   Redo2,
   Volume2,
   VolumeX,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eraser,
+  PaintBucket,
+  Pipette,
+  Slash,
+  Square,
+  FlipHorizontal2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -37,9 +43,10 @@ interface CraftCanvasProps {
   onRedo?: () => void;
   onBeforePencilStroke?: () => void;
   onInspectSourceImage?: () => void;
+  onSelectColor?: (index: number) => void;
 }
 
-export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eyedropper';
+export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eraser' | 'bucket' | 'eyedropper' | 'line' | 'rectangle';
 
 // Bresenham's line algorithm for smooth continuous drag-tracking and drawing without gaps
 function getLineCells(x0: number, y0: number, x1: number, y1: number): { x: number; y: number }[] {
@@ -70,6 +77,33 @@ function getLineCells(x0: number, y0: number, x1: number, y1: number): { x: numb
   return cells;
 }
 
+// Rectangle cells generator for outline or filled boxes
+function getRectCells(x0: number, y0: number, x1: number, y1: number, filled = false): { x: number; y: number }[] {
+  const cells: { x: number; y: number }[] = [];
+  const minX = Math.min(x0, x1);
+  const maxX = Math.max(x0, x1);
+  const minY = Math.min(y0, y1);
+  const maxY = Math.max(y0, y1);
+
+  if (filled) {
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        cells.push({ x, y });
+      }
+    }
+  } else {
+    for (let x = minX; x <= maxX; x++) {
+      cells.push({ x, y: minY });
+      if (minY !== maxY) cells.push({ x, y: maxY });
+    }
+    for (let y = minY + 1; y < maxY; y++) {
+      cells.push({ x: minX, y });
+      if (minX !== maxX) cells.push({ x: maxX, y });
+    }
+  }
+  return cells;
+}
+
 export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   gridData,
   palette,
@@ -88,6 +122,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   onRedo,
   onBeforePencilStroke,
   onInspectSourceImage,
+  onSelectColor,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -112,8 +147,21 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     startPan: { x: number; y: number };
   } | null>(null);
   
-  // Active tool
-  const [tool, setTool] = useState<CanvasTool>('pan');
+  // Active tool & Studio capabilities
+  const [tool, setToolState] = useState<CanvasTool>('pan');
+  const lastToolRef = useRef<CanvasTool>('pencil');
+
+  const setTool = useCallback((newTool: CanvasTool) => {
+    if (tool !== 'eyedropper') {
+      lastToolRef.current = tool;
+    }
+    setToolState(newTool);
+  }, [tool]);
+
+  const [isMirrorMode, setIsMirrorMode] = useState<boolean>(false);
+  const [previewCells, setPreviewCells] = useState<{ x: number; y: number }[] | null>(null);
+  const dragShapeStartRef = useRef<{ x: number; y: number } | null>(null);
+
   const [isInteracting, setIsInteracting] = useState<boolean>(false);
   const [hoverCoord, setHoverCoord] = useState<{ x: number; y: number } | null>(null);
 
@@ -583,11 +631,61 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     ctx.lineTo(0, midY);
     ctx.stroke();
 
+    // Vertical Symmetry / Mirror Line
+    if (isMirrorMode && gridWidth > 1) {
+      const mirrorX = (gridWidth / 2) * cellSize;
+      ctx.save();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = Math.max(1.5, 2 / zoom);
+      ctx.setLineDash([6 / zoom, 4 / zoom]);
+      ctx.beginPath();
+      ctx.moveTo(mirrorX, 0);
+      ctx.lineTo(mirrorX, totalH);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Live shape preview overlay (Line and Rectangle tools)
+    if (previewCells && previewCells.length > 0) {
+      const activeColor = palette[activeColorIndex];
+      const previewFill = activeColor ? activeColor.hex : '#ffffff';
+      ctx.save();
+      ctx.fillStyle = previewFill;
+      ctx.globalAlpha = 0.6;
+      for (const c of previewCells) {
+        if (c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight) {
+          ctx.fillRect(c.x * cellSize, c.y * cellSize, cellSize, cellSize);
+        }
+      }
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.globalAlpha = 0.9;
+      for (const c of previewCells) {
+        if (c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight) {
+          ctx.strokeRect(c.x * cellSize, c.y * cellSize, cellSize, cellSize);
+        }
+      }
+      ctx.restore();
+    }
+
     // Hover box indicator
     if (hoverCoord && hoverCoord.x >= 0 && hoverCoord.x < gridWidth && hoverCoord.y >= 0 && hoverCoord.y < gridHeight) {
-      ctx.strokeStyle = '#2563eb';
+      ctx.strokeStyle = tool === 'eyedropper' ? '#a855f7' : tool === 'eraser' ? '#f43f5e' : '#2563eb';
       ctx.lineWidth = 2 / zoom;
       ctx.strokeRect(hoverCoord.x * cellSize, hoverCoord.y * cellSize, cellSize, cellSize);
+
+      // If mirror mode is active and drawing/erasing, also draw ghost hover box on mirror cell
+      if (isMirrorMode && ['pencil', 'eraser', 'line', 'rectangle'].includes(tool)) {
+        const mirrorX = gridWidth - 1 - hoverCoord.x;
+        if (mirrorX !== hoverCoord.x) {
+          ctx.save();
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.5 / zoom;
+          ctx.setLineDash([3 / zoom, 3 / zoom]);
+          ctx.strokeRect(mirrorX * cellSize, hoverCoord.y * cellSize, cellSize, cellSize);
+          ctx.restore();
+        }
+      }
     }
 
       ctx.restore();
@@ -607,6 +705,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     gridWidth,
     gridHeight,
     baseCellSize,
+    isMirrorMode,
+    previewCells,
+    activeColorIndex,
+    tool,
   ]);
 
   // Coordinate conversion helper from pointer/mouse event to cell [x, y]
@@ -627,12 +729,72 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     return null;
   };
 
+  // Studio Flood Fill (BFS 4-way area fill)
+  const handleFloodFill = useCallback((startX: number, startY: number, fillIndex: number) => {
+    if (startY < 0 || startY >= gridHeight || startX < 0 || startX >= gridWidth) return;
+    const targetColor = gridData[startY][startX];
+    if (targetColor === fillIndex) return;
+
+    onBeforePencilStroke?.();
+
+    const visited = new Uint8Array(gridWidth * gridHeight);
+    const queue: [number, number][] = [[startX, startY]];
+    visited[startY * gridWidth + startX] = 1;
+
+    // If mirror mode is active, also seed mirror start cell if matching
+    if (isMirrorMode) {
+      const mirrorStartX = gridWidth - 1 - startX;
+      if (gridData[startY]?.[mirrorStartX] === targetColor) {
+        const mIdx = startY * gridWidth + mirrorStartX;
+        if (!visited[mIdx]) {
+          visited[mIdx] = 1;
+          queue.push([mirrorStartX, startY]);
+        }
+      }
+    }
+
+    const updates: { x: number; y: number; colorIndex: number }[] = [];
+
+    while (queue.length > 0) {
+      const [cx, cy] = queue.shift()!;
+      updates.push({ x: cx, y: cy, colorIndex: fillIndex });
+
+      const neighbors: [number, number][] = [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1],
+      ];
+
+      for (const [nx, ny] of neighbors) {
+        if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
+          const idx = ny * gridWidth + nx;
+          if (!visited[idx] && gridData[ny][nx] === targetColor) {
+            visited[idx] = 1;
+            queue.push([nx, ny]);
+          }
+        }
+      }
+    }
+
+    if (updates.length > 0) {
+      audioFeedback.playStitchSound(fillIndex !== -1);
+      if (onBatchPaintCells) {
+        onBatchPaintCells(updates);
+      } else {
+        for (const u of updates) {
+          onPaintCell(u.x, u.y, fillIndex);
+        }
+      }
+    }
+  }, [gridData, gridWidth, gridHeight, isMirrorMode, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
+
   // Handle Pointer Events (Mouse, Touch, and Apple Pencil/Stylus)
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // If two fingers are actively pinching, let pinch handler take precedence
     if (pinchStateRef.current) return;
 
-    if (e.button === 1 || tool === 'pan' || e.shiftKey) {
+    if (e.button === 1 || tool === 'pan' || (e.shiftKey && tool !== 'rectangle')) {
       // Middle click or Pan tool
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -670,11 +832,57 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     } else if (tool === 'pencil') {
       onBeforePencilStroke?.();
       lastPaintedCellRef.current = cell;
-      if (onBatchPaintCells) {
-        onBatchPaintCells([{ x: cell.x, y: cell.y, colorIndex: activeColorIndex }]);
-      } else {
-        onPaintCell(cell.x, cell.y, activeColorIndex);
+      audioFeedback.playStitchSound(true);
+
+      const updates = [{ x: cell.x, y: cell.y, colorIndex: activeColorIndex }];
+      if (isMirrorMode) {
+        const mirrorX = gridWidth - 1 - cell.x;
+        if (mirrorX !== cell.x) {
+          updates.push({ x: mirrorX, y: cell.y, colorIndex: activeColorIndex });
+        }
       }
+
+      if (onBatchPaintCells) {
+        onBatchPaintCells(updates);
+      } else {
+        for (const u of updates) onPaintCell(u.x, u.y, u.colorIndex);
+      }
+    } else if (tool === 'eraser') {
+      onBeforePencilStroke?.();
+      lastPaintedCellRef.current = cell;
+      audioFeedback.playStitchSound(false);
+
+      const updates = [{ x: cell.x, y: cell.y, colorIndex: -1 }];
+      if (isMirrorMode) {
+        const mirrorX = gridWidth - 1 - cell.x;
+        if (mirrorX !== cell.x) {
+          updates.push({ x: mirrorX, y: cell.y, colorIndex: -1 });
+        }
+      }
+
+      if (onBatchPaintCells) {
+        onBatchPaintCells(updates);
+      } else {
+        for (const u of updates) onPaintCell(u.x, u.y, -1);
+      }
+    } else if (tool === 'bucket') {
+      handleFloodFill(cell.x, cell.y, activeColorIndex);
+    } else if (tool === 'eyedropper') {
+      const colorIdx = gridData[cell.y]?.[cell.x];
+      if (colorIdx !== undefined && colorIdx >= 0 && colorIdx < palette.length) {
+        onSelectColor?.(colorIdx);
+        audioFeedback.playStitchSound(true);
+        // Return to previous drawing tool for immediate painting
+        setTool(lastToolRef.current === 'eyedropper' ? 'pencil' : lastToolRef.current);
+      }
+    } else if (tool === 'line' || tool === 'rectangle') {
+      dragShapeStartRef.current = cell;
+      let initialCells = [cell];
+      if (isMirrorMode) {
+        const mX = gridWidth - 1 - cell.x;
+        if (mX !== cell.x) initialCells.push({ x: mX, y: cell.y });
+      }
+      setPreviewCells(initialCells);
     }
   };
 
@@ -722,43 +930,132 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             }
           }
         }
-      } else if (tool === 'pencil') {
+      } else if (tool === 'pencil' || tool === 'eraser') {
+        const targetColor = tool === 'pencil' ? activeColorIndex : -1;
         if (lastPaintedCellRef.current) {
           if (cell.x !== lastPaintedCellRef.current.x || cell.y !== lastPaintedCellRef.current.y) {
             const lineCells = getLineCells(lastPaintedCellRef.current.x, lastPaintedCellRef.current.y, cell.x, cell.y);
             lastPaintedCellRef.current = cell;
-            const updates = lineCells
-              .filter((c) => c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight)
-              .filter((c) => gridData[c.y]?.[c.x] !== activeColorIndex)
-              .map((c) => ({ x: c.x, y: c.y, colorIndex: activeColorIndex }));
+
+            const updates: { x: number; y: number; colorIndex: number }[] = [];
+            for (const c of lineCells) {
+              if (c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight) {
+                if (gridData[c.y]?.[c.x] !== targetColor) {
+                  updates.push({ x: c.x, y: c.y, colorIndex: targetColor });
+                }
+                if (isMirrorMode) {
+                  const mX = gridWidth - 1 - c.x;
+                  if (mX >= 0 && mX < gridWidth && gridData[c.y]?.[mX] !== targetColor) {
+                    updates.push({ x: mX, y: c.y, colorIndex: targetColor });
+                  }
+                }
+              }
+            }
 
             if (updates.length > 0) {
               if (onBatchPaintCells) {
                 onBatchPaintCells(updates);
               } else {
                 for (const u of updates) {
-                  onPaintCell(u.x, u.y, activeColorIndex);
+                  onPaintCell(u.x, u.y, targetColor);
                 }
               }
             }
           }
+        }
+      } else if (tool === 'line') {
+        if (dragShapeStartRef.current) {
+          const start = dragShapeStartRef.current;
+          let line = getLineCells(start.x, start.y, cell.x, cell.y);
+          if (isMirrorMode) {
+            const mStart = { x: gridWidth - 1 - start.x, y: start.y };
+            const mEnd = { x: gridWidth - 1 - cell.x, y: cell.y };
+            line = [...line, ...getLineCells(mStart.x, mStart.y, mEnd.x, mEnd.y)];
+          }
+          setPreviewCells(line);
+        }
+      } else if (tool === 'rectangle') {
+        if (dragShapeStartRef.current) {
+          const start = dragShapeStartRef.current;
+          const filled = e.shiftKey;
+          let rect = getRectCells(start.x, start.y, cell.x, cell.y, filled);
+          if (isMirrorMode) {
+            const mStart = { x: gridWidth - 1 - start.x, y: start.y };
+            const mEnd = { x: gridWidth - 1 - cell.x, y: cell.y };
+            rect = [...rect, ...getRectCells(mStart.x, mStart.y, mEnd.x, mEnd.y, filled)];
+          }
+          setPreviewCells(rect);
         }
       }
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if ((tool === 'line' || tool === 'rectangle') && previewCells && previewCells.length > 0) {
+      onBeforePencilStroke?.();
+      const updates = previewCells
+        .filter((c) => c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight)
+        .map((c) => ({ x: c.x, y: c.y, colorIndex: activeColorIndex }));
+
+      if (updates.length > 0) {
+        audioFeedback.playStitchSound(true);
+        if (onBatchPaintCells) {
+          onBatchPaintCells(updates);
+        } else {
+          for (const u of updates) {
+            onPaintCell(u.x, u.y, activeColorIndex);
+          }
+        }
+      }
+    }
+
     setIsDragging(false);
     setIsInteracting(false);
     dragTrackModeRef.current = null;
     lastTrackedCellRef.current = null;
     lastPaintedCellRef.current = null;
+    dragShapeStartRef.current = null;
+    setPreviewCells(null);
+
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       // Ignore
     }
   };
+
+  // Keyboard Shortcuts for Studio Drawing Tools
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'b') {
+        setTool('pencil');
+      } else if (key === 'e') {
+        setTool('eraser');
+      } else if (key === 'g') {
+        setTool('bucket');
+      } else if (key === 'i') {
+        setTool('eyedropper');
+      } else if (key === 'l') {
+        setTool('line');
+      } else if (key === 'u') {
+        setTool('rectangle');
+      } else if (key === 'm') {
+        setIsMirrorMode((prev) => !prev);
+      } else if (key === 't') {
+        setTool('tracker');
+      } else if (key === 'h' || key === ' ') {
+        setTool('pan');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setTool]);
 
   // Native non-passive Wheel & Touch Pinch listener (persistent across zoom renders)
   useEffect(() => {
@@ -973,14 +1270,14 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
       {/* Floating Canvas Dock (Bottom-Center Ergonomic Bar) */}
       <div className="absolute bottom-18 lg:bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 sm:gap-1.5 bg-slate-950/90 backdrop-blur-xl p-1.5 rounded-2xl border border-slate-700/80 shadow-2xl max-w-[calc(100vw-2rem)] overflow-x-auto pointer-events-auto">
-        {/* Tool Segment: Pan | Tracker | Pencil */}
+        {/* Navigation & Tracking Mode */}
         <div className="flex items-center bg-slate-900/90 rounded-xl p-0.5 border border-slate-800/80 shrink-0">
           <button
             onClick={() => setTool('pan')}
             className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
               tool === 'pan' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Pan & Move Canvas"
+            title="Pan & Move Canvas (H / Space)"
           >
             <Move className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Move</span>
@@ -991,21 +1288,95 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
               tool === 'tracker' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
             }`}
-            title="Tracker: Tap or drag across beads/stitches to mark them done"
+            title="Tracker (T): Tap or drag across beads/stitches to mark them done"
           >
             <CheckSquare className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Track</span>
           </button>
+        </div>
 
+        <div className="w-[1px] h-4 bg-slate-800 shrink-0" />
+
+        {/* Pixel Art Studio Drawing Tools */}
+        <div className="flex items-center bg-slate-900/90 rounded-xl p-0.5 border border-slate-800/80 shrink-0 gap-0.5">
           <button
             onClick={() => setTool('pencil')}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              tool === 'pencil' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              tool === 'pencil' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
-            title="Draw: Tap or drag to paint with active color"
+            title="Pencil (B): Draw pixels with active color"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Draw</span>
+            <span className="hidden md:inline">Draw</span>
+          </button>
+
+          <button
+            onClick={() => setTool('eraser')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              tool === 'eraser' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title="Eraser (E): Erase pixels to transparent"
+          >
+            <Eraser className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Erase</span>
+          </button>
+
+          <button
+            onClick={() => setTool('bucket')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              tool === 'bucket' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title="Paint Bucket (G): Flood fill connected color area"
+          >
+            <PaintBucket className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Fill</span>
+          </button>
+
+          <button
+            onClick={() => setTool('eyedropper')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              tool === 'eyedropper' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title="Eyedropper (I): Click canvas pixel to pick its color"
+          >
+            <Pipette className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Pick</span>
+          </button>
+
+          <button
+            onClick={() => setTool('line')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              tool === 'line' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title="Line Tool (L): Drag to draw straight lines"
+          >
+            <Slash className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Line</span>
+          </button>
+
+          <button
+            onClick={() => setTool('rectangle')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              tool === 'rectangle' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title="Rectangle (U): Drag to draw boxes (Hold Shift for filled)"
+          >
+            <Square className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Box</span>
+          </button>
+
+          {/* Symmetry / Mirror Drawing Mode */}
+          <button
+            onClick={() => setIsMirrorMode((prev) => !prev)}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              isMirrorMode
+                ? 'bg-sky-500 text-white shadow-md ring-1 ring-sky-300'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+            title={isMirrorMode ? 'Symmetry Mirror: ON (Press M to toggle)' : 'Symmetry Mirror: OFF (Press M to toggle)'}
+          >
+            <FlipHorizontal2 className="w-3.5 h-3.5" />
+            <span className="hidden lg:inline">Mirror</span>
           </button>
         </div>
 
@@ -1108,9 +1479,20 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         onPointerLeave={handlePointerUp}
         className={`w-full h-full block touch-none ${
           tool === 'pan' ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') :
-          tool === 'tracker' ? 'cursor-cell' : 'cursor-crosshair'
+          tool === 'tracker' ? 'cursor-cell' :
+          tool === 'eyedropper' ? 'cursor-crosshair' :
+          tool === 'eraser' ? 'cursor-pointer' :
+          'cursor-crosshair'
         }`}
       />
+
+      {/* Mirror Symmetry Badge */}
+      {isMirrorMode && (
+        <div className="absolute top-12 left-3 sm:top-14 sm:left-4 z-20 bg-sky-950/80 border border-sky-500/50 backdrop-blur-md px-2.5 py-1 rounded-lg text-[11px] font-semibold text-sky-200 flex items-center gap-1.5 shadow-lg pointer-events-none animate-in fade-in duration-100">
+          <FlipHorizontal2 className="w-3 h-3 text-sky-400" />
+          <span>Mirror Symmetry ON</span>
+        </div>
+      )}
 
       {/* Coordinate & Cell Info Pill */}
       {hoverCoord && (

@@ -38,7 +38,8 @@ import {
   ChevronRight,
   Ruler,
   Crop,
-  FileText
+  FileText,
+  Paintbrush
 } from 'lucide-react';
 
 interface ControlsPanelProps {
@@ -51,6 +52,7 @@ interface ControlsPanelProps {
   onOpenCropModal?: () => void;
   onInspectCurrentPhoto?: () => void;
   onOpenStarterGallery?: () => void;
+  onOpenNewCanvasModal?: () => void;
   onOpenWrittenInstructions?: () => void;
   onClose?: () => void;
   aiHistory?: AiHistoryItem[];
@@ -72,6 +74,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onOpenCropModal,
   onInspectCurrentPhoto,
   onOpenStarterGallery,
+  onOpenNewCanvasModal,
   onOpenWrittenInstructions,
   onClose,
   aiHistory = [],
@@ -163,14 +166,14 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
           </div>
         </div>
 
-        {/* Action Button Row: Upload / Crop / AI Draw / Starters */}
-        <div className="grid grid-cols-4 gap-1 mb-2.5">
+        {/* Action Button Row: Upload / Crop / Draw / AI Draw / Starters */}
+        <div className="grid grid-cols-5 gap-1 mb-2.5">
           <label 
-            className="cursor-pointer py-1.5 px-1 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition text-center"
+            className="cursor-pointer py-1.5 px-0.5 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition text-center"
             title="Upload image (or press Ctrl+V anywhere to paste)"
           >
-            <Upload className="w-3 h-3" />
-            <span>Upload</span>
+            <Upload className="w-3 h-3 shrink-0" />
+            <span className="truncate">Upload</span>
             <input
               type="file"
               accept="image/*"
@@ -183,31 +186,45 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             <button
               type="button"
               onClick={onOpenCropModal}
-              className="py-1.5 px-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
+              className="py-1.5 px-0.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
               title="Cut & crop the image"
             >
-              <Crop className="w-3 h-3" />
-              <span>Crop</span>
+              <Crop className="w-3 h-3 shrink-0" />
+              <span className="truncate">Crop</span>
+            </button>
+          )}
+
+          {onOpenNewCanvasModal && (
+            <button
+              type="button"
+              onClick={onOpenNewCanvasModal}
+              className="py-1.5 px-0.5 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
+              title="Create a new blank canvas to draw freely"
+            >
+              <Paintbrush className="w-3 h-3 shrink-0" />
+              <span className="truncate">Draw</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={onOpenAiModal}
-            className="py-1.5 px-1 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
+            className="py-1.5 px-0.5 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
+            title="Ask AI to generate a craft motif"
           >
-            <Wand2 className="w-3 h-3" />
-            <span>AI Draw</span>
+            <Wand2 className="w-3 h-3 shrink-0" />
+            <span className="truncate">AI</span>
           </button>
 
           {onOpenStarterGallery && (
             <button
               type="button"
               onClick={onOpenStarterGallery}
-              className="py-1.5 px-1 bg-pink-600/15 hover:bg-pink-600/25 border border-pink-500/30 text-pink-300 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
+              className="py-1.5 px-0.5 bg-pink-600/15 hover:bg-pink-600/25 border border-pink-500/30 text-pink-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
+              title="Browse pre-made starter patterns"
             >
-              <Sparkles className="w-3 h-3" />
-              <span>Starters</span>
+              <Sparkles className="w-3 h-3 shrink-0" />
+              <span className="truncate">Starters</span>
             </button>
           )}
         </div>

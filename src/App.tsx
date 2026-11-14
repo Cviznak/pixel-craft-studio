@@ -25,8 +25,15 @@ import { StarterGalleryModal } from './components/StarterGalleryModal';
 import { ImageCropModal } from './components/ImageCropModal';
 import { ImageHistoryModal } from './components/ImageHistoryModal';
 import { CrochetWrittenInstructionsModal } from './components/CrochetWrittenInstructionsModal';
+import { NewCanvasModal } from './components/NewCanvasModal';
+import { 
+  createPaletteFromPreset, 
+  createBlankCanvasGrid, 
+  generateCanvasDataUrl 
+} from './utils/pixelStudioPalettes';
+import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
-import { SlidersHorizontal, Sparkles, Wand2, Palette } from 'lucide-react';
+import { SlidersHorizontal, Sparkles, Wand2, Palette, Paintbrush } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -84,6 +91,7 @@ export default function App() {
   const [isCropModalOpen, setIsCropModalOpen] = useState<boolean>(false);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
+  const [isNewCanvasModalOpen, setIsNewCanvasModalOpen] = useState<boolean>(false);
   const [isZenMode, setIsZenMode] = useState<boolean>(false);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState<boolean>(true);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
@@ -676,6 +684,103 @@ export default function App() {
     }
   };
 
+  // Create New Blank Canvas (Pixel Art Studio)
+  const handleCreateBlankCanvas = useCallback(({
+    width,
+    height,
+    background,
+    palettePresetId,
+    craftType,
+  }: {
+    width: number;
+    height: number;
+    background: 'transparent' | 'white' | 'dark';
+    palettePresetId: string;
+    craftType: any;
+  }) => {
+    // 1. Get or create palette
+    let startingPalette: PaletteColor[];
+    if (palettePresetId === 'current' && palette.length > 0) {
+      startingPalette = [...palette];
+    } else {
+      startingPalette = createPaletteFromPreset(palettePresetId);
+    }
+
+    // 2. Generate blank grid
+    const { gridData: newGrid, palette: updatedPalette, initialActiveColor } = createBlankCanvasGrid(
+      width,
+      height,
+      background,
+      startingPalette
+    );
+
+    // 3. Generate a 1:1 preview data URL for sourceImageDataUrl
+    const previewDataUrl = generateCanvasDataUrl(newGrid, updatedPalette);
+
+    const newConfig: GridConfig = {
+      ...latestConfigRef.current,
+      width,
+      height,
+      craftType,
+      craftStandard: palettePresetId === 'perler' ? 'perler' : palettePresetId === 'dmc' ? 'dmc' : 'custom',
+    };
+
+    latestConfigRef.current = newConfig;
+    setConfig(newConfig);
+    setGridData(newGrid);
+    setPalette(updatedPalette);
+    paletteRef.current = updatedPalette;
+    setActiveColorIndex(initialActiveColor);
+    setCompletedCells({});
+    setSpotlightColorId(null);
+    setGridHistory([]);
+    setGridFuture([]);
+
+    if (previewDataUrl) {
+      setSourceImageDataUrl(previewDataUrl);
+      const img = new Image();
+      img.onload = () => {
+        setSourceImage(img);
+        sourceImageRef.current = img;
+        setAspectRatio(width / height);
+      };
+      img.src = previewDataUrl;
+    }
+
+    showToast(`🎨 New ${width}×${height} canvas ready to draw!`);
+  }, [palette, showToast]);
+
+  // Add custom color to palette while drawing
+  const handleAddCustomColor = useCallback((hex: string) => {
+    const clean = hex.replace('#', '').toUpperCase();
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+
+    const newColor: PaletteColor = {
+      id: `palette-custom-${Date.now().toString(36)}`,
+      hex: `#${clean}`,
+      r,
+      g,
+      b,
+      symbol: getCraftSymbol(palette.length),
+      count: 0,
+      percentage: 0,
+      name: `Custom #${clean}`,
+      code: `#${clean}`,
+      brand: 'Custom',
+      isLocked: false,
+    };
+
+    setPalette((prev) => {
+      const next = [...prev, newColor];
+      paletteRef.current = next;
+      return next;
+    });
+    setActiveColorIndex(palette.length);
+    showToast(`✨ Added color #${clean} to palette!`);
+  }, [palette.length, showToast]);
+
   // Clean confetti colors (<1% stitches) into their nearest CIELAB neighbor
   const handleCleanConfetti = useCallback(() => {
     if (gridData.length === 0 || palette.length <= 1) return;
@@ -981,6 +1086,7 @@ export default function App() {
         onOpenExportModal={() => setIsExportOpen(true)}
         onOpenAiModal={() => setIsAiModalOpen(true)}
         onOpenStarterGallery={() => setIsStarterGalleryOpen(true)}
+        onOpenNewCanvasModal={() => setIsNewCanvasModalOpen(true)}
         isZenMode={isZenMode}
         onToggleZenMode={() => setIsZenMode((prev) => !prev)}
         onResetProgress={handleResetProgress}
@@ -1030,6 +1136,10 @@ export default function App() {
                 setIsAiModalOpen(true);
               }}
               onOpenCropModal={handleOpenCropModal}
+              onOpenNewCanvasModal={() => {
+                setIsMobileControlsOpen(false);
+                setIsNewCanvasModalOpen(true);
+              }}
               onInspectCurrentPhoto={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
               onOpenStarterGallery={() => {
                 setIsMobileControlsOpen(false);
@@ -1075,6 +1185,7 @@ export default function App() {
           onRedo={handleRedo}
           onBeforePencilStroke={handleBeforePencilStroke}
           onInspectSourceImage={() => handleOpenInspect(sourceImageDataUrl || sourceImage?.src || '', 'Source Picture')}
+          onSelectColor={(idx) => setActiveColorIndex(idx)}
         />
 
         {/* Right Palette Legend (Desktop Sidebar & Mobile Drawer) */}
@@ -1108,6 +1219,7 @@ export default function App() {
               onToggleLockColor={handleToggleLockColor}
               onCleanConfetti={handleCleanConfetti}
               onClose={() => setIsMobilePaletteOpen(false)}
+              onAddColor={handleAddCustomColor}
             />
           </div>
         )}
@@ -1143,6 +1255,14 @@ export default function App() {
           >
             <Sparkles className="w-4 h-4" />
             <span className="text-[10px] font-semibold">Starters</span>
+          </button>
+
+          <button
+            onClick={() => setIsNewCanvasModalOpen(true)}
+            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-amber-400 hover:text-amber-300 transition"
+          >
+            <Paintbrush className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">Draw</span>
           </button>
 
           <button
@@ -1277,6 +1397,15 @@ export default function App() {
       <HelpModal
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
+      />
+
+      {/* New Pixel Canvas Modal */}
+      <NewCanvasModal
+        isOpen={isNewCanvasModalOpen}
+        onClose={() => setIsNewCanvasModalOpen(false)}
+        currentPalette={palette}
+        currentCraftType={config.craftType}
+        onCreateCanvas={handleCreateBlankCanvas}
       />
     </div>
   );
