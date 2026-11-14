@@ -244,7 +244,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
               <div
                 key={color.id}
                 onClick={() => onSelectColor(originalIndex)}
-                className={`group flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer border ${
+                className={`group flex flex-col gap-1.5 p-2 rounded-xl transition-all cursor-pointer border ${
                   isSelected
                     ? 'bg-slate-800/95 border-indigo-500/80 shadow-md ring-1 ring-indigo-500/30'
                     : isSpotlit
@@ -252,27 +252,27 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
                     : 'bg-slate-950/40 border-slate-800/60 hover:bg-slate-800/60 hover:border-slate-700/80'
                 }`}
               >
-                {/* Left: Swatch & Symbol */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="relative w-8 h-8 rounded-lg shadow-sm flex items-center justify-center font-bold text-sm shrink-0 border border-white/20 select-none"
-                    style={{
-                      backgroundColor: color.hex,
-                      color: getContrastingTextColor(color.r, color.g, color.b),
-                    }}
-                  >
-                    <span>{color.symbol}</span>
-                    <input
-                      type="color"
-                      value={color.hex}
-                      onChange={(e) => onUpdateColorHex(originalIndex, e.target.value)}
-                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                      title="Click to tweak this color"
-                    />
-                  </div>
+                {/* Top Row: Swatch, Symbol, Code & Count / % */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className="relative w-7 h-7 rounded-lg shadow-sm flex items-center justify-center font-bold text-xs shrink-0 border border-white/20 select-none"
+                      style={{
+                        backgroundColor: color.hex,
+                        color: getContrastingTextColor(color.r, color.g, color.b),
+                      }}
+                    >
+                      <span>{color.symbol}</span>
+                      <input
+                        type="color"
+                        value={color.hex}
+                        onChange={(e) => onUpdateColorHex(originalIndex, e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                        title="Click to tweak this color"
+                      />
+                    </div>
 
-                  <div className="min-w-0 flex flex-col">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-xs font-bold text-slate-100 truncate">
                         {color.code || color.hex}
                       </span>
@@ -280,16 +280,11 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
                         <Lock className="w-3 h-3 text-amber-400 shrink-0" />
                       )}
                     </div>
-                    <span className="text-[11px] text-slate-400 truncate">
-                      {color.name || 'Custom Color'}
-                    </span>
                   </div>
-                </div>
 
-                {/* Right: Quantities & Quick Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="text-right">
-                    <div className="text-xs font-mono font-bold text-slate-200">
+                  {/* Quantities & Percentage */}
+                  <div className="text-right shrink-0 flex items-center gap-1.5 font-mono">
+                    <span className="text-xs font-bold text-slate-200">
                       {done > 0 ? (
                         <span className={isColorComplete ? 'text-emerald-400' : 'text-slate-300'}>
                           {done}/{total}
@@ -297,88 +292,100 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
                       ) : (
                         <span>{total}</span>
                       )}
-                    </div>
-                    <div className="text-[10px] text-slate-500 flex items-center justify-end gap-1 font-mono">
-                      <span>{color.percentage}%</span>
-                      {craftType === 'cross-stitch' && (
-                        <span className="text-[9px] text-indigo-400 font-sans" title="Estimated DMC 8m skeins needed">
-                          • {total > 1800 ? `${(total / 1800).toFixed(1)} sk` : '1 sk'}
-                        </span>
-                      )}
-                      {craftType === 'perler' && (
-                        <span className="text-[9px] text-amber-400 font-sans" title="Estimated 1,000-bead packs needed">
-                          • {Math.max(1, Math.ceil(total / 1000))} pk
-                        </span>
-                      )}
-                      {craftType === 'crochet' && (
-                        <span className="text-[9px] text-pink-400 font-sans" title="Estimated yarn yardage & 100g skeins">
-                          • ~{Math.round(total * 0.9)} yd ({Math.max(1, Math.ceil((total * 0.9) / 200))} sk)
-                        </span>
-                      )}
-                    </div>
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {color.percentage}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Full Name & Action Buttons */}
+                <div className="flex items-center justify-between gap-1.5 pt-1 border-t border-slate-800/50">
+                  <div className="min-w-0 flex items-center gap-1 text-[11px] text-slate-400">
+                    <span className="truncate" title={color.name || 'Custom Color'}>
+                      {color.name || 'Custom Color'}
+                    </span>
+                    {craftType === 'cross-stitch' && (
+                      <span className="text-[9px] text-indigo-400 font-sans shrink-0" title="Estimated DMC 8m skeins needed">
+                        • {total > 1800 ? `${(total / 1800).toFixed(1)} sk` : '1 sk'}
+                      </span>
+                    )}
+                    {craftType === 'perler' && (
+                      <span className="text-[9px] text-amber-400 font-sans shrink-0" title="Estimated 1,000-bead packs needed">
+                        • {Math.max(1, Math.ceil(total / 1000))} pk
+                      </span>
+                    )}
+                    {craftType === 'crochet' && (
+                      <span className="text-[9px] text-pink-400 font-sans shrink-0" title="Estimated yarn yardage & skeins">
+                        • ~{Math.round(total * 0.9)} yd
+                      </span>
+                    )}
                   </div>
 
-                  {/* Amazon Shopping Button */}
-                  <a
-                    href={getAmazonSearchUrl(color)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="p-1 rounded-md text-slate-500 hover:text-amber-400 hover:bg-slate-700/60 transition"
-                    title={
-                      craftType === 'crochet'
-                        ? `Find ${color.name || ''} crochet yarn on Amazon`
-                        : `Find ${color.name || color.code || 'supplies'} on Amazon`
-                    }
-                  >
-                    <ShoppingCart className="w-3.5 h-3.5" />
-                  </a>
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    {/* Amazon Shopping Button */}
+                    <a
+                      href={getAmazonSearchUrl(color)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1 rounded-md text-slate-500 hover:text-amber-400 hover:bg-slate-700/60 transition"
+                      title={
+                        craftType === 'crochet'
+                          ? `Find ${color.name || ''} crochet yarn on Amazon`
+                          : `Find ${color.name || color.code || 'supplies'} on Amazon`
+                      }
+                    >
+                      <ShoppingCart className="w-3.5 h-3.5" />
+                    </a>
 
-                  {/* Lock Color Toggle */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleLockColor(originalIndex);
-                    }}
-                    className={`p-1 rounded-md transition ${
-                      color.isLocked
-                        ? 'text-amber-400 bg-amber-500/20'
-                        : 'text-slate-600 hover:text-slate-300 hover:bg-slate-700/60'
-                    }`}
-                    title={color.isLocked ? 'Unlock color' : 'Lock color'}
-                  >
-                    {color.isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                  </button>
-
-                  {/* Swap / Recolor Color Button */}
-                  {(onSwapColor || onSwapWithNewColor) && (
+                    {/* Lock Color Toggle */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSwapSourceIndex(originalIndex);
+                        onToggleLockColor(originalIndex);
                       }}
-                      className="p-1 rounded-md text-slate-500 hover:text-pink-400 hover:bg-slate-700/60 transition"
-                      title={`Swap / Replace all ${color.code || color.hex} stitches across canvas`}
+                      className={`p-1 rounded-md transition ${
+                        color.isLocked
+                          ? 'text-amber-400 bg-amber-500/20'
+                          : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/60'
+                      }`}
+                      title={color.isLocked ? 'Unlock color' : 'Lock color'}
                     >
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
+                      {color.isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                     </button>
-                  )}
 
-                  {/* Spotlight Isolation Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleSpotlight(color.id);
-                    }}
-                    className={`p-1 rounded-md transition ${
-                      isSpotlit
-                        ? 'text-amber-400 bg-amber-500/20'
-                        : 'text-slate-500 hover:text-amber-300 hover:bg-slate-700/60'
-                    }`}
-                    title={isSpotlit ? 'Clear spotlight' : 'Highlight only this color on canvas'}
-                  >
-                    {isSpotlit ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  </button>
+                    {/* Swap / Recolor Color Button */}
+                    {(onSwapColor || onSwapWithNewColor) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSwapSourceIndex(originalIndex);
+                        }}
+                        className="p-1 rounded-md text-slate-500 hover:text-pink-400 hover:bg-slate-700/60 transition"
+                        title={`Swap / Replace all ${color.code || color.hex} stitches across canvas`}
+                      >
+                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {/* Spotlight Isolation Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleSpotlight(color.id);
+                      }}
+                      className={`p-1 rounded-md transition ${
+                        isSpotlit
+                          ? 'text-amber-400 bg-amber-500/20'
+                          : 'text-slate-500 hover:text-amber-300 hover:bg-slate-700/60'
+                      }`}
+                      title={isSpotlit ? 'Clear spotlight' : 'Highlight only this color on canvas'}
+                    >
+                      {isSpotlit ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
             );

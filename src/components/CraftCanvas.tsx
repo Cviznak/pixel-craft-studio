@@ -1593,30 +1593,28 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         </div>
       )}
 
-      {/* Floating Canvas Dock (Bottom-Center Ergonomic Bar) */}
-      <div className="absolute bottom-18 lg:bottom-5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 sm:gap-1.5 bg-slate-950/90 backdrop-blur-xl p-1.5 rounded-2xl border border-slate-700/80 shadow-2xl max-w-[calc(100vw-2rem)] overflow-x-auto pointer-events-auto">
+      {/* Floating Canvas Dock (Bottom-Center Compact Ergonomic Bar) */}
+      <div className="absolute bottom-16 lg:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-slate-950/95 backdrop-blur-xl p-1 sm:p-1.5 rounded-2xl border border-slate-700/80 shadow-2xl max-w-[calc(100%-1rem)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-events-auto">
         {/* Navigation & Tracking Mode */}
-        <div className="flex items-center bg-slate-900/90 rounded-xl p-0.5 border border-slate-800/80 shrink-0">
+        <div className="flex items-center bg-slate-900/90 rounded-xl p-0.5 border border-slate-800/80 shrink-0 gap-0.5">
           <button
             onClick={() => setTool('pan')}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              tool === 'pan' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            className={`p-1.5 rounded-lg transition-all ${
+              tool === 'pan' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
             title="Pan & Move Canvas (H / Space)"
           >
             <Move className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Move</span>
           </button>
 
           <button
             onClick={() => setTool('tracker')}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              tool === 'tracker' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200'
+            className={`p-1.5 rounded-lg transition-all ${
+              tool === 'tracker' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
-            title="Tracker (T): Tap or drag across beads/stitches to mark them done"
+            title="Stitch Tracker (T): Tap or drag across beads/stitches to mark them done"
           >
             <CheckSquare className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Track</span>
           </button>
         </div>
 
@@ -1626,74 +1624,68 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         <div className="flex items-center bg-slate-900/90 rounded-xl p-0.5 border border-slate-800/80 shrink-0 gap-0.5">
           <button
             onClick={() => setTool('pencil')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               tool === 'pencil' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
             title="Pencil (B): Draw pixels with active color"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Draw</span>
           </button>
 
           <button
             onClick={() => setTool('eraser')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               tool === 'eraser' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
             title="Eraser (E): Erase pixels to transparent"
           >
             <Eraser className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Erase</span>
           </button>
 
           <button
             onClick={() => setTool('bucket')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               tool === 'bucket' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
             title="Paint Bucket (G): Flood fill connected color area"
           >
             <PaintBucket className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Fill</span>
           </button>
 
           <button
             onClick={() => setTool('eyedropper')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               tool === 'eyedropper' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
             title="Eyedropper (I): Click canvas pixel to pick its color"
           >
             <Pipette className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Pick</span>
           </button>
 
           <button
             onClick={() => setTool('line')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               tool === 'line' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
             title="Line Tool (L): Drag to draw straight lines"
           >
             <Slash className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Line</span>
           </button>
 
           <button
             onClick={() => setTool('rectangle')}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               tool === 'rectangle' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
             title="Rectangle (U): Drag to draw boxes (Hold Shift for filled)"
           >
             <Square className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Box</span>
           </button>
 
           {/* Symmetry / Mirror Drawing Mode */}
           <button
             onClick={() => setIsMirrorMode((prev) => !prev)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               isMirrorMode
                 ? 'bg-sky-500 text-white shadow-md ring-1 ring-sky-300'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1701,7 +1693,6 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             title={isMirrorMode ? 'Symmetry Mirror: ON (Press M to toggle)' : 'Symmetry Mirror: OFF (Press M to toggle)'}
           >
             <FlipHorizontal2 className="w-3.5 h-3.5" />
-            <span className="hidden lg:inline">Mirror</span>
           </button>
 
           {/* Transform & Auto-Center Popover Toggle */}
@@ -1711,7 +1702,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
                 setIsTransformOpen((prev) => !prev);
                 setIsShaderOpen(false);
               }}
-              className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`p-1.5 rounded-lg transition-all ${
                 isTransformOpen
                   ? 'bg-indigo-600 text-white shadow-md ring-1 ring-indigo-400'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1719,7 +1710,6 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
               title="Transform Canvas: Auto-Center, 1px Nudge, Flip, and Rotate"
             >
               <Move className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Transform</span>
             </button>
           )}
 
@@ -1729,7 +1719,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
               setIsShaderOpen((prev) => !prev);
               setIsTransformOpen(false);
             }}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all ${
+            className={`p-1.5 rounded-lg transition-all ${
               isShaderOpen || activeShader !== 'craft'
                 ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1737,9 +1727,6 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             title="Display Shaders: Retro CRT, Game Boy LCD, Woven Aida, Glossy Beads"
           >
             <Tv className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">
-              {activeShader === 'craft' ? 'Shader' : activeShader.toUpperCase()}
-            </span>
           </button>
         </div>
 
@@ -1781,7 +1768,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
           <button
             onClick={fitToScreen}
-            className="px-2 py-1 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition text-[11px] font-mono font-medium"
+            className="px-1.5 py-1 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition text-[11px] font-mono font-medium"
             title="Fit Canvas to Screen"
           >
             {Math.round(zoom * 100)}%

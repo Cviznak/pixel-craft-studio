@@ -199,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               key={item.id}
               onClick={() => onUpdateConfig({ craftType: item.id })}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`px-2 py-1 xl:px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 isActive
                   ? 'bg-indigo-600 text-white shadow-md'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -207,23 +207,23 @@ export const Header: React.FC<HeaderProps> = ({
               title={`Switch craft simulation to ${item.label}`}
             >
               <span className="text-xs">{item.icon}</span>
-              <span className="hidden md:inline">{item.label}</span>
+              <span className="hidden xl:inline">{item.label}</span>
             </button>
           );
         })}
       </div>
 
       {/* Right Actions & Utilities */}
-      <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className="flex items-center gap-1 sm:gap-1.5 xl:gap-2">
         {/* Starter Gallery Button */}
         {onOpenStarterGallery && (
           <button
             onClick={onOpenStarterGallery}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 transition"
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 transition"
             title="Browse pre-made starter craft patterns"
           >
             <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-            <span className="hidden md:inline">Starters</span>
+            <span className="hidden xl:inline">Starters</span>
           </button>
         )}
 
@@ -231,22 +231,22 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenNewCanvasModal && (
           <button
             onClick={onOpenNewCanvasModal}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition"
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition"
             title="Create a new blank canvas to draw freely"
           >
             <Paintbrush className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden md:inline">Draw</span>
+            <span className="hidden xl:inline">Draw</span>
           </button>
         )}
 
         {/* Ask AI Button */}
         <button
           onClick={onOpenAiModal}
-          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition"
+          className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition"
           title="Ask AI to generate a craft image from a prompt"
         >
           <Wand2 className="w-3.5 h-3.5 text-purple-400" />
-          <span className="hidden md:inline">Ask AI</span>
+          <span className="hidden xl:inline">Ask AI</span>
         </button>
 
         {/* Hidden Project JSON Input */}
@@ -377,7 +377,7 @@ export const Header: React.FC<HeaderProps> = ({
         {!isInstalled && (
           <button
             onClick={handleInstallClick}
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 transition"
+            className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 transition"
             title="Install Pixel Craft Studio on your computer or phone"
           >
             <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
@@ -389,21 +389,22 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenSocialCardModal && (
           <button
             onClick={onOpenSocialCardModal}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
+            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
             title="Create an aesthetic social card for Pinterest, TikTok & Instagram"
           >
             <Share2 className="w-3.5 h-3.5 text-rose-400" />
-            <span className="hidden md:inline">Share Card</span>
+            <span className="hidden xl:inline">Share</span>
           </button>
         )}
 
         {/* Primary Call to Action: Export & Print */}
         <button
           onClick={onOpenExportModal}
-          className="flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-600/25 transition active:scale-95 ml-1"
+          className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-600/25 transition active:scale-95 ml-1"
+          title="Export pattern as PDF, PNG, or JSON"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Export & Print</span>
+          <span>Export<span className="hidden lg:inline">&nbsp;& Print</span></span>
         </button>
       </div>
 
