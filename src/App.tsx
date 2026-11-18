@@ -41,7 +41,7 @@ import {
 } from './utils/pixelStudioPalettes';
 import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
-import { SlidersHorizontal, Sparkles, Wand2, Palette, Paintbrush } from 'lucide-react';
+import { SlidersHorizontal, Sparkles, Wand2, Palette, Paintbrush, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -230,6 +230,15 @@ export default function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         handleRedo();
+      } else if (e.key === '[') {
+        e.preventDefault();
+        setIsLeftPanelOpen((prev) => !prev);
+      } else if (e.key === ']') {
+        e.preventDefault();
+        setIsRightPanelOpen((prev) => !prev);
+      } else if (e.key === '\\') {
+        e.preventDefault();
+        setIsZenMode((prev) => !prev);
       }
     };
 
@@ -1330,8 +1339,21 @@ export default function App() {
               onToggleMyStashOnly={handleToggleMyStashOnly}
               aspectRatio={aspectRatio}
               hasTransparency={hasTransparency}
+              onToggleCollapse={() => setIsLeftPanelOpen(false)}
             />
           </div>
+        )}
+
+        {/* Sleek Edge Tab on Left Border (when left panel is closed) */}
+        {!isZenMode && !isLeftPanelOpen && (
+          <button
+            onClick={() => setIsLeftPanelOpen(true)}
+            className="hidden lg:flex absolute top-1/2 -translate-y-1/2 left-0 z-30 items-center gap-1 py-3 px-1.5 rounded-r-xl bg-slate-950/90 hover:bg-slate-900 text-slate-400 hover:text-white border-y border-r border-slate-700/80 shadow-2xl backdrop-blur-md text-[11px] font-semibold transition group"
+            title="Open settings & controls (or press [)"
+          >
+            <ChevronRight className="w-4 h-4 text-indigo-400 group-hover:translate-x-0.5 transition" />
+            <span className="[writing-mode:vertical-lr] tracking-wider uppercase text-[9px] font-bold text-slate-300">Controls</span>
+          </button>
         )}
 
         {/* Center Interactive Craft Canvas */}
@@ -1392,8 +1414,21 @@ export default function App() {
               onAddColor={handleAddCustomColor}
               onSwapColor={handleSwapColor}
               onSwapWithNewColor={handleSwapWithNewColor}
+              onToggleCollapse={() => setIsRightPanelOpen(false)}
             />
           </div>
+        )}
+
+        {/* Sleek Edge Tab on Right Border (when right panel is closed) */}
+        {!isZenMode && !isRightPanelOpen && (
+          <button
+            onClick={() => setIsRightPanelOpen(true)}
+            className="hidden lg:flex absolute top-1/2 -translate-y-1/2 right-0 z-30 items-center gap-1 py-3 px-1.5 rounded-l-xl bg-slate-950/90 hover:bg-slate-900 text-slate-400 hover:text-white border-y border-l border-slate-700/80 shadow-2xl backdrop-blur-md text-[11px] font-semibold transition group"
+            title="Open color palette & floss key (or press ])"
+          >
+            <ChevronLeft className="w-4 h-4 text-pink-400 group-hover:-translate-x-0.5 transition" />
+            <span className="[writing-mode:vertical-lr] tracking-wider uppercase text-[9px] font-bold text-slate-300">Palette</span>
+          </button>
         )}
 
         {/* Mobile & Tablet Bottom Navigation Bar */}
@@ -1493,13 +1528,14 @@ export default function App() {
         }}
       />
 
-      {/* Tapestry Crochet Written Row-by-Row Instructions Modal */}
+      {/* Tapestry Crochet & Alpha Knot Written Row-by-Row Instructions Modal */}
       <CrochetWrittenInstructionsModal
         isOpen={isWrittenInstructionsOpen}
         onClose={() => setIsWrittenInstructionsOpen(false)}
         gridData={gridData}
         palette={palette}
         projectName="Pixel Craft Pattern"
+        craftType={config.craftType}
       />
 
       {/* Starter Patterns & Inspiration Gallery Modal */}

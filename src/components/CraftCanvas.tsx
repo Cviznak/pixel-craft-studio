@@ -328,6 +328,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         // Natural Aida cloth oatmeal/cream
         ctx.fillStyle = '#faf8f5';
         ctx.fillRect(0, 0, totalW, totalH);
+      } else if (config.craftType === 'alpha') {
+        // Alpha macrame / knotting board backing
+        ctx.fillStyle = '#0b1120';
+        ctx.fillRect(0, 0, totalW, totalH);
       } else {
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(0, 0, totalW, totalH);
@@ -501,6 +505,43 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
           ctx.beginPath();
           ctx.arc(px + cellSize * 0.5, py + cellSize * 0.18, cellSize * 0.28, Math.PI, 0);
+          ctx.stroke();
+        } else if (config.craftType === 'alpha') {
+          // Authentic Alpha Friendship Bracelet Knot Texture (Horizontal Double Half-Hitch Knot)
+          const padY = cellSize * 0.08;
+          const padX = cellSize * 0.04;
+          const knotW = cellSize - padX * 2;
+          const knotH = cellSize - padY * 2;
+          const radius = Math.min(knotW, knotH) * 0.35;
+
+          // Vertical warp background thread guide behind knot
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.lineWidth = Math.max(1, cellSize * 0.1);
+          ctx.beginPath();
+          ctx.moveTo(px + cellSize / 2, py);
+          ctx.lineTo(px + cellSize / 2, py + cellSize);
+          ctx.stroke();
+
+          // Knot pill body
+          ctx.fillStyle = color.hex;
+          ctx.beginPath();
+          ctx.roundRect(px + padX, py + padY, knotW, knotH, radius);
+          ctx.fill();
+
+          // Double half-hitch horizontal ridge (shows the knot structure)
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+          ctx.lineWidth = Math.max(1, cellSize * 0.12);
+          ctx.beginPath();
+          ctx.moveTo(px + padX + 2, py + cellSize * 0.52);
+          ctx.lineTo(px + cellSize - padX - 2, py + cellSize * 0.52);
+          ctx.stroke();
+
+          // Knot top highlight
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+          ctx.lineWidth = Math.max(0.8, cellSize * 0.1);
+          ctx.beginPath();
+          ctx.moveTo(px + padX + 3, py + padY + 2);
+          ctx.lineTo(px + cellSize - padX - 3, py + padY + 2);
           ctx.stroke();
         } else if (config.craftType === 'diamond') {
           // Diamond painting faceted drill
@@ -1388,6 +1429,13 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       const wCm = ((gridWidth / 14) * 2.54).toFixed(1);
       const hCm = ((gridHeight / 14) * 2.54).toFixed(1);
       return `${wIn}"×${hIn}" (14ct Aida • ${wCm}×${hCm}cm)`;
+    }
+    if (config.craftType === 'alpha') {
+      const wIn = ((gridWidth * 1.2) / 25.4).toFixed(1);
+      const hIn = ((gridHeight * 0.95) / 25.4).toFixed(1);
+      const wCm = ((gridWidth * 1.2) / 10).toFixed(1);
+      const hCm = ((gridHeight * 0.95) / 10).toFixed(1);
+      return `${wIn}"×${hIn}" (${gridWidth} base strings • ${wCm}×${hCm}cm)`;
     }
     if (config.craftType === 'crochet') {
       const stsPerIn = (config.crochetGauge?.stitchesPer4Inches || 16) / 4;

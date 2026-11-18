@@ -61,6 +61,7 @@ interface ControlsPanelProps {
   useMyStashOnly?: boolean;
   onToggleMyStashOnly?: (enabled: boolean) => void;
   onClose?: () => void;
+  onToggleCollapse?: () => void;
   aiHistory?: AiHistoryItem[];
   onSelectHistoryImage?: (item: AiHistoryItem) => void;
   uploadHistory?: UploadHistoryItem[];
@@ -88,6 +89,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   useMyStashOnly = false,
   onToggleMyStashOnly,
   onClose,
+  onToggleCollapse,
   aiHistory = [],
   onSelectHistoryImage,
   uploadHistory = [],
@@ -136,7 +138,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   };
 
   return (
-    <aside className="w-80 max-w-[88vw] h-full bg-slate-900 border-r border-slate-800/90 flex flex-col z-10 shrink-0 overflow-hidden shadow-2xl lg:shadow-none select-none">
+    <aside className="w-72 xl:w-80 max-w-[88vw] h-full bg-slate-900 border-r border-slate-800/90 flex flex-col z-10 shrink-0 overflow-hidden shadow-2xl lg:shadow-none select-none">
       {/* 1. Top Section: Picture Source */}
       <div className="p-3.5 border-b border-slate-800/90 bg-slate-950/40">
         <div className="flex items-center justify-between mb-2.5">
@@ -162,6 +164,16 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 title="Inspect picture in full resolution"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden lg:flex p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                title="Collapse settings sidebar"
+              >
+                <ChevronLeft className="w-4 h-4" />
               </button>
             )}
             {onClose && (

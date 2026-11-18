@@ -17,7 +17,8 @@ import {
   X,
   ExternalLink,
   Plus,
-  ArrowLeftRight
+  ArrowLeftRight,
+  ChevronRight
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -33,6 +34,7 @@ interface PaletteLegendProps {
   onToggleLockColor: (index: number) => void;
   onCleanConfetti?: () => void;
   onClose?: () => void;
+  onToggleCollapse?: () => void;
   onAddColor?: (hex: string) => void;
   onSwapColor?: (sourceColorIndex: number, targetColorIndex: number) => void;
   onSwapWithNewColor?: (sourceColorIndex: number, newHex: string) => void;
@@ -51,6 +53,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onToggleLockColor,
   onCleanConfetti,
   onClose,
+  onToggleCollapse,
   onAddColor,
   onSwapColor,
   onSwapWithNewColor,
@@ -117,7 +120,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   }, [palette, realCounts, completedCounts, filterMode, searchTerm]);
 
   return (
-    <aside className="w-80 max-w-[88vw] h-full bg-slate-900 border-l border-slate-800/90 flex flex-col z-10 shrink-0 shadow-2xl lg:shadow-none select-none overflow-hidden">
+    <aside className="w-72 xl:w-80 max-w-[88vw] h-full bg-slate-900 border-l border-slate-800/90 flex flex-col z-10 shrink-0 shadow-2xl lg:shadow-none select-none overflow-hidden">
       {/* Header */}
       <div className="p-3.5 border-b border-slate-800/90 bg-slate-950/40">
         <div className="flex items-center justify-between mb-2.5">
@@ -155,6 +158,16 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
               >
                 <Sparkles className="w-3 h-3 text-indigo-400" />
                 <span>Clean Strays</span>
+              </button>
+            )}
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden lg:flex p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                title="Collapse color palette"
+              >
+                <ChevronRight className="w-4 h-4" />
               </button>
             )}
             {onClose && (

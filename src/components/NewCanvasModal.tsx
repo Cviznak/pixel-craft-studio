@@ -18,19 +18,21 @@ interface NewCanvasModalProps {
 }
 
 const SIZE_PRESETS = [
-  { w: 16, h: 16, label: '16×16', desc: 'Mini Icon / Patch' },
-  { w: 24, h: 24, label: '24×24', desc: 'Perler Pegboard' },
-  { w: 32, h: 32, label: '32×32', desc: 'Standard Sprite' },
-  { w: 48, h: 48, label: '48×48', desc: 'Detailed Motif' },
-  { w: 64, h: 64, label: '64×64', desc: 'Large Canvas' },
+  { id: '16x16', w: 16, h: 16, label: '16×16', desc: 'Mini Icon' },
+  { id: '32x32', w: 32, h: 32, label: '32×32', desc: 'Standard Sprite' },
+  { id: '24x24', w: 24, h: 24, label: '24×24', desc: 'Perler Pegboard' },
+  { id: '12x40', w: 12, h: 40, label: '12×40', desc: 'Mini Alpha Keychain' },
+  { id: '16x50', w: 16, h: 50, label: '16×50', desc: 'Standard Name Keychain' },
+  { id: '20x60', w: 20, h: 60, label: '20×60', desc: 'Wide Strap / Bracelet' },
 ];
 
 const CRAFT_OPTIONS: { type: CraftType; label: string; icon: string }[] = [
   { type: 'pixel', label: 'Pixel Art', icon: '👾' },
-  { type: 'perler', label: 'Perler Beads', icon: '🔴' },
+  { type: 'alpha', label: 'Alpha Keychain', icon: '🪢' },
   { type: 'cross-stitch', label: 'Cross-Stitch', icon: '🧵' },
+  { type: 'perler', label: 'Perler Beads', icon: '🔴' },
   { type: 'diamond', label: 'Diamond Painting', icon: '💎' },
-  { type: 'crochet', label: 'Crochet / Graphghan', icon: '🧶' },
+  { type: 'crochet', label: 'Crochet', icon: '🧶' },
 ];
 
 export const NewCanvasModal: React.FC<NewCanvasModalProps> = ({
@@ -40,13 +42,13 @@ export const NewCanvasModal: React.FC<NewCanvasModalProps> = ({
   currentCraftType,
   onCreateCanvas,
 }) => {
-  const [selectedSizePreset, setSelectedSizePreset] = useState<number | 'custom'>(32);
+  const [selectedSizePreset, setSelectedSizePreset] = useState<string>('32x32');
   const [customWidth, setCustomWidth] = useState<number>(32);
   const [customHeight, setCustomHeight] = useState<number>(32);
   const [backgroundMode, setBackgroundMode] = useState<'transparent' | 'white' | 'dark'>('transparent');
   const [selectedCraftType, setSelectedCraftType] = useState<CraftType>(currentCraftType || 'pixel');
   const [selectedPaletteId, setSelectedPaletteId] = useState<string>(
-    currentCraftType === 'perler' ? 'perler' : currentCraftType === 'cross-stitch' ? 'dmc' : 'pico8'
+    currentCraftType === 'perler' ? 'perler' : currentCraftType === 'cross-stitch' || currentCraftType === 'alpha' ? 'dmc' : 'pico8'
   );
 
   // Close on Escape key
@@ -61,8 +63,9 @@ export const NewCanvasModal: React.FC<NewCanvasModalProps> = ({
 
   if (!isOpen) return null;
 
-  const activeWidth = selectedSizePreset === 'custom' ? customWidth : selectedSizePreset;
-  const activeHeight = selectedSizePreset === 'custom' ? customHeight : selectedSizePreset;
+  const currentPreset = SIZE_PRESETS.find(p => p.id === selectedSizePreset);
+  const activeWidth = selectedSizePreset === 'custom' ? customWidth : (currentPreset?.w || 32);
+  const activeHeight = selectedSizePreset === 'custom' ? customHeight : (currentPreset?.h || 32);
 
   const handleCreate = () => {
     const w = Math.max(8, Math.min(160, activeWidth));
@@ -122,14 +125,20 @@ export const NewCanvasModal: React.FC<NewCanvasModalProps> = ({
               <Grid className="w-3.5 h-3.5 text-indigo-400" />
               1. Canvas Dimensions ({activeWidth} × {activeHeight} pixels)
             </label>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2.5">
               {SIZE_PRESETS.map((preset) => {
-                const isSelected = selectedSizePreset === preset.w;
+                const isSelected = selectedSizePreset === preset.id;
                 return (
                   <button
-                    key={preset.label}
+                    key={preset.id}
                     type="button"
-                    onClick={() => setSelectedSizePreset(preset.w)}
+                    onClick={() => {
+                      setSelectedSizePreset(preset.id);
+                      if (preset.id.includes('40') || preset.id.includes('50') || preset.id.includes('60')) {
+                        setSelectedCraftType('alpha');
+                        setSelectedPaletteId('dmc');
+                      }
+                    }}
                     className={`p-2.5 rounded-xl border text-left transition flex flex-col items-center justify-center text-center ${
                       isSelected
                         ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-md'

@@ -15,12 +15,13 @@ import {
   CheckCircle2,
   Smartphone,
   Share2,
-  X,
   Paintbrush,
   Ruler,
   Video,
   Type,
-  Package
+  Package,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -61,6 +62,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPixelTextModal,
   onOpenMyStashModal,
   onOpenStitchCompanionModal,
+  isZenMode = false,
+  onToggleZenMode,
   onResetProgress,
   onClearEverything,
   onLoadProjectJSON,
@@ -163,6 +166,7 @@ export const Header: React.FC<HeaderProps> = ({
   const craftTypes: { id: CraftType; label: string; icon: string }[] = [
     { id: 'perler', label: 'Beads', icon: '🔘' },
     { id: 'cross-stitch', label: 'Cross-Stitch', icon: '🧵' },
+    { id: 'alpha', label: 'Alpha Knot', icon: '🪢' },
     { id: 'crochet', label: 'Crochet', icon: '🧶' },
     { id: 'diamond', label: 'Diamond', icon: '💎' },
     { id: 'pixel', label: 'Pixel', icon: '🔲' },
@@ -197,7 +201,7 @@ export const Header: React.FC<HeaderProps> = ({
               <h1 className="text-sm font-extrabold tracking-tight text-white m-0">
                 Pixel Craft Studio
               </h1>
-              <span className="hidden xl:inline text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+              <span className="hidden 2xl:inline text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
                 Pattern Maker
               </span>
             </div>
@@ -205,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Craft Style Segmented Control */}
+      {/* Center: Craft Style Segmented Control (Smart compact sizing) */}
       <div className="flex items-center bg-slate-900/90 border border-slate-800/90 rounded-xl p-1 gap-0.5 shadow-inner">
         {craftTypes.map((item) => {
           const isActive = config.craftType === item.id;
@@ -221,48 +225,14 @@ export const Header: React.FC<HeaderProps> = ({
               title={`Switch craft simulation to ${item.label}`}
             >
               <span className="text-xs">{item.icon}</span>
-              <span className="hidden xl:inline">{item.label}</span>
+              <span className={isActive ? 'inline font-bold' : 'hidden 2xl:inline'}>{item.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Right Actions & Utilities */}
+      {/* Right Actions & Utilities (Clean, decluttered, high breathing room) */}
       <div className="flex items-center gap-1 sm:gap-1.5 xl:gap-2">
-        {/* Starter Gallery Button */}
-        {onOpenStarterGallery && (
-          <button
-            onClick={onOpenStarterGallery}
-            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 transition"
-            title="Browse pre-made starter craft patterns"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-            <span className="hidden xl:inline">Starters</span>
-          </button>
-        )}
-
-        {/* Draw / Blank Canvas Button */}
-        {onOpenNewCanvasModal && (
-          <button
-            onClick={onOpenNewCanvasModal}
-            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 transition"
-            title="Create a new blank canvas to draw freely"
-          >
-            <Paintbrush className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden xl:inline">Draw</span>
-          </button>
-        )}
-
-        {/* Ask AI Button */}
-        <button
-          onClick={onOpenAiModal}
-          className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 transition"
-          title="Ask AI to generate a craft image from a prompt"
-        >
-          <Wand2 className="w-3.5 h-3.5 text-purple-400" />
-          <span className="hidden xl:inline">Ask AI</span>
-        </button>
-
         {/* Hidden Project JSON Input */}
         <input
           ref={fileInputRef}
@@ -272,22 +242,85 @@ export const Header: React.FC<HeaderProps> = ({
           className="hidden"
         />
 
-        {/* Project Options Dropdown */}
+        {/* Focus / Zen Mode Button (One-click distraction-free canvas) */}
+        {onToggleZenMode && (
+          <button
+            onClick={onToggleZenMode}
+            className={`flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold border transition ${
+              isZenMode
+                ? 'bg-indigo-600/30 border-indigo-500/60 text-indigo-300'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
+            title={isZenMode ? 'Exit focus mode (show sidebars)' : 'Focus mode (hide all sidebars)'}
+          >
+            {isZenMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            <span className="hidden xl:inline">{isZenMode ? 'Exit Focus' : 'Focus'}</span>
+          </button>
+        )}
+
+        {/* Palette Panel Toggle (Desktop) */}
+        {onToggleRightPanel && (
+          <button
+            onClick={onToggleRightPanel}
+            className={`hidden lg:flex p-1.5 rounded-lg border transition ${
+              isRightPanelOpen
+                ? 'bg-slate-900 border-slate-700/80 text-pink-400 hover:text-pink-300'
+                : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
+            }`}
+            title={isRightPanelOpen ? 'Collapse palette sidebar' : 'Show palette sidebar'}
+          >
+            <PanelRight className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Social Card / Share Button */}
+        {onOpenSocialCardModal && (
+          <button
+            onClick={onOpenSocialCardModal}
+            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
+            title="Create an aesthetic social card for Pinterest, TikTok & Instagram"
+          >
+            <Share2 className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden xl:inline">Share</span>
+          </button>
+        )}
+
+        {/* Buy Me a Coffee (Sleek compact badge) */}
+        <a
+          href="https://buymeacoffee.com/orjustdosomething"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/30 transition flex items-center justify-center"
+          title="Support Pixel Craft Studio on Buy Me a Coffee"
+        >
+          <Coffee className="w-4 h-4" />
+        </a>
+
+        {/* Help / Guide button */}
+        <button
+          onClick={onToggleHelpModal}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800 transition"
+          title="Guide & craft instructions"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </button>
+
+        {/* Project Options / More Dropdown */}
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsProjectMenuOpen(!isProjectMenuOpen)}
             className={`p-1.5 rounded-lg border transition ${
               isProjectMenuOpen
                 ? 'bg-slate-800 border-slate-700 text-white'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-850'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
             }`}
-            title="Project options (Load JSON, New, Reset tracker)"
+            title="More tools & project options"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
 
           {isProjectMenuOpen && (
-            <div className="absolute right-0 mt-1.5 w-48 bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-xl shadow-2xl p-1 z-50 text-xs flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute right-0 mt-1.5 w-56 bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-xl shadow-2xl p-1.5 z-50 text-xs flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
               {onOpenNewCanvasModal && (
                 <button
                   onClick={() => {
@@ -297,9 +330,35 @@ export const Header: React.FC<HeaderProps> = ({
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
                 >
                   <Paintbrush className="w-3.5 h-3.5 text-amber-400" />
-                  <span>New Blank Canvas</span>
+                  <span>New Blank Canvas (Draw)</span>
                 </button>
               )}
+
+              {onOpenStarterGallery && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenStarterGallery();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Browse Starter Patterns</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setIsProjectMenuOpen(false);
+                  onOpenAiModal();
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-purple-300 hover:bg-slate-800 transition text-left"
+              >
+                <Wand2 className="w-3.5 h-3.5 text-purple-400" />
+                <span>Ask AI Motif Generator</span>
+              </button>
+
+              <div className="my-1 border-t border-slate-800/80" />
 
               <button
                 onClick={() => {
@@ -377,9 +436,11 @@ export const Header: React.FC<HeaderProps> = ({
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-teal-300 hover:bg-slate-800 transition text-left"
                 >
                   <Smartphone className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Stitch Companion (Focus Mode)</span>
+                  <span>Stitch Companion (Phone Mode)</span>
                 </button>
               )}
+
+              <div className="my-1 border-t border-slate-800/80" />
 
               <button
                 onClick={() => {
@@ -421,78 +482,6 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Buy Me a Coffee */}
-        <a
-          href="https://buymeacoffee.com/orjustdosomething"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-bold text-amber-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-200 shadow-sm transition active:scale-95"
-          title="Support Pixel Craft Studio on Buy Me a Coffee"
-        >
-          <Coffee className="w-3.5 h-3.5" />
-          <span className="hidden xl:inline">Coffee</span>
-        </a>
-
-        {/* Help button */}
-        <button
-          onClick={onToggleHelpModal}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-850 border border-transparent hover:border-slate-800 transition"
-          title="Guide & craft instructions"
-        >
-          <HelpCircle className="w-4 h-4" />
-        </button>
-
-        {/* Right Palette Panel Toggle (Desktop) */}
-        {onToggleRightPanel && (
-          <button
-            onClick={onToggleRightPanel}
-            className={`hidden lg:flex p-1.5 rounded-lg border transition ${
-              isRightPanelOpen
-                ? 'bg-slate-900 border-slate-700/80 text-pink-400 hover:text-pink-300'
-                : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300'
-            }`}
-            title={isRightPanelOpen ? 'Collapse palette sidebar' : 'Show palette sidebar'}
-          >
-            <PanelRight className="w-4 h-4" />
-          </button>
-        )}
-
-        {/* Install App Button */}
-        {!isInstalled && (
-          <button
-            onClick={handleInstallClick}
-            className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/30 text-indigo-300 hover:text-indigo-200 transition"
-            title="Install Pixel Craft Studio on your computer or phone"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Install App</span>
-          </button>
-        )}
-
-        {/* Stitch Companion Focus Mode Button */}
-        {onOpenStitchCompanionModal && (
-          <button
-            onClick={onOpenStitchCompanionModal}
-            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition"
-            title="Hands-free Stitch Companion focus mode with wake-lock"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-            <span className="hidden xl:inline">Focus</span>
-          </button>
-        )}
-
-        {/* Aesthetic Social Card Generator Button */}
-        {onOpenSocialCardModal && (
-          <button
-            onClick={onOpenSocialCardModal}
-            className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 xl:px-2.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
-            title="Create an aesthetic social card for Pinterest, TikTok & Instagram"
-          >
-            <Share2 className="w-3.5 h-3.5 text-rose-400" />
-            <span className="hidden xl:inline">Share</span>
-          </button>
-        )}
-
         {/* Primary Call to Action: Export & Print */}
         <button
           onClick={onOpenExportModal}
@@ -519,35 +508,29 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="p-2 rounded-xl bg-indigo-600/20 text-indigo-400">
                   <Smartphone className="w-5 h-5" />
                 </div>
-                <h3 className="font-bold text-slate-100 text-sm">Install on iPhone / iPad</h3>
+                <h3 className="text-sm font-bold text-white">Install on iPhone / iPad</h3>
               </div>
               <button 
                 onClick={() => setShowIosInstallModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                className="text-slate-400 hover:text-white"
               >
-                <X className="w-4 h-4" />
+                ✕
               </button>
             </div>
-
+            
             <p className="text-xs text-slate-300 leading-relaxed">
-              Install Pixel Craft Studio to your home screen for the full-screen app experience:
+              To install Pixel Craft Studio as a full-screen offline app on iOS:
             </p>
 
-            <ol className="text-xs text-slate-300 space-y-2.5 list-decimal list-inside bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-              <li>
-                Tap the <strong className="text-indigo-300">Share</strong> icon <Share2 className="w-3.5 h-3.5 inline mx-1 text-indigo-400" /> at the bottom of Safari.
-              </li>
-              <li>
-                Scroll down and select <strong className="text-white">"Add to Home Screen"</strong>.
-              </li>
-              <li>
-                Tap <strong className="text-emerald-400">Add</strong> in the top right.
-              </li>
+            <ol className="text-xs text-slate-300 space-y-2 list-decimal list-inside bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+              <li>Tap the <strong className="text-white">Share</strong> button in Safari's bottom toolbar (<span className="text-indigo-400">⎋</span>).</li>
+              <li>Scroll down and tap <strong className="text-white">Add to Home Screen</strong> (<span className="text-indigo-400">⊞</span>).</li>
+              <li>Tap <strong className="text-white">Add</strong> at top right.</li>
             </ol>
 
             <button
               onClick={() => setShowIosInstallModal(false)}
-              className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition"
+              className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition"
             >
               Got it
             </button>

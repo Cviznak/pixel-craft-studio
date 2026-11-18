@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { PaletteColor } from '../types/craft';
+import type { PaletteColor, CraftType } from '../types/craft';
 import { 
   generateCrochetInstructions, 
   formatInstructionsAsPlainText,
@@ -28,6 +28,7 @@ interface CrochetWrittenInstructionsModalProps {
   gridData: number[][];
   palette: PaletteColor[];
   projectName?: string;
+  craftType?: CraftType;
 }
 
 export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstructionsModalProps> = ({
@@ -35,7 +36,8 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
   onClose,
   gridData,
   palette,
-  projectName = 'Tapestry Crochet Pattern',
+  projectName = 'Craft Pattern',
+  craftType = 'crochet',
 }) => {
   const [config, setConfig] = useState<WrittenInstructionsConfig>(DEFAULT_INSTRUCTIONS_CONFIG);
   const [completedRows, setCompletedRows] = useState<{ [rowNum: number]: boolean }>(() => {
@@ -148,14 +150,14 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-sm font-bold text-slate-100 truncate">
-                  Written Row-by-Row Instructions
+                  {craftType === 'alpha' ? 'Alpha Pattern Row-by-Row Knotting Guide' : 'Written Row-by-Row Instructions'}
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 shrink-0">
-                  Tapestry Crochet
+                  {craftType === 'alpha' ? 'Alpha Knotting' : 'Tapestry Crochet'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 truncate">
-                {totalRows} Rows • {instructions.totalStitches} stitches • Interactive progress tracker
+                {totalRows} Rows • {instructions.totalStitches} {craftType === 'alpha' ? 'knots' : 'stitches'} • {craftType === 'alpha' ? 'Alternating L→R and R→L passes' : 'Interactive progress tracker'}
               </p>
             </div>
           </div>

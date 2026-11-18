@@ -14,6 +14,7 @@ import {
   calculatePerlerDimensions, 
   calculateDiamondDimensions, 
   calculateCrochetDimensions,
+  calculateAlphaDimensions,
   type CrossStitchClothCount,
   type PerlerBeadType,
   DEFAULT_CROCHET_GAUGE
@@ -127,6 +128,21 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         recommendedFabricWCm: dm.dimensions.widthCm + 5,
         recommendedFabricHCm: dm.dimensions.heightCm + 5,
         pegboards: null,
+        alpha: null,
+      };
+    } else if (selectedCraftType === 'alpha') {
+      const al = calculateAlphaDimensions(gridWidth, gridHeight);
+      return {
+        widthInches: al.dimensions.widthInches,
+        heightInches: al.dimensions.heightInches,
+        widthCm: al.dimensions.widthCm,
+        heightCm: al.dimensions.heightCm,
+        recommendedFabricWInches: al.dimensions.widthInches,
+        recommendedFabricHInches: al.dimensions.heightInches,
+        recommendedFabricWCm: al.dimensions.widthCm,
+        recommendedFabricHCm: al.dimensions.heightCm,
+        pegboards: null,
+        alpha: al,
       };
     } else {
       // Tapestry Crochet / Pixel
@@ -141,6 +157,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         recommendedFabricWCm: cr.dimensions.widthCm,
         recommendedFabricHCm: cr.dimensions.heightCm,
         pegboards: null,
+        alpha: null,
       };
     }
   }, [selectedCraftType, gridWidth, gridHeight, aidaCount, perlerType]);
@@ -431,17 +448,18 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
             {/* Craft Type Selector */}
             <div className="flex flex-col gap-1.5">
               <label className="font-semibold text-slate-300">Craft Simulation Medium:</label>
-              <div className="grid grid-cols-4 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-5 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
                 {[
                   { id: 'cross-stitch', label: 'Cross-Stitch' },
-                  { id: 'perler', label: 'Perler Beads' },
+                  { id: 'alpha', label: 'Alpha Knot' },
+                  { id: 'perler', label: 'Perler' },
                   { id: 'diamond', label: 'Diamond' },
                   { id: 'crochet', label: 'Crochet' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setSelectedCraftType(item.id as CraftType)}
-                    className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold transition ${
+                    className={`py-1.5 px-1.5 rounded-lg text-[11px] font-semibold transition truncate text-center ${
                       selectedCraftType === item.id
                         ? 'bg-indigo-600 text-white shadow-md'
                         : 'text-slate-400 hover:text-slate-200'
@@ -531,6 +549,48 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Alpha Keychain & Bracelet Materials Card */}
+            {selectedCraftType === 'alpha' && sizingMetrics.alpha && (
+              <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/40 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between border-b border-indigo-500/20 pb-2">
+                  <span className="font-bold text-indigo-200 text-xs flex items-center gap-1.5">
+                    <span>🪢</span> Alpha Keychain & Bracelet Specs
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono">
+                    {gridWidth} warp threads
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                    <div className="text-slate-400">Base / Warp Strings:</div>
+                    <div className="font-bold text-white font-mono mt-0.5">
+                      {sizingMetrics.alpha.baseStringsCount} strings cut to {sizingMetrics.alpha.baseStringLengthInches}" ({sizingMetrics.alpha.baseStringLengthCm} cm)
+                    </div>
+                  </div>
+                  <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                    <div className="text-slate-400">Leading Floss Needed:</div>
+                    <div className="font-bold text-emerald-300 font-mono mt-0.5">
+                      ~{sizingMetrics.alpha.estimatedLeadingYardsTotal} yds (~{sizingMetrics.alpha.estimatedLeadingSkeinsTotal} skeins)
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Recommended Hardware:</span>
+                    <span className="font-bold text-amber-200 text-xs">{sizingMetrics.alpha.recommendedHardware}</span>
+                  </div>
+                  <a
+                    href="https://www.amazon.com/s?k=ribbon+clamps+keychain+hardware&tag=pixelcraft01-20"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-semibold transition"
+                  >
+                    Find Clamps
+                  </a>
+                </div>
               </div>
             )}
 

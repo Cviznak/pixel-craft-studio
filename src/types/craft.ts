@@ -1,4 +1,4 @@
-export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel' | 'crochet';
+export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel' | 'crochet' | 'alpha';
 
 export type ExtractionMode = 'vibrant' | 'balanced' | 'dominant' | 'pastel';
 

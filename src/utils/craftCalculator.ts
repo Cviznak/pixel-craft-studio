@@ -48,6 +48,18 @@ export interface CrochetMaterials {
   estimatedSkeinsTotal: number;
 }
 
+export interface AlphaMaterials {
+  dimensions: PhysicalDimensions;
+  baseStringsCount: number;
+  baseStringLengthInches: number;
+  baseStringLengthCm: number;
+  totalKnots: number;
+  estimatedLeadingYardsTotal: number;
+  estimatedLeadingMetersTotal: number;
+  estimatedLeadingSkeinsTotal: number;
+  recommendedHardware: string;
+}
+
 export const CROCHET_YARN_PRESETS: {
   [weight in CrochetYarnWeight]: {
     name: string;
@@ -317,6 +329,62 @@ export function estimateBeadPacks(beadCount: number): {
 }
 
 /**
+ * Calculates physical dimensions, string cuts, and hardware for Alpha Pattern keychains & bracelets
+ */
+export function calculateAlphaDimensions(
+  gridWidth: number,
+  gridHeight: number
+): AlphaMaterials {
+  // Average knot gauge: ~1.2mm width, ~0.95mm height per knot
+  const knotWidthMm = 1.2;
+  const knotHeightMm = 0.95;
+
+  const widthCm = Math.round(((gridWidth * knotWidthMm) / 10) * 10) / 10;
+  const heightCm = Math.round(((gridHeight * knotHeightMm) / 10) * 10) / 10;
+  const widthInches = Math.round((widthCm / 2.54) * 10) / 10;
+  const heightInches = Math.round((heightCm / 2.54) * 10) / 10;
+
+  // Base strings: 1 per column + 8" (20cm) margin for clasp and tie-off
+  const baseStringsCount = gridWidth;
+  const baseStringLengthInches = Math.max(12, Math.round(heightInches + 8));
+  const baseStringLengthCm = Math.round(baseStringLengthInches * 2.54);
+
+  // Total knots and working string length
+  const totalKnots = gridWidth * gridHeight;
+  // 0.85 inches (~2.15 cm) per double half-hitch knot
+  const totalInchesFloss = totalKnots * 0.85;
+  const estimatedLeadingYardsTotal = Math.max(1, Math.round(totalInchesFloss / 36));
+  const estimatedLeadingMetersTotal = Math.round(estimatedLeadingYardsTotal * 0.9144);
+  const estimatedLeadingSkeinsTotal = Math.max(1, Math.ceil(estimatedLeadingYardsTotal / 8.7));
+
+  // Recommended hardware sizing
+  let recommendedHardware = '16mm (5/8") Ribbon Clamp or Mini Swivel Clasp';
+  if (gridWidth >= 14 && gridWidth <= 18) {
+    recommendedHardware = '25mm (1 inch) Ribbon Clamp or Keyring Lobster Clasp';
+  } else if (gridWidth > 18) {
+    recommendedHardware = '30mm–35mm (1.25" - 1.5") Wide Ribbon Clamp or Keyring';
+  }
+
+  return {
+    dimensions: {
+      widthInches,
+      heightInches,
+      widthCm,
+      heightCm,
+      summary: `${widthInches}" × ${heightInches}" (${widthCm} × ${heightCm} cm)`,
+    },
+    baseStringsCount,
+    baseStringLengthInches,
+    baseStringLengthCm,
+    totalKnots,
+    estimatedLeadingYardsTotal,
+    estimatedLeadingMetersTotal,
+    estimatedLeadingSkeinsTotal,
+    recommendedHardware,
+  };
+}
+
+/**
  * General helper to format sizing summary for any craft
  */
 export function getCraftDimensionsSummary(
@@ -326,6 +394,10 @@ export function getCraftDimensionsSummary(
   clothCount: CrossStitchClothCount = 14,
   crochetGauge: CrochetGaugeConfig = DEFAULT_CROCHET_GAUGE
 ): string {
+  if (craftType === 'alpha') {
+    const res = calculateAlphaDimensions(gridWidth, gridHeight);
+    return `${res.dimensions.summary} • ${res.baseStringsCount} Base Strings (${res.recommendedHardware})`;
+  }
   if (craftType === 'cross-stitch') {
     const res = calculateCrossStitchDimensions(gridWidth, gridHeight, clothCount);
     return `${res.dimensions.summary} on ${clothCount}-count Aida`;
