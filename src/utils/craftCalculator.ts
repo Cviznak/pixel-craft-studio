@@ -3,7 +3,9 @@ import type {
   CrochetGaugeConfig, 
   CrochetYarnWeight,
   KnitGaugeConfig,
-  KnitYarnWeight 
+  KnitYarnWeight,
+  BeadLoomConfig,
+  SeedBeadType
 } from '../types/craft';
 
 export type CrossStitchClothCount = 11 | 14 | 16 | 18 | 22 | 28;
@@ -61,6 +63,67 @@ export interface AlphaMaterials {
   estimatedLeadingSkeinsTotal: number;
   recommendedHardware: string;
 }
+
+export interface BeadLoomMaterials {
+  config: BeadLoomConfig;
+  dimensions: PhysicalDimensions;
+  totalBeads: number;
+  totalGrams: number;
+  estimated5gTubes: number;
+  warpThreadsCount: number;
+  warpThreadLengthInches: number;
+  warpThreadLengthCm: number;
+  totalWarpYards: number;
+  recommendedClaspSize: string;
+  beadSpec: {
+    name: string;
+    widthMm: number;
+    heightMm: number;
+    beadsPerGram: number;
+  };
+}
+
+export const SEED_BEAD_SPECS: Record<
+  SeedBeadType,
+  {
+    name: string;
+    description: string;
+    widthMm: number;
+    heightMm: number;
+    beadsPerGram: number;
+    standardTubeGrams: number;
+  }
+> = {
+  'delica-11': {
+    name: 'Miyuki Delica 11/0 (Cylinder)',
+    description: 'Precision Japanese cylinder beads that lock together smoothly for flat, detailed tapestry work.',
+    widthMm: 1.6,
+    heightMm: 1.3,
+    beadsPerGram: 200,
+    standardTubeGrams: 5, // ~1,000 beads per tube
+  },
+  'round-11': {
+    name: 'Miyuki / Toho Round 11/0',
+    description: 'Classic rounded glass seed beads with organic, rounded contours.',
+    widthMm: 2.0,
+    heightMm: 1.3,
+    beadsPerGram: 110,
+    standardTubeGrams: 8.5, // ~900 beads per tube
+  },
+  'round-8': {
+    name: 'Miyuki / Toho Round 8/0',
+    description: 'Larger seed beads ideal for chunky cuffs and quick beginner projects.',
+    widthMm: 3.0,
+    heightMm: 2.0,
+    beadsPerGram: 40,
+    standardTubeGrams: 8, // ~320 beads per tube
+  },
+};
+
+export const DEFAULT_BEAD_LOOM_CONFIG: BeadLoomConfig = {
+  stitchStyle: 'loom',
+  beadType: 'delica-11',
+};
 
 export const CROCHET_YARN_PRESETS: {
   [weight in CrochetYarnWeight]: {
@@ -497,6 +560,81 @@ export function calculateAlphaDimensions(
 }
 
 /**
+ * Calculates physical dimensions, bead counts, tube weight, warp threads, and clasp size
+ * for Loom & Peyote Beading (Miyuki Delica 11/0 cylindrical seed beads)
+ */
+export function calculateBeadLoomDimensions(
+  gridWidth: number,
+  gridHeight: number,
+  config: BeadLoomConfig = DEFAULT_BEAD_LOOM_CONFIG
+): BeadLoomMaterials {
+  const spec = SEED_BEAD_SPECS[config.beadType] || SEED_BEAD_SPECS['delica-11'];
+
+  const widthMm = gridWidth * spec.widthMm;
+  const heightMm = gridHeight * spec.heightMm;
+
+  const widthCm = Math.round((widthMm / 10) * 10) / 10;
+  const heightCm = Math.round((heightMm / 10) * 10) / 10;
+  const widthInches = Math.round((widthCm / 2.54) * 10) / 10;
+  const heightInches = Math.round((heightCm / 2.54) * 10) / 10;
+
+  const totalBeads = gridWidth * gridHeight;
+  const totalGrams = Math.round((totalBeads / spec.beadsPerGram) * 10) / 10;
+  const estimated5gTubes = Math.max(1, Math.ceil(totalBeads / (spec.beadsPerGram * spec.standardTubeGrams)));
+
+  // Loom warp threads: columns + 1
+  const warpThreadsCount = config.stitchStyle === 'loom' ? gridWidth + 1 : 0;
+  const warpThreadLengthInches = Math.max(14, Math.round(heightInches + 10)); // +10" for loom tie-offs
+  const warpThreadLengthCm = Math.round(warpThreadLengthInches * 2.54);
+  const totalWarpYards = warpThreadsCount > 0 
+    ? Math.max(1, Math.round((warpThreadsCount * warpThreadLengthInches) / 36))
+    : 0;
+
+  // Recommended slide clasp / end tube size based on pattern width in mm
+  let recommendedClaspSize = '10mm Slide Clasp Tube';
+  if (widthMm > 35) {
+    recommendedClaspSize = `${Math.ceil(widthMm)}mm Custom Slide Tube or Ribbon Clamp`;
+  } else if (widthMm > 28) {
+    recommendedClaspSize = '30mm–35mm Slide Clasp Tube';
+  } else if (widthMm > 22) {
+    recommendedClaspSize = '25mm Slide Clasp Tube';
+  } else if (widthMm > 17) {
+    recommendedClaspSize = '20mm Slide Clasp Tube';
+  } else if (widthMm > 12) {
+    recommendedClaspSize = '15mm Slide Clasp Tube';
+  } else if (widthMm > 8) {
+    recommendedClaspSize = '10mm Slide Clasp Tube';
+  } else {
+    recommendedClaspSize = '6mm–8mm Mini Tube or Lobster Clasp';
+  }
+
+  return {
+    config,
+    dimensions: {
+      widthInches,
+      heightInches,
+      widthCm,
+      heightCm,
+      summary: `${widthInches}" × ${heightInches}" (${widthCm} × ${heightCm} cm)`,
+    },
+    totalBeads,
+    totalGrams,
+    estimated5gTubes,
+    warpThreadsCount,
+    warpThreadLengthInches,
+    warpThreadLengthCm,
+    totalWarpYards,
+    recommendedClaspSize,
+    beadSpec: {
+      name: spec.name,
+      widthMm: spec.widthMm,
+      heightMm: spec.heightMm,
+      beadsPerGram: spec.beadsPerGram,
+    },
+  };
+}
+
+/**
  * General helper to format sizing summary for any craft
  */
 export function getCraftDimensionsSummary(
@@ -505,8 +643,13 @@ export function getCraftDimensionsSummary(
   craftType: CraftType,
   clothCount: CrossStitchClothCount = 14,
   crochetGauge: CrochetGaugeConfig = DEFAULT_CROCHET_GAUGE,
-  knitGauge: KnitGaugeConfig = DEFAULT_KNIT_GAUGE
+  knitGauge: KnitGaugeConfig = DEFAULT_KNIT_GAUGE,
+  beadLoom: BeadLoomConfig = DEFAULT_BEAD_LOOM_CONFIG
 ): string {
+  if (craftType === 'loom') {
+    const res = calculateBeadLoomDimensions(gridWidth, gridHeight, beadLoom);
+    return `${res.dimensions.summary} • Delica 11/0 (${res.totalBeads.toLocaleString()} beads • ${res.recommendedClaspSize})`;
+  }
   if (craftType === 'knitting') {
     const res = calculateKnittingDimensions(gridWidth, gridHeight, knitGauge);
     return `${res.dimensions.summary} • Knit (${res.needleRecommendation})`;

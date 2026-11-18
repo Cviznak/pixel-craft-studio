@@ -332,6 +332,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         // Alpha macrame / knotting board backing
         ctx.fillStyle = '#0b1120';
         ctx.fillRect(0, 0, totalW, totalH);
+      } else if (config.craftType === 'loom') {
+        // Dark velvet beading mat backing
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, totalW, totalH);
       } else if (config.craftType === 'knitting') {
         // Heather charcoal wool backing
         ctx.fillStyle = '#171e29';
@@ -581,6 +585,65 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           ctx.lineWidth = Math.max(0.8, cellSize * 0.1);
           ctx.beginPath();
           ctx.arc(px + cellSize * 0.5, py + cellSize * 0.12, cellSize * 0.26, Math.PI, 0);
+          ctx.stroke();
+        } else if (config.craftType === 'loom') {
+          // Miyuki Delica Glass Cylinder Seed Bead Simulation
+          const padX = cellSize * 0.05;
+          const padY = cellSize * 0.08;
+          const bw = cellSize - padX * 2;
+          const bh = cellSize - padY * 2;
+          const r = Math.min(3, bh * 0.25);
+
+          // Bead base cylinder body with slight corner radius
+          ctx.fillStyle = color.hex;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(px + padX, py + padY, bw, bh, r);
+          } else {
+            ctx.rect(px + padX, py + padY, bw, bh);
+          }
+          ctx.fill();
+
+          // Glass Cylindrical 3D Specular Highlight (gleam along upper cylinder edge)
+          const grad = ctx.createLinearGradient(px, py + padY, px, py + padY + bh);
+          grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+          grad.addColorStop(0.25, 'rgba(255, 255, 255, 0.15)');
+          grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.05)');
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(px + padX, py + padY, bw, bh, r);
+          } else {
+            ctx.rect(px + padX, py + padY, bw, bh);
+          }
+          ctx.fill();
+
+          // Bead inner thread hole / pass-through core slit
+          if (cellSize * zoom >= 12) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            const holeH = Math.max(1.5, bh * 0.18);
+            const holeW = bw * 0.55;
+            ctx.beginPath();
+            ctx.ellipse(
+              px + cellSize / 2,
+              py + cellSize / 2,
+              holeW / 2,
+              holeH / 2,
+              0,
+              0,
+              Math.PI * 2
+            );
+            ctx.fill();
+
+            // Inner thread white glimmer
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.fillRect(px + cellSize / 2 - holeW * 0.35, py + cellSize / 2 - 0.5, holeW * 0.7, 1);
+          }
+
+          // Delicate outer glass edge
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+          ctx.lineWidth = Math.max(0.6, cellSize * 0.05);
           ctx.stroke();
         } else if (config.craftType === 'diamond') {
           // Diamond painting faceted drill
@@ -1492,8 +1555,17 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       const hCm = ((gridHeight / rowsPerIn) * 2.54).toFixed(1);
       return `${wIn}"×${hIn}" (${wCm}×${hCm}cm • Knit)`;
     }
+    if (config.craftType === 'loom') {
+      const wMm = gridWidth * 1.6;
+      const hMm = gridHeight * 1.3;
+      const wIn = (wMm / 25.4).toFixed(1);
+      const hIn = (hMm / 25.4).toFixed(1);
+      const wCm = (wMm / 10).toFixed(1);
+      const hCm = (hMm / 10).toFixed(1);
+      return `${wIn}"×${hIn}" (${wCm}×${hCm}cm • Delica 11/0)`;
+    }
     return null;
-  }, [gridWidth, gridHeight, config.craftType, config.crochetGauge, config.knitGauge]);
+  }, [gridWidth, gridHeight, config.craftType, config.crochetGauge, config.knitGauge, config.beadLoom]);
 
   const triggerConfetti = useCallback(() => {
     confetti({

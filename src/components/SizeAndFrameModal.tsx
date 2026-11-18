@@ -16,6 +16,8 @@ import {
   calculateCrochetDimensions,
   calculateAlphaDimensions,
   calculateKnittingDimensions,
+  calculateBeadLoomDimensions,
+  DEFAULT_BEAD_LOOM_CONFIG,
   type CrossStitchClothCount,
   type PerlerBeadType,
   DEFAULT_CROCHET_GAUGE,
@@ -147,6 +149,23 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         pegboards: null,
         alpha: al,
         knitting: null,
+        beadLoom: null,
+      };
+    } else if (selectedCraftType === 'loom') {
+      const lm = calculateBeadLoomDimensions(gridWidth, gridHeight, DEFAULT_BEAD_LOOM_CONFIG);
+      return {
+        widthInches: lm.dimensions.widthInches,
+        heightInches: lm.dimensions.heightInches,
+        widthCm: lm.dimensions.widthCm,
+        heightCm: lm.dimensions.heightCm,
+        recommendedFabricWInches: lm.dimensions.widthInches,
+        recommendedFabricHInches: lm.dimensions.heightInches,
+        recommendedFabricWCm: lm.dimensions.widthCm,
+        recommendedFabricHCm: lm.dimensions.heightCm,
+        pegboards: null,
+        alpha: null,
+        knitting: null,
+        beadLoom: lm,
       };
     } else if (selectedCraftType === 'knitting') {
       const kn = calculateKnittingDimensions(gridWidth, gridHeight, DEFAULT_KNIT_GAUGE);
@@ -162,6 +181,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         pegboards: null,
         alpha: null,
         knitting: kn,
+        beadLoom: null,
       };
     } else {
       // Tapestry Crochet / Pixel
@@ -178,6 +198,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         pegboards: null,
         alpha: null,
         knitting: null,
+        beadLoom: null,
       };
     }
   }, [selectedCraftType, gridWidth, gridHeight, aidaCount, perlerType]);
@@ -468,9 +489,10 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
             {/* Craft Type Selector */}
             <div className="flex flex-col gap-1.5">
               <label className="font-semibold text-slate-300">Craft Simulation Medium:</label>
-              <div className="grid grid-cols-6 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
                 {[
                   { id: 'cross-stitch', label: 'Cross-Stitch' },
+                  { id: 'loom', label: 'Bead Loom' },
                   { id: 'knitting', label: 'Knitting' },
                   { id: 'alpha', label: 'Alpha' },
                   { id: 'perler', label: 'Perler' },
@@ -645,6 +667,54 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
                     <span className="font-semibold text-purple-300">Stitch Ratio: </span>
                     Stitches are ~{sizingMetrics.knitting.aspectRatio}× wider than tall (authentic stockinette gauge).
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loom & Peyote Seed Bead Specs Card */}
+            {selectedCraftType === 'loom' && sizingMetrics.beadLoom && (
+              <div className="p-3.5 rounded-xl bg-teal-950/40 border border-teal-500/40 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between border-b border-teal-500/20 pb-2">
+                  <span className="font-bold text-teal-200 text-xs flex items-center gap-1.5">
+                    <span>📿</span> Miyuki Delica Bead Weaving Specs
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-mono">
+                    1.6 × 1.3 mm cylinder
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                    <div className="text-slate-400">Total Delica Beads:</div>
+                    <div className="font-bold text-white font-mono mt-0.5">
+                      {sizingMetrics.beadLoom.totalBeads.toLocaleString()} beads (~{sizingMetrics.beadLoom.totalGrams}g)
+                    </div>
+                    <div className="text-[10px] text-teal-300 mt-0.5">
+                      ~{sizingMetrics.beadLoom.estimated5gTubes} standard 5g {sizingMetrics.beadLoom.estimated5gTubes === 1 ? 'tube' : 'tubes'}
+                    </div>
+                  </div>
+                  <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                    <div className="text-slate-400">Loom Warp Threads:</div>
+                    <div className="font-bold text-emerald-300 font-mono mt-0.5">
+                      {sizingMetrics.beadLoom.warpThreadsCount} warp threads
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5">
+                      Cut to {sizingMetrics.beadLoom.warpThreadLengthInches}" ({sizingMetrics.beadLoom.warpThreadLengthCm}cm) each
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-slate-400 text-[10px] block">Slide End Clasp / Tube Size:</span>
+                    <span className="font-bold text-amber-200 text-xs">{sizingMetrics.beadLoom.recommendedClaspSize}</span>
+                  </div>
+                  <a
+                    href="https://www.amazon.com/s?k=slide+end+tubes+bead+clasp&tag=pixelcraft01-20"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-semibold transition"
+                  >
+                    Find Clasps
+                  </a>
                 </div>
               </div>
             )}

@@ -106,6 +106,19 @@ export const CRAFT_ROUTES: Record<CraftType, CraftRouteConfig> = {
     h1: 'Intarsia & Fair Isle Knitting Chart Maker',
     subtitle: 'Convert images into knitting graphs with non-square rectangular gauge ratios, realistic V-stitch texture, and yarn estimates.',
   },
+  'loom': {
+    path: '/loom-beading',
+    craftType: 'loom',
+    title: 'Bead Loom',
+    metaTitle: 'Free Bead Loom & Peyote Pattern Maker — Miyuki Delica Grids | Pixel Craft Studio',
+    metaDescription: 'Design bead loom and peyote stitch patterns with Miyuki Delica cylinder beads. Calculates exact bead counts, 5g tubes, warp threads, and slide clasp sizing.',
+    keywords: 'bead loom pattern maker, peyote stitch designer, miyuki delica pattern generator, bead weaving chart, brick stitch pattern maker, seed bead loom calculator',
+    badge: 'Bead Loom & Peyote Studio',
+    icon: '📿',
+    recommendedPalette: 'dmc',
+    h1: 'Bead Loom & Peyote Stitch Pattern Maker',
+    subtitle: 'Design bead weaving bracelets and cuffs with Miyuki Delica cylinder simulation, warp thread calculations, and slide clasp sizing.',
+  },
 };
 
 /**

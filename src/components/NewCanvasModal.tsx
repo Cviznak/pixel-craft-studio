@@ -21,6 +21,9 @@ const SIZE_PRESETS = [
   { id: '16x16', w: 16, h: 16, label: '16×16', desc: 'Mini Icon' },
   { id: '32x32', w: 32, h: 32, label: '32×32', desc: 'Standard Sprite' },
   { id: '24x24', w: 24, h: 24, label: '24×24', desc: 'Perler Pegboard' },
+  { id: '15x80', w: 15, h: 80, label: '15×80', desc: 'Loom Bracelet (Delica)' },
+  { id: '9x30', w: 9, h: 30, label: '9×30', desc: 'Peyote Ring' },
+  { id: '25x90', w: 25, h: 90, label: '25×90', desc: 'Wide Delica Cuff' },
   { id: '12x40', w: 12, h: 40, label: '12×40', desc: 'Mini Alpha Keychain' },
   { id: '16x50', w: 16, h: 50, label: '16×50', desc: 'Standard Name Keychain' },
   { id: '20x60', w: 20, h: 60, label: '20×60', desc: 'Wide Strap / Bracelet' },
@@ -30,6 +33,7 @@ const SIZE_PRESETS = [
 
 const CRAFT_OPTIONS: { type: CraftType; label: string; icon: string }[] = [
   { type: 'pixel', label: 'Pixel Art', icon: '👾' },
+  { type: 'loom', label: 'Bead Loom & Peyote', icon: '📿' },
   { type: 'knitting', label: 'Knitting (Intarsia)', icon: '🥢' },
   { type: 'alpha', label: 'Alpha Keychain', icon: '🪢' },
   { type: 'cross-stitch', label: 'Cross-Stitch', icon: '🧵' },
@@ -51,7 +55,7 @@ export const NewCanvasModal: React.FC<NewCanvasModalProps> = ({
   const [backgroundMode, setBackgroundMode] = useState<'transparent' | 'white' | 'dark'>('transparent');
   const [selectedCraftType, setSelectedCraftType] = useState<CraftType>(currentCraftType || 'pixel');
   const [selectedPaletteId, setSelectedPaletteId] = useState<string>(
-    currentCraftType === 'perler' ? 'perler' : currentCraftType === 'cross-stitch' || currentCraftType === 'alpha' ? 'dmc' : 'pico8'
+    currentCraftType === 'perler' ? 'perler' : currentCraftType === 'cross-stitch' || currentCraftType === 'alpha' || currentCraftType === 'loom' ? 'dmc' : 'pico8'
   );
 
   // Close on Escape key

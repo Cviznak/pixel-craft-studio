@@ -16,6 +16,8 @@ import {
   calculateDiamondDimensions,
   calculateCrochetDimensions,
   calculateKnittingDimensions,
+  calculateAlphaDimensions,
+  calculateBeadLoomDimensions,
   CROCHET_YARN_PRESETS,
   DEFAULT_CROCHET_GAUGE,
   DEFAULT_KNIT_GAUGE,
@@ -776,6 +778,42 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                         <span>Open Intarsia Row-by-Row Chart</span>
                       </button>
                     )}
+                  </div>
+                );
+              })()}
+
+              {/* Alpha Keychain & Bracelet Sizing */}
+              {config.craftType === 'alpha' && (() => {
+                const res = calculateAlphaDimensions(config.width, config.height);
+                return (
+                  <div className="space-y-1 text-xs">
+                    <div className="text-amber-200 font-bold font-mono">
+                      {res.dimensions.summary}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      Base: <span className="text-slate-200 font-bold">{res.baseStringsCount} strings</span> (~{res.estimatedLeadingYardsTotal} yds leading floss)
+                    </div>
+                    <div className="text-[10px] text-indigo-300">
+                      Hardware: {res.recommendedHardware}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Loom & Peyote Seed Beading Sizing */}
+              {config.craftType === 'loom' && (() => {
+                const res = calculateBeadLoomDimensions(config.width, config.height, config.beadLoom);
+                return (
+                  <div className="space-y-1 text-xs">
+                    <div className="text-amber-200 font-bold font-mono">
+                      {res.dimensions.summary}
+                    </div>
+                    <div className="text-[10px] text-slate-400">
+                      Delica 11/0: <span className="text-slate-200 font-bold">{res.totalBeads.toLocaleString()} beads</span> (~{res.totalGrams}g • {res.estimated5gTubes} {res.estimated5gTubes === 1 ? 'tube' : 'tubes'})
+                    </div>
+                    <div className="text-[10px] text-teal-300">
+                      Clasp: {res.recommendedClaspSize} • {res.warpThreadsCount} warps
+                    </div>
                   </div>
                 );
               })()}

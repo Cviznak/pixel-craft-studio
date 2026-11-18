@@ -1,4 +1,4 @@
-export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel' | 'crochet' | 'alpha' | 'knitting';
+export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel' | 'crochet' | 'alpha' | 'knitting' | 'loom';
 
 export type ExtractionMode = 'vibrant' | 'balanced' | 'dominant' | 'pastel';
 
@@ -26,6 +26,14 @@ export interface KnitGaugeConfig {
   stitchesPer4Inches: number; // e.g. 20 sts
   rowsPer4Inches: number;     // e.g. 26 rows (stockinette ratio: stitches are wider than rows)
   needleSizeMm?: number;      // e.g. 4.5
+}
+
+export type BeadStitchStyle = 'loom' | 'peyote' | 'brick';
+export type SeedBeadType = 'delica-11' | 'round-11' | 'round-8';
+
+export interface BeadLoomConfig {
+  stitchStyle: BeadStitchStyle;
+  beadType: SeedBeadType;
 }
 
 export interface PaletteColor {
@@ -64,6 +72,7 @@ export interface GridConfig {
   transparentCustomColor?: string;
   crochetGauge?: CrochetGaugeConfig;
   knitGauge?: KnitGaugeConfig;
+  beadLoom?: BeadLoomConfig;
 }
 
 export interface CellProgress {
