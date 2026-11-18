@@ -3,6 +3,7 @@ import type { GridConfig, PaletteColor, CraftProject, CellProgress } from '../ty
 import { getContrastingTextColor } from './colorUtils';
 import { getCraftDimensionsSummary } from './craftCalculator';
 import { generateCrochetInstructions } from './crochetInstructions';
+import { getAnchorEquivalent, getBeadEquivalents } from './threadEquivalents';
 
 // Export crisp, pixelated PNG (scale factor like 16x per pixel)
 export function exportPixelArtPNG(
@@ -286,8 +287,8 @@ export function generatePatternPDF(
   doc.text('Color Key & Material Shopping List', margin, 38);
 
   let startY = 44;
-  const colWidths = [12, 16, 32, 60, 25, 20];
-  const headers = ['Sym', 'Color', 'Code', 'Color Name', 'Count', '%'];
+  const colWidths = [12, 16, 40, 52, 25, 20];
+  const headers = ['Sym', 'Color', 'Code / Equiv', 'Color Name', 'Count', '%'];
 
   // Table header
   doc.setFillColor(243, 244, 246);
@@ -333,11 +334,19 @@ export function generatePatternPDF(
     doc.rect(x + 2, rowY + 1.2, 10, 4, 'S');
     x += colWidths[1];
 
-    // Code
+    // Code & Equivalents
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(17, 24, 39);
-    doc.text(color.code || color.hex, x + 2, rowY + 4.5);
+    const anchorEquiv = getAnchorEquivalent(color.code);
+    const beadEquiv = getBeadEquivalents(color.code);
+    let codeStr = color.code || color.hex;
+    if (config.craftType !== 'perler' && anchorEquiv) {
+      codeStr = `${color.code} (Anch ${anchorEquiv.code})`;
+    } else if (config.craftType === 'perler' && beadEquiv) {
+      codeStr = `${color.code} (${beadEquiv.artkal}/${beadEquiv.hama})`;
+    }
+    doc.text(codeStr, x + 2, rowY + 4.5);
     x += colWidths[2];
 
     // Name
