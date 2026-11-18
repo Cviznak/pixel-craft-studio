@@ -29,7 +29,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Store
+  Store,
+  ShoppingBag
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -43,6 +44,7 @@ interface ExportModalProps {
   onOpenWrittenInstructions?: () => void;
   onOpenSocialCard?: () => void;
   onOpenShoppingTrip?: () => void;
+  onOpenEtsyKit?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -56,6 +58,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onOpenWrittenInstructions,
   onOpenSocialCard,
   onOpenShoppingTrip,
+  onOpenEtsyKit,
 }) => {
   const [projectName, setProjectName] = useState('My Pixel Craft Pattern');
   const [scale, setScale] = useState(16);
@@ -373,6 +376,38 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Etsy & Seller Commercial Kit Card */}
+            {onOpenEtsyKit && (
+              <div className="p-3.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/30 via-pink-950/20 to-purple-950/20 hover:border-amber-500/60 transition flex items-center justify-between shadow-lg">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500 to-pink-500 text-white mt-0.5 shadow-md">
+                    <ShoppingBag className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <span>Etsy & Commercial Seller Kit</span>
+                      <span className="text-[10px] bg-amber-500/30 text-amber-300 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                        Etsy • Ravelry • Gumroad
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      Generate 4 high-res listing mockups (hoop, palette swatches, chart quality, size guide) + pre-written 13 SEO tags & description.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenEtsyKit();
+                  }}
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5 active:scale-95"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Open Seller Kit</span>
+                </button>
+              </div>
+            )}
 
             {/* In-Store Shopping Trip Checklist Card */}
             {onOpenShoppingTrip && (

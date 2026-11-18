@@ -25,7 +25,8 @@ import {
   ChevronDown,
   ShoppingCart,
   Calculator,
-  FolderArchive
+  FolderArchive,
+  ShoppingBag
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -44,6 +45,7 @@ interface HeaderProps {
   onOpenShoppingTripModal?: () => void;
   onOpenCalculatorsModal?: () => void;
   onOpenProjectVaultModal?: () => void;
+  onOpenEtsyKitModal?: () => void;
   savedProjectsCount?: number;
   isAutoSaving?: boolean;
   isZenMode?: boolean;
@@ -74,6 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShoppingTripModal,
   onOpenCalculatorsModal,
   onOpenProjectVaultModal,
+  onOpenEtsyKitModal,
   savedProjectsCount = 0,
   isAutoSaving = false,
   isZenMode = false,
@@ -527,6 +530,20 @@ export const Header: React.FC<HeaderProps> = ({
                 <FolderOpen className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Load Project JSON</span>
               </button>
+
+              {/* Etsy & Seller Commercial Kit */}
+              {onOpenEtsyKitModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenEtsyKitModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Etsy & Commercial Kit</span>
+                </button>
+              )}
 
               {/* Size & Frame Calculator */}
               {onOpenSizeAndFrameModal && (

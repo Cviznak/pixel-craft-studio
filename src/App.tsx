@@ -40,6 +40,7 @@ import { StitchCompanionModal } from './components/StitchCompanionModal';
 import { ShoppingTripModal } from './components/ShoppingTripModal';
 import { CraftCalculatorsModal } from './components/CraftCalculatorsModal';
 import { ProjectVaultModal } from './components/ProjectVaultModal';
+import { EtsySellerKitModal } from './components/EtsySellerKitModal';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb } from './utils/colorUtils';
@@ -127,6 +128,7 @@ export default function App() {
   const [isShoppingTripOpen, setIsShoppingTripOpen] = useState<boolean>(false);
   const [isCalculatorsOpen, setIsCalculatorsOpen] = useState<boolean>(false);
   const [isProjectVaultOpen, setIsProjectVaultOpen] = useState<boolean>(false);
+  const [isEtsyKitOpen, setIsEtsyKitOpen] = useState<boolean>(false);
   const [vaultProjectsCount, setVaultProjectsCount] = useState<number>(0);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
@@ -1426,6 +1428,7 @@ export default function App() {
         onOpenShoppingTripModal={() => setIsShoppingTripOpen(true)}
         onOpenCalculatorsModal={() => setIsCalculatorsOpen(true)}
         onOpenProjectVaultModal={() => setIsProjectVaultOpen(true)}
+        onOpenEtsyKitModal={() => setIsEtsyKitOpen(true)}
         savedProjectsCount={vaultProjectsCount}
         isAutoSaving={isAutoSaving}
         isZenMode={isZenMode}
@@ -1735,6 +1738,10 @@ export default function App() {
           setIsExportOpen(false);
           setIsShoppingTripOpen(true);
         }}
+        onOpenEtsyKit={() => {
+          setIsExportOpen(false);
+          setIsEtsyKitOpen(true);
+        }}
       />
 
       {/* Tapestry Crochet & Alpha Knot Written Row-by-Row Instructions Modal */}
@@ -1952,6 +1959,16 @@ export default function App() {
         currentSourceImageDataUrl={sourceImageDataUrl}
         onLoadProject={handleLoadVaultProject}
         onProjectsChanged={refreshVaultCount}
+      />
+
+      {/* Etsy & Seller Commercial Kit Modal */}
+      <EtsySellerKitModal
+        isOpen={isEtsyKitOpen}
+        onClose={() => setIsEtsyKitOpen(false)}
+        config={config}
+        gridData={gridData}
+        palette={palette}
+        backstitches={backstitches}
       />
     </div>
   );
