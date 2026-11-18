@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { 
   GridConfig, 
   PaletteColor, 
@@ -41,6 +42,7 @@ import {
 } from './utils/pixelStudioPalettes';
 import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
+import { getRouteByPath, getPathForCraft, updateDocumentMeta } from './utils/craftRoutes';
 import { SlidersHorizontal, Sparkles, Wand2, Palette, Paintbrush, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
@@ -65,7 +67,13 @@ const DEFAULT_CONFIG: GridConfig = {
 };
 
 export default function App() {
-  const [config, setConfig] = useState<GridConfig>(DEFAULT_CONFIG);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [config, setConfig] = useState<GridConfig>(() => {
+    const route = getRouteByPath(window.location.pathname);
+    return route ? { ...DEFAULT_CONFIG, craftType: route.craftType } : DEFAULT_CONFIG;
+  });
   const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
   const [sourceImageDataUrl, setSourceImageDataUrl] = useState<string | null>(null);
   const [sampleImageId, setSampleImageId] = useState<string>('flower');
@@ -371,7 +379,12 @@ export default function App() {
       try {
         const saved = await loadAppState();
         if (saved) {
-          setConfig(saved.config || DEFAULT_CONFIG);
+          const route = getRouteByPath(location.pathname);
+          const initialCraft = route ? route.craftType : (saved.config?.craftType || DEFAULT_CONFIG.craftType);
+          setConfig({
+            ...(saved.config || DEFAULT_CONFIG),
+            craftType: initialCraft,
+          });
           if (saved.palette && saved.palette.length > 0) {
             setPalette(saved.palette);
           }
@@ -428,10 +441,12 @@ export default function App() {
 
     const loadInitialDefault = () => {
       const defaultSample = SAMPLE_IMAGES[0];
+      const route = getRouteByPath(location.pathname);
+      const initialCfg = route ? { ...DEFAULT_CONFIG, craftType: route.craftType } : DEFAULT_CONFIG;
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        applyImageAndProcess(img, defaultSample.url, defaultSample.id, DEFAULT_CONFIG);
+        applyImageAndProcess(img, defaultSample.url, defaultSample.id, initialCfg);
         setIsInitialLoaded(true);
       };
       img.src = defaultSample.url;
@@ -439,6 +454,24 @@ export default function App() {
 
     restoreState();
   }, []);
+
+  // Synchronize browser URL route with active craft and dynamic SEO metadata
+  useEffect(() => {
+    const route = getRouteByPath(location.pathname);
+    if (route) {
+      if (latestConfigRef.current.craftType !== route.craftType) {
+        const next = { ...latestConfigRef.current, craftType: route.craftType };
+        latestConfigRef.current = next;
+        setConfig(next);
+      }
+      updateDocumentMeta(route);
+    } else if (location.pathname === '/gallery') {
+      setIsStarterGalleryOpen(true);
+      updateDocumentMeta(null);
+    } else {
+      updateDocumentMeta(null);
+    }
+  }, [location.pathname]);
 
   // Save state continuously (debounced)
   useEffect(() => {
@@ -921,6 +954,13 @@ export default function App() {
 
   // Update Config Helper
   const handleUpdateConfig = useCallback((newConfig: Partial<GridConfig>) => {
+    if (newConfig.craftType && newConfig.craftType !== latestConfigRef.current.craftType) {
+      const targetPath = getPathForCraft(newConfig.craftType);
+      if (window.location.pathname !== targetPath) {
+        navigate(targetPath);
+      }
+    }
+
     const next = { ...latestConfigRef.current, ...newConfig };
     latestConfigRef.current = next;
     setConfig(next);
@@ -946,7 +986,7 @@ export default function App() {
         reprocessCurrentImage(next);
       }, 35);
     }
-  }, [reprocessCurrentImage]);
+  }, [reprocessCurrentImage, navigate]);
 
   // Handle Stamping Pixel Text onto Canvas
   const handleStampText = useCallback((textMatrix: number[][], colorIndex: number, startX: number, startY: number) => {
@@ -1541,12 +1581,20 @@ export default function App() {
       {/* Starter Patterns & Inspiration Gallery Modal */}
       <StarterGalleryModal
         isOpen={isStarterGalleryOpen}
-        onClose={() => setIsStarterGalleryOpen(false)}
+        onClose={() => {
+          setIsStarterGalleryOpen(false);
+          if (location.pathname === '/gallery') {
+            navigate(getPathForCraft(config.craftType));
+          }
+        }}
         onSelectStarter={(sample, craftType) => {
           if (craftType) {
             handleUpdateConfig({ craftType });
           }
           handleSelectSample(sample);
+          if (location.pathname === '/gallery') {
+            navigate(getPathForCraft(craftType || config.craftType));
+          }
         }}
         onOpenAiGenerator={() => setIsAiModalOpen(true)}
       />
