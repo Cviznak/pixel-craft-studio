@@ -1,4 +1,4 @@
-export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel' | 'crochet' | 'alpha';
+export type CraftType = 'perler' | 'cross-stitch' | 'diamond' | 'pixel' | 'crochet' | 'alpha' | 'knitting';
 
 export type ExtractionMode = 'vibrant' | 'balanced' | 'dominant' | 'pastel';
 
@@ -17,6 +17,15 @@ export interface CrochetGaugeConfig {
   stitchesPer4Inches: number; // e.g. 15 sts
   rowsPer4Inches: number;     // e.g. 17 rows
   hookSizeMm?: number;        // e.g. 5.0
+}
+
+export type KnitYarnWeight = 'fingering' | 'sport' | 'dk' | 'worsted' | 'bulky';
+
+export interface KnitGaugeConfig {
+  yarnWeight: KnitYarnWeight;
+  stitchesPer4Inches: number; // e.g. 20 sts
+  rowsPer4Inches: number;     // e.g. 26 rows (stockinette ratio: stitches are wider than rows)
+  needleSizeMm?: number;      // e.g. 4.5
 }
 
 export interface PaletteColor {
@@ -54,6 +63,7 @@ export interface GridConfig {
   transparentMode: TransparentBackgroundMode;
   transparentCustomColor?: string;
   crochetGauge?: CrochetGaugeConfig;
+  knitGauge?: KnitGaugeConfig;
 }
 
 export interface CellProgress {

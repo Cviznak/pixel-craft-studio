@@ -24,10 +24,13 @@ const SIZE_PRESETS = [
   { id: '12x40', w: 12, h: 40, label: '12×40', desc: 'Mini Alpha Keychain' },
   { id: '16x50', w: 16, h: 50, label: '16×50', desc: 'Standard Name Keychain' },
   { id: '20x60', w: 20, h: 60, label: '20×60', desc: 'Wide Strap / Bracelet' },
+  { id: '28x36', w: 28, h: 36, label: '28×36', desc: 'Knitting Intarsia Motif' },
+  { id: '40x50', w: 40, h: 50, label: '40×50', desc: 'Knit Pillow / Cushion' },
 ];
 
 const CRAFT_OPTIONS: { type: CraftType; label: string; icon: string }[] = [
   { type: 'pixel', label: 'Pixel Art', icon: '👾' },
+  { type: 'knitting', label: 'Knitting (Intarsia)', icon: '🥢' },
   { type: 'alpha', label: 'Alpha Keychain', icon: '🪢' },
   { type: 'cross-stitch', label: 'Cross-Stitch', icon: '🧵' },
   { type: 'perler', label: 'Perler Beads', icon: '🔴' },

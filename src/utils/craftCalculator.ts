@@ -1,7 +1,9 @@
 import type { 
   CraftType, 
   CrochetGaugeConfig, 
-  CrochetYarnWeight 
+  CrochetYarnWeight,
+  KnitGaugeConfig,
+  KnitYarnWeight 
 } from '../types/craft';
 
 export type CrossStitchClothCount = 11 | 14 | 16 | 18 | 22 | 28;
@@ -113,6 +115,116 @@ export const DEFAULT_CROCHET_GAUGE: CrochetGaugeConfig = {
   rowsPer4Inches: 17,
   hookSizeMm: 5.0,
 };
+
+export const KNIT_YARN_PRESETS: {
+  [weight in KnitYarnWeight]: {
+    name: string;
+    needleMm: number;
+    needleUs: string;
+    defaultStsPer4In: number;
+    defaultRowsPer4In: number;
+    yardsPerStitch: number;
+  };
+} = {
+  fingering: {
+    name: 'Fingering / Sock (#1)',
+    needleMm: 2.75,
+    needleUs: 'US 2',
+    defaultStsPer4In: 28,
+    defaultRowsPer4In: 36,
+    yardsPerStitch: 0.45,
+  },
+  sport: {
+    name: 'Sport / Baby (#2)',
+    needleMm: 3.5,
+    needleUs: 'US 4',
+    defaultStsPer4In: 24,
+    defaultRowsPer4In: 32,
+    yardsPerStitch: 0.6,
+  },
+  dk: {
+    name: 'DK / Light Worsted (#3)',
+    needleMm: 4.0,
+    needleUs: 'US 6',
+    defaultStsPer4In: 22,
+    defaultRowsPer4In: 28,
+    yardsPerStitch: 0.75,
+  },
+  worsted: {
+    name: 'Worsted / Medium (#4)',
+    needleMm: 4.5,
+    needleUs: 'US 7',
+    defaultStsPer4In: 20,
+    defaultRowsPer4In: 26,
+    yardsPerStitch: 0.9,
+  },
+  bulky: {
+    name: 'Bulky / Chunky (#5)',
+    needleMm: 6.0,
+    needleUs: 'US 10',
+    defaultStsPer4In: 14,
+    defaultRowsPer4In: 18,
+    yardsPerStitch: 1.3,
+  },
+};
+
+export const DEFAULT_KNIT_GAUGE: KnitGaugeConfig = {
+  yarnWeight: 'worsted',
+  stitchesPer4Inches: 20,
+  rowsPer4Inches: 26,
+  needleSizeMm: 4.5,
+};
+
+export interface KnitMaterials {
+  dimensions: PhysicalDimensions;
+  aspectRatio: number; // width / height of a single stitch
+  yarnWeight: KnitYarnWeight;
+  needleRecommendation: string;
+  totalStitches: number;
+  estimatedTotalYards: number;
+  estimatedTotalMeters: number;
+  estimatedSkeins: number;
+}
+
+export function calculateKnittingDimensions(
+  gridWidth: number,
+  gridHeight: number,
+  gauge: KnitGaugeConfig = DEFAULT_KNIT_GAUGE
+): KnitMaterials {
+  const stsPerInch = Math.max(1, (gauge?.stitchesPer4Inches || 20) / 4);
+  const rowsPerInch = Math.max(1, (gauge?.rowsPer4Inches || 26) / 4);
+
+  const widthInches = Math.round((gridWidth / stsPerInch) * 10) / 10;
+  const heightInches = Math.round((gridHeight / rowsPerInch) * 10) / 10;
+  const widthCm = Math.round(widthInches * 2.54 * 10) / 10;
+  const heightCm = Math.round(heightInches * 2.54 * 10) / 10;
+
+  const preset = KNIT_YARN_PRESETS[gauge?.yarnWeight || 'worsted'] || KNIT_YARN_PRESETS.worsted;
+  const totalStitches = gridWidth * gridHeight;
+  const estimatedTotalYards = Math.round(totalStitches * preset.yardsPerStitch);
+  const estimatedTotalMeters = Math.round(estimatedTotalYards * 0.9144);
+  const estimatedSkeins = Math.max(1, Math.ceil(estimatedTotalYards / 200));
+
+  // A stockinette knit stitch is wider than tall: gauge ratio = rowsPerInch / stsPerInch (e.g. 26/20 = 1.3)
+  const stitchAspectRatio = Math.round((rowsPerInch / stsPerInch) * 100) / 100;
+
+  return {
+    dimensions: {
+      widthInches,
+      heightInches,
+      widthCm,
+      heightCm,
+      summary: `${widthInches}" × ${heightInches}" (${widthCm} × ${heightCm} cm)`,
+    },
+    aspectRatio: stitchAspectRatio,
+    yarnWeight: gauge?.yarnWeight || 'worsted',
+    needleRecommendation: `${preset.needleMm}mm (${preset.needleUs})`,
+    totalStitches,
+    estimatedTotalYards,
+    estimatedTotalMeters,
+    estimatedSkeins,
+  };
+}
 
 /**
  * Calculates physical dimensions for Cross-Stitch based on Aida cloth count
@@ -392,8 +504,13 @@ export function getCraftDimensionsSummary(
   gridHeight: number,
   craftType: CraftType,
   clothCount: CrossStitchClothCount = 14,
-  crochetGauge: CrochetGaugeConfig = DEFAULT_CROCHET_GAUGE
+  crochetGauge: CrochetGaugeConfig = DEFAULT_CROCHET_GAUGE,
+  knitGauge: KnitGaugeConfig = DEFAULT_KNIT_GAUGE
 ): string {
+  if (craftType === 'knitting') {
+    const res = calculateKnittingDimensions(gridWidth, gridHeight, knitGauge);
+    return `${res.dimensions.summary} • Knit (${res.needleRecommendation})`;
+  }
   if (craftType === 'alpha') {
     const res = calculateAlphaDimensions(gridWidth, gridHeight);
     return `${res.dimensions.summary} • ${res.baseStringsCount} Base Strings (${res.recommendedHardware})`;

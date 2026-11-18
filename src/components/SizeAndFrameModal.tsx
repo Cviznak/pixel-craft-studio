@@ -15,9 +15,11 @@ import {
   calculateDiamondDimensions, 
   calculateCrochetDimensions,
   calculateAlphaDimensions,
+  calculateKnittingDimensions,
   type CrossStitchClothCount,
   type PerlerBeadType,
-  DEFAULT_CROCHET_GAUGE
+  DEFAULT_CROCHET_GAUGE,
+  DEFAULT_KNIT_GAUGE
 } from '../utils/craftCalculator';
 
 interface SizeAndFrameModalProps {
@@ -129,6 +131,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         recommendedFabricHCm: dm.dimensions.heightCm + 5,
         pegboards: null,
         alpha: null,
+        knitting: null,
       };
     } else if (selectedCraftType === 'alpha') {
       const al = calculateAlphaDimensions(gridWidth, gridHeight);
@@ -143,6 +146,22 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         recommendedFabricHCm: al.dimensions.heightCm,
         pegboards: null,
         alpha: al,
+        knitting: null,
+      };
+    } else if (selectedCraftType === 'knitting') {
+      const kn = calculateKnittingDimensions(gridWidth, gridHeight, DEFAULT_KNIT_GAUGE);
+      return {
+        widthInches: kn.dimensions.widthInches,
+        heightInches: kn.dimensions.heightInches,
+        widthCm: kn.dimensions.widthCm,
+        heightCm: kn.dimensions.heightCm,
+        recommendedFabricWInches: kn.dimensions.widthInches,
+        recommendedFabricHInches: kn.dimensions.heightInches,
+        recommendedFabricWCm: kn.dimensions.widthCm,
+        recommendedFabricHCm: kn.dimensions.heightCm,
+        pegboards: null,
+        alpha: null,
+        knitting: kn,
       };
     } else {
       // Tapestry Crochet / Pixel
@@ -158,6 +177,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
         recommendedFabricHCm: cr.dimensions.heightCm,
         pegboards: null,
         alpha: null,
+        knitting: null,
       };
     }
   }, [selectedCraftType, gridWidth, gridHeight, aidaCount, perlerType]);
@@ -448,10 +468,11 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
             {/* Craft Type Selector */}
             <div className="flex flex-col gap-1.5">
               <label className="font-semibold text-slate-300">Craft Simulation Medium:</label>
-              <div className="grid grid-cols-5 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-6 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
                 {[
                   { id: 'cross-stitch', label: 'Cross-Stitch' },
-                  { id: 'alpha', label: 'Alpha Knot' },
+                  { id: 'knitting', label: 'Knitting' },
+                  { id: 'alpha', label: 'Alpha' },
                   { id: 'perler', label: 'Perler' },
                   { id: 'diamond', label: 'Diamond' },
                   { id: 'crochet', label: 'Crochet' },
@@ -459,7 +480,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
                   <button
                     key={item.id}
                     onClick={() => setSelectedCraftType(item.id as CraftType)}
-                    className={`py-1.5 px-1.5 rounded-lg text-[11px] font-semibold transition truncate text-center ${
+                    className={`py-1.5 px-1 rounded-lg text-[10.5px] font-semibold transition truncate text-center ${
                       selectedCraftType === item.id
                         ? 'bg-indigo-600 text-white shadow-md'
                         : 'text-slate-400 hover:text-slate-200'
@@ -590,6 +611,40 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
                   >
                     Find Clamps
                   </a>
+                </div>
+              </div>
+            )}
+
+            {/* Knitting Intarsia & Fair Isle Specs Card */}
+            {selectedCraftType === 'knitting' && sizingMetrics.knitting && (
+              <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
+                  <span className="font-bold text-purple-200 text-xs flex items-center gap-1.5">
+                    <span>🥢</span> Intarsia & Fair Isle Knit Gauge
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono">
+                    20 sts × 26 rows / 4"
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                    <div className="text-slate-400">Needles Recommended:</div>
+                    <div className="font-bold text-white font-mono mt-0.5">
+                      {sizingMetrics.knitting.needleRecommendation}
+                    </div>
+                  </div>
+                  <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
+                    <div className="text-slate-400">Estimated Yarn Needed:</div>
+                    <div className="font-bold text-emerald-300 font-mono mt-0.5">
+                      ~{sizingMetrics.knitting.estimatedTotalYards} yds (~{sizingMetrics.knitting.estimatedSkeins} skeins)
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                  <div className="text-slate-300 text-[11px]">
+                    <span className="font-semibold text-purple-300">Stitch Ratio: </span>
+                    Stitches are ~{sizingMetrics.knitting.aspectRatio}× wider than tall (authentic stockinette gauge).
+                  </div>
                 </div>
               </div>
             )}

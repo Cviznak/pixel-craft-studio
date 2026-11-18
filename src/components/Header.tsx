@@ -168,6 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'cross-stitch', label: 'Cross-Stitch', icon: '🧵' },
     { id: 'alpha', label: 'Alpha Knot', icon: '🪢' },
     { id: 'crochet', label: 'Crochet', icon: '🧶' },
+    { id: 'knitting', label: 'Knitting', icon: '🥢' },
     { id: 'diamond', label: 'Diamond', icon: '💎' },
     { id: 'pixel', label: 'Pixel', icon: '🔲' },
   ];

@@ -150,14 +150,18 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-sm font-bold text-slate-100 truncate">
-                  {craftType === 'alpha' ? 'Alpha Pattern Row-by-Row Knotting Guide' : 'Written Row-by-Row Instructions'}
+                  {craftType === 'alpha' 
+                    ? 'Alpha Pattern Row-by-Row Knotting Guide' 
+                    : craftType === 'knitting'
+                    ? 'Intarsia & Fair Isle Knitting Chart'
+                    : 'Written Row-by-Row Instructions'}
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 shrink-0">
-                  {craftType === 'alpha' ? 'Alpha Knotting' : 'Tapestry Crochet'}
+                  {craftType === 'alpha' ? 'Alpha Knotting' : craftType === 'knitting' ? 'Knitting (RS/WS)' : 'Tapestry Crochet'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 truncate">
-                {totalRows} Rows • {instructions.totalStitches} {craftType === 'alpha' ? 'knots' : 'stitches'} • {craftType === 'alpha' ? 'Alternating L→R and R→L passes' : 'Interactive progress tracker'}
+                {totalRows} Rows • {instructions.totalStitches} {craftType === 'alpha' ? 'knots' : 'stitches'} • {craftType === 'alpha' ? 'Alternating L→R and R→L passes' : craftType === 'knitting' ? 'Alternating RS (Knit) & WS (Purl) passes' : 'Interactive progress tracker'}
               </p>
             </div>
           </div>

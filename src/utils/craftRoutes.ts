@@ -93,6 +93,19 @@ export const CRAFT_ROUTES: Record<CraftType, CraftRouteConfig> = {
     h1: 'Online Pixel Art Studio',
     subtitle: 'Freehand pixel art editor with live mirror symmetry, retro palettes, flood fill, and seamless image conversion.',
   },
+  'knitting': {
+    path: '/knitting',
+    craftType: 'knitting',
+    title: 'Knitting',
+    metaTitle: 'Free Knitting Chart Maker — Intarsia & Fair Isle Graph Generator | Pixel Craft Studio',
+    metaDescription: 'Convert photos or draw custom knitting charts with accurate rectangular gauge ratios (4:5 stockinette), V-stitch texture simulation, and yarn yardage estimates.',
+    keywords: 'knitting chart maker, intarsia graph generator, fair isle pattern maker, rectangular knit gauge grid, stockinette stitch graph, photo to knitting pattern',
+    badge: 'Intarsia & Fair Isle Knitting Studio',
+    icon: '🥢',
+    recommendedPalette: 'pastel',
+    h1: 'Intarsia & Fair Isle Knitting Chart Maker',
+    subtitle: 'Convert images into knitting graphs with non-square rectangular gauge ratios, realistic V-stitch texture, and yarn estimates.',
+  },
 };
 
 /**

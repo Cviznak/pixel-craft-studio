@@ -332,6 +332,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         // Alpha macrame / knotting board backing
         ctx.fillStyle = '#0b1120';
         ctx.fillRect(0, 0, totalW, totalH);
+      } else if (config.craftType === 'knitting') {
+        // Heather charcoal wool backing
+        ctx.fillStyle = '#171e29';
+        ctx.fillRect(0, 0, totalW, totalH);
       } else {
         ctx.fillStyle = '#1e293b';
         ctx.fillRect(0, 0, totalW, totalH);
@@ -542,6 +546,41 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           ctx.beginPath();
           ctx.moveTo(px + padX + 3, py + padY + 2);
           ctx.lineTo(px + cellSize - padX - 3, py + padY + 2);
+          ctx.stroke();
+        } else if (config.craftType === 'knitting') {
+          // Authentic Stockinette Knitting Texture (Interlocking V-Stitch Loop)
+          ctx.fillStyle = color.hex;
+          ctx.fillRect(px, py, cellSize, cellSize);
+
+          const legW = Math.max(1.2, cellSize * 0.18);
+          // Left strand of the V (curves from top-left toward bottom-center)
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+          ctx.lineWidth = legW;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(px + cellSize * 0.22, py + cellSize * 0.1);
+          ctx.quadraticCurveTo(px + cellSize * 0.35, py + cellSize * 0.55, px + cellSize * 0.5, py + cellSize * 0.88);
+          ctx.stroke();
+
+          // Right strand of the V (curves from top-right toward bottom-center)
+          ctx.beginPath();
+          ctx.moveTo(px + cellSize * 0.78, py + cellSize * 0.1);
+          ctx.quadraticCurveTo(px + cellSize * 0.65, py + cellSize * 0.55, px + cellSize * 0.5, py + cellSize * 0.88);
+          ctx.stroke();
+
+          // Center groove shadow (between the two legs of the V)
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+          ctx.lineWidth = Math.max(1, cellSize * 0.12);
+          ctx.beginPath();
+          ctx.moveTo(px + cellSize * 0.5, py + cellSize * 0.25);
+          ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.82);
+          ctx.stroke();
+
+          // Interlocking loop top curve shadow
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+          ctx.lineWidth = Math.max(0.8, cellSize * 0.1);
+          ctx.beginPath();
+          ctx.arc(px + cellSize * 0.5, py + cellSize * 0.12, cellSize * 0.26, Math.PI, 0);
           ctx.stroke();
         } else if (config.craftType === 'diamond') {
           // Diamond painting faceted drill
@@ -1444,8 +1483,17 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       const hIn = (gridHeight / rowsPerIn).toFixed(1);
       return `${wIn}"×${hIn}" crochet`;
     }
+    if (config.craftType === 'knitting') {
+      const stsPerIn = (config.knitGauge?.stitchesPer4Inches || 20) / 4;
+      const rowsPerIn = (config.knitGauge?.rowsPer4Inches || 26) / 4;
+      const wIn = (gridWidth / stsPerIn).toFixed(1);
+      const hIn = (gridHeight / rowsPerIn).toFixed(1);
+      const wCm = ((gridWidth / stsPerIn) * 2.54).toFixed(1);
+      const hCm = ((gridHeight / rowsPerIn) * 2.54).toFixed(1);
+      return `${wIn}"×${hIn}" (${wCm}×${hCm}cm • Knit)`;
+    }
     return null;
-  }, [gridWidth, gridHeight, config.craftType, config.crochetGauge]);
+  }, [gridWidth, gridHeight, config.craftType, config.crochetGauge, config.knitGauge]);
 
   const triggerConfetti = useCallback(() => {
     confetti({

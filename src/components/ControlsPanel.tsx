@@ -15,8 +15,11 @@ import {
   calculatePerlerDimensions, 
   calculateDiamondDimensions,
   calculateCrochetDimensions,
+  calculateKnittingDimensions,
   CROCHET_YARN_PRESETS,
   DEFAULT_CROCHET_GAUGE,
+  DEFAULT_KNIT_GAUGE,
+  KNIT_YARN_PRESETS,
   type CrossStitchClothCount 
 } from '../utils/craftCalculator';
 import { 
@@ -701,6 +704,76 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                       >
                         <FileText className="w-3.5 h-3.5 text-pink-400" />
                         <span>Open Row-by-Row Written Instructions</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Knitting Intarsia Gauge & Yarn Calculator */}
+              {config.craftType === 'knitting' && (() => {
+                const currentGauge = config.knitGauge || DEFAULT_KNIT_GAUGE;
+                const res = calculateKnittingDimensions(config.width, config.height, currentGauge);
+
+                return (
+                  <div className="space-y-2.5 text-xs">
+                    <div className="text-purple-200 font-bold font-mono">
+                      {res.dimensions.summary}
+                    </div>
+
+                    {/* Yarn Weight Preset */}
+                    <div>
+                      <label className="text-[10px] text-slate-400 block mb-1 font-semibold">Yarn Weight & Needles</label>
+                      <select
+                        value={currentGauge.yarnWeight}
+                        onChange={(e) => {
+                          const weight = e.target.value as any;
+                          const preset = KNIT_YARN_PRESETS[weight as keyof typeof KNIT_YARN_PRESETS];
+                          onUpdateConfig({
+                            knitGauge: {
+                              ...currentGauge,
+                              yarnWeight: weight,
+                              stitchesPer4Inches: preset.defaultStsPer4In,
+                              rowsPer4Inches: preset.defaultRowsPer4In,
+                              needleSizeMm: preset.needleMm,
+                            },
+                          });
+                        }}
+                        className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 font-medium focus:outline-none focus:border-indigo-500"
+                      >
+                        {Object.entries(KNIT_YARN_PRESETS).map(([key, info]) => (
+                          <option key={key} value={key}>
+                            {info.name} • {info.needleMm}mm ({info.needleUs})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Gauge Grid Spec (Sts & Rows per 4") */}
+                    <div className="bg-slate-900/60 p-2 rounded-lg border border-slate-800 space-y-1 text-[11px]">
+                      <div className="flex justify-between items-center text-slate-400">
+                        <span>Needles:</span>
+                        <span className="text-white font-semibold font-mono">{res.needleRecommendation}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-400">
+                        <span>Gauge Ratio:</span>
+                        <span className="text-amber-300 font-mono font-bold">{res.aspectRatio} : 1 (wider than tall)</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-400">
+                        <span>Estimated Yarn:</span>
+                        <span className="text-emerald-400 font-mono font-bold">~{res.estimatedTotalYards} yds ({res.estimatedSkeins} sk)</span>
+                      </div>
+                    </div>
+
+                    {/* Open Written Instructions direct launch button */}
+                    {onOpenWrittenInstructions && (
+                      <button
+                        type="button"
+                        onClick={onOpenWrittenInstructions}
+                        className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-purple-600/20 to-pink-600/20 hover:from-purple-600/30 hover:to-pink-600/30 border border-purple-500/40 hover:border-purple-500/60 text-purple-300 hover:text-purple-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Open Intarsia Row-by-Row Chart</span>
                       </button>
                     )}
                   </div>
