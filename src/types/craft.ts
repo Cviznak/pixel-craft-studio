@@ -130,3 +130,21 @@ export interface CraftProject {
   completedCells: CellProgress;
   backstitches?: BackstitchLine[];
 }
+
+export interface SavedProject {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  craftType: CraftType;
+  gridConfig: GridConfig;
+  gridData: number[][];
+  palette: PaletteColor[];
+  completedCells?: CellProgress;
+  backstitches?: BackstitchLine[];
+  thumbnailDataUrl: string;
+  width: number;
+  height: number;
+  colorCount: number;
+  sourceImageDataUrl?: string | null;
+}

@@ -24,7 +24,8 @@ import {
   Minimize2,
   ChevronDown,
   ShoppingCart,
-  Calculator
+  Calculator,
+  FolderArchive
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -42,6 +43,9 @@ interface HeaderProps {
   onOpenStitchCompanionModal?: () => void;
   onOpenShoppingTripModal?: () => void;
   onOpenCalculatorsModal?: () => void;
+  onOpenProjectVaultModal?: () => void;
+  savedProjectsCount?: number;
+  isAutoSaving?: boolean;
   isZenMode?: boolean;
   onToggleZenMode?: () => void;
   onResetProgress: () => void;
@@ -69,6 +73,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenStitchCompanionModal,
   onOpenShoppingTripModal,
   onOpenCalculatorsModal,
+  onOpenProjectVaultModal,
+  savedProjectsCount = 0,
+  isAutoSaving = false,
   isZenMode = false,
   onToggleZenMode,
   onResetProgress,
@@ -318,6 +325,41 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
+        {/* Auto-Save Status Indicator */}
+        <div 
+          className="hidden 2xl:flex items-center gap-1.5 text-[10px] text-slate-400 font-medium px-2 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80"
+          title="Designs and edits are continuously auto-saved to your browser vault"
+        >
+          {isAutoSaving ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-amber-300">Saving...</span>
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+              <span className="text-slate-400">Auto-saved</span>
+            </>
+          )}
+        </div>
+
+        {/* My Projects Vault Button */}
+        {onOpenProjectVaultModal && (
+          <button
+            onClick={onOpenProjectVaultModal}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 shadow-sm transition active:scale-95"
+            title="Open My Projects Vault (WIPs & saved designs)"
+          >
+            <FolderArchive className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Projects</span>
+            {savedProjectsCount > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
+                {savedProjectsCount}
+              </span>
+            )}
+          </button>
+        )}
+
         {/* Palette Panel Toggle (Desktop) */}
         {onToggleRightPanel && (
           <button
@@ -381,6 +423,24 @@ export const Header: React.FC<HeaderProps> = ({
 
           {isProjectMenuOpen && (
             <div className="absolute right-0 mt-1.5 w-56 bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-xl shadow-2xl p-1.5 z-50 text-xs flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
+              {onOpenProjectVaultModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenProjectVaultModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <FolderArchive className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>My Projects Vault</span>
+                  {savedProjectsCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
+                      {savedProjectsCount}
+                    </span>
+                  )}
+                </button>
+              )}
+
               {onOpenNewCanvasModal && (
                 <button
                   onClick={() => {

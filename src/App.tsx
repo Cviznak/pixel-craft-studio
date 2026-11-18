@@ -6,6 +6,7 @@ import type {
   CellProgress, 
   SampleImage, 
   CraftProject,
+  SavedProject,
   AiHistoryItem,
   UploadHistoryItem,
   BackstitchLine,
@@ -15,7 +16,7 @@ import type {
 import { SAMPLE_IMAGES } from './utils/sampleImages';
 import { extractBeautifulPalette } from './utils/paletteExtractor';
 import { processImageToGrid } from './utils/pixelation';
-import { saveAppState, loadAppState, clearSavedAppState } from './utils/storage';
+import { saveAppState, loadAppState, clearSavedAppState, getAllVaultProjects } from './utils/storage';
 import { DEFAULT_CROCHET_GAUGE } from './utils/craftCalculator';
 import { Header } from './components/Header';
 import { ControlsPanel } from './components/ControlsPanel';
@@ -38,6 +39,7 @@ import { MyStashModal } from './components/MyStashModal';
 import { StitchCompanionModal } from './components/StitchCompanionModal';
 import { ShoppingTripModal } from './components/ShoppingTripModal';
 import { CraftCalculatorsModal } from './components/CraftCalculatorsModal';
+import { ProjectVaultModal } from './components/ProjectVaultModal';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb } from './utils/colorUtils';
@@ -50,7 +52,7 @@ import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
 import { getRouteByPath, getPathForCraft, updateDocumentMeta } from './utils/craftRoutes';
 import { decodePatternFromHash } from './utils/shareUtils';
-import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText, Smartphone } from 'lucide-react';
+import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText, Smartphone, FolderArchive } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -124,6 +126,9 @@ export default function App() {
   const [isStitchCompanionOpen, setIsStitchCompanionOpen] = useState<boolean>(false);
   const [isShoppingTripOpen, setIsShoppingTripOpen] = useState<boolean>(false);
   const [isCalculatorsOpen, setIsCalculatorsOpen] = useState<boolean>(false);
+  const [isProjectVaultOpen, setIsProjectVaultOpen] = useState<boolean>(false);
+  const [vaultProjectsCount, setVaultProjectsCount] = useState<number>(0);
+  const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
   const [showPegboardLines, setShowPegboardLines] = useState<boolean>(false);
   const [useMyStashOnly, setUseMyStashOnly] = useState<boolean>(false);
@@ -484,6 +489,20 @@ export default function App() {
     restoreState();
   }, []);
 
+  // Refresh saved projects vault count
+  const refreshVaultCount = useCallback(async () => {
+    try {
+      const list = await getAllVaultProjects();
+      setVaultProjectsCount(list.length);
+    } catch (err) {
+      console.warn('Vault count check:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshVaultCount();
+  }, [refreshVaultCount]);
+
   // Synchronize browser URL route with active craft and dynamic SEO metadata
   useEffect(() => {
     const route = getRouteByPath(location.pathname);
@@ -505,32 +524,39 @@ export default function App() {
     }
   }, [location.pathname]);
 
-  // Save state continuously (debounced)
+  // Save state continuously (debounced auto-save)
   useEffect(() => {
-    if (!isInitialLoaded || !sourceImage || gridData.length === 0) return;
+    if (!isInitialLoaded || gridData.length === 0) return;
 
-    const timer = setTimeout(() => {
-      saveAppState({
-        version: 1,
-        updatedAt: new Date().toISOString(),
-        config,
-        palette,
-        gridData,
-        completedCells,
-        spotlightColorId,
-        activeColorIndex,
-        sourceImageDataUrl,
-        sampleImageId,
-        lastAiPrompt,
-        lastAiStyle,
-        aiHistory,
-      });
-    }, 600);
+    setIsAutoSaving(true);
+    const timer = setTimeout(async () => {
+      try {
+        await saveAppState({
+          version: 2,
+          updatedAt: new Date().toISOString(),
+          config,
+          palette,
+          gridData,
+          completedCells,
+          spotlightColorId,
+          activeColorIndex,
+          sourceImageDataUrl,
+          sampleImageId,
+          lastAiPrompt,
+          lastAiStyle,
+          aiHistory,
+          backstitches,
+        });
+      } catch (err) {
+        console.warn('Auto-save error:', err);
+      } finally {
+        setIsAutoSaving(false);
+      }
+    }, 800);
 
     return () => clearTimeout(timer);
   }, [
     isInitialLoaded,
-    sourceImage,
     config,
     palette,
     gridData,
@@ -542,6 +568,7 @@ export default function App() {
     lastAiPrompt,
     lastAiStyle,
     aiHistory,
+    backstitches,
   ]);
 
   // Synchronous beforeunload backup save
@@ -1328,6 +1355,34 @@ export default function App() {
     setGridFuture([]);
   };
 
+  const handleLoadVaultProject = useCallback((project: SavedProject) => {
+    setConfig(project.gridConfig);
+    latestConfigRef.current = project.gridConfig;
+    setGridData(project.gridData);
+    setPalette(project.palette);
+    paletteRef.current = project.palette;
+    setCompletedCells(project.completedCells || {});
+    setBackstitches(project.backstitches || []);
+    if (project.sourceImageDataUrl) {
+      setSourceImageDataUrl(project.sourceImageDataUrl);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        setSourceImage(img);
+        sourceImageRef.current = img;
+      };
+      img.src = project.sourceImageDataUrl;
+    } else {
+      setSourceImage(null);
+      sourceImageRef.current = null;
+      setSourceImageDataUrl(null);
+    }
+    setGridHistory([]);
+    setGridFuture([]);
+    showToast(`Loaded "${project.name}" from Vault! ✨`);
+    refreshVaultCount();
+  }, [showToast, refreshVaultCount]);
+
   // Drag & drop picture over window
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -1370,6 +1425,9 @@ export default function App() {
         onOpenStitchCompanionModal={() => setIsStitchCompanionOpen(true)}
         onOpenShoppingTripModal={() => setIsShoppingTripOpen(true)}
         onOpenCalculatorsModal={() => setIsCalculatorsOpen(true)}
+        onOpenProjectVaultModal={() => setIsProjectVaultOpen(true)}
+        savedProjectsCount={vaultProjectsCount}
+        isAutoSaving={isAutoSaving}
         isZenMode={isZenMode}
         onToggleZenMode={() => setIsZenMode((prev) => !prev)}
         onResetProgress={handleResetProgress}
@@ -1587,6 +1645,22 @@ export default function App() {
               </span>
             </div>
             <span className="text-[10px] font-semibold">Palette</span>
+          </button>
+
+          <button
+            onClick={() => setIsProjectVaultOpen(true)}
+            className="flex flex-col items-center gap-1 px-2.5 py-1 rounded-xl text-indigo-400 hover:text-indigo-300 transition"
+            title="My Projects Vault"
+          >
+            <div className="relative">
+              <FolderArchive className="w-4 h-4" />
+              {vaultProjectsCount > 0 && (
+                <span className="absolute -top-1 -right-2 text-[8px] bg-indigo-500 text-white font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                  {vaultProjectsCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-semibold">Vault</span>
           </button>
 
           <button
@@ -1864,6 +1938,20 @@ export default function App() {
           handleUpdateConfig({ width: w, height: h, lockAspectRatio: false });
           showToast(`📏 Applied blanket grid dimensions (${w} × ${h})!`);
         }}
+      />
+
+      {/* Multi-Project Local Vault Drawer & Manager */}
+      <ProjectVaultModal
+        isOpen={isProjectVaultOpen}
+        onClose={() => setIsProjectVaultOpen(false)}
+        currentConfig={config}
+        currentGridData={gridData}
+        currentPalette={palette}
+        currentCompletedCells={completedCells}
+        currentBackstitches={backstitches}
+        currentSourceImageDataUrl={sourceImageDataUrl}
+        onLoadProject={handleLoadVaultProject}
+        onProjectsChanged={refreshVaultCount}
       />
     </div>
   );
