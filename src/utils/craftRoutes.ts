@@ -121,6 +121,45 @@ export const CRAFT_ROUTES: Record<CraftType, CraftRouteConfig> = {
   },
 };
 
+export interface StaticRouteConfig {
+  path: string;
+  metaTitle: string;
+  metaDescription: string;
+  canonicalUrl: string;
+}
+
+export const CALCULATOR_ROUTES: Record<string, StaticRouteConfig> = {
+  '/calculators': {
+    path: '/calculators',
+    metaTitle: 'Free Craft Calculators — Floss Skeins, Bead Grams & C2C Blanket Sizer | Pixel Craft Studio',
+    metaDescription: 'Calculate DMC embroidery floss skein lengths, convert Perler bead grams to exact counts, and size corner-to-corner (C2C) crochet blankets with yarn yardage.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/calculators',
+  },
+  '/calculators/floss-estimator': {
+    path: '/calculators/floss-estimator',
+    metaTitle: 'DMC Embroidery Floss & Skein Calculator — Exact Yardage & Cost | Pixel Craft Studio',
+    metaDescription: 'Free online DMC floss skein calculator. Enter stitch counts, fabric count (14ct, 16ct, 18ct) and strand thickness to calculate required 8-meter skeins, total yards, and project cost.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/calculators/floss-estimator',
+  },
+  '/calculators/bead-converter': {
+    path: '/calculators/bead-converter',
+    metaTitle: 'Perler & Hama Bead Grams to Count Converter — 1,000 & 6,000 Bead Bags | Pixel Craft Studio',
+    metaDescription: 'Accurately convert fusible bead weight in grams or ounces to exact bead count for Perler, Artkal, and Hama beads. Includes 29x29 pegboard count calculator.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/calculators/bead-converter',
+  },
+  '/calculators/c2c-blanket-size': {
+    path: '/calculators/c2c-blanket-size',
+    metaTitle: 'C2C Crochet Blanket Size & Yardage Calculator — Corner to Corner Graphgan | Pixel Craft Studio',
+    metaDescription: 'Calculate finished blanket dimensions in inches and centimeters from your C2C grid tile count and gauge. Estimates total yarn yardage, skeins, and bed sizing.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/calculators/c2c-blanket-size',
+  },
+};
+
+export function getCalculatorRoute(pathname: string): StaticRouteConfig | null {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  return CALCULATOR_ROUTES[clean] || null;
+}
+
 /**
  * Returns the route configuration for a given URL path, or null if root / unknown.
  */
@@ -144,7 +183,7 @@ export function getPathForCraft(craftType: CraftType): string {
 /**
  * Dynamically updates the browser tab title, meta description, and canonical link.
  */
-export function updateDocumentMeta(routeConfig: CraftRouteConfig | null): void {
+export function updateDocumentMeta(routeConfig: CraftRouteConfig | StaticRouteConfig | null): void {
   if (typeof document === 'undefined') return;
 
   const title = routeConfig 
@@ -155,9 +194,12 @@ export function updateDocumentMeta(routeConfig: CraftRouteConfig | null): void {
     ? routeConfig.metaDescription 
     : 'Draw pixel art online or convert photos into Tapestry Crochet row-by-row patterns, DMC Cross-Stitch charts, and Perler Bead grids. Free with printable PDF export.';
 
-  const canonicalUrl = routeConfig
-    ? `https://www.pixel-craft-studio.com${routeConfig.path}`
-    : 'https://www.pixel-craft-studio.com/';
+  let canonicalUrl = 'https://www.pixel-craft-studio.com/';
+  if (routeConfig) {
+    canonicalUrl = 'canonicalUrl' in routeConfig
+      ? routeConfig.canonicalUrl
+      : `https://www.pixel-craft-studio.com${routeConfig.path}`;
+  }
 
   document.title = title;
 

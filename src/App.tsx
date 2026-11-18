@@ -53,7 +53,7 @@ import {
 } from './utils/pixelStudioPalettes';
 import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
-import { getRouteByPath, getPathForCraft, updateDocumentMeta } from './utils/craftRoutes';
+import { getRouteByPath, getPathForCraft, updateDocumentMeta, getCalculatorRoute } from './utils/craftRoutes';
 import { decodePatternFromHash } from './utils/shareUtils';
 import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText, Smartphone, FolderArchive } from 'lucide-react';
 
@@ -129,6 +129,7 @@ export default function App() {
   const [isStitchCompanionOpen, setIsStitchCompanionOpen] = useState<boolean>(false);
   const [isShoppingTripOpen, setIsShoppingTripOpen] = useState<boolean>(false);
   const [isCalculatorsOpen, setIsCalculatorsOpen] = useState<boolean>(false);
+  const [calculatorInitialTab, setCalculatorInitialTab] = useState<'floss' | 'beads' | 'c2c'>('floss');
   const [isProjectVaultOpen, setIsProjectVaultOpen] = useState<boolean>(false);
   const [isEtsyKitOpen, setIsEtsyKitOpen] = useState<boolean>(false);
   const [isPhotoPaletteOpen, setIsPhotoPaletteOpen] = useState<boolean>(false);
@@ -511,6 +512,8 @@ export default function App() {
   // Synchronize browser URL route with active craft and dynamic SEO metadata
   useEffect(() => {
     const route = getRouteByPath(location.pathname);
+    const calcRoute = getCalculatorRoute(location.pathname);
+
     if (route) {
       if (latestConfigRef.current.craftType !== route.craftType) {
         const next = { ...latestConfigRef.current, craftType: route.craftType };
@@ -518,12 +521,19 @@ export default function App() {
         setConfig(next);
       }
       updateDocumentMeta(route);
+    } else if (calcRoute) {
+      setIsCalculatorsOpen(true);
+      if (location.pathname === '/calculators/floss-estimator') {
+        setCalculatorInitialTab('floss');
+      } else if (location.pathname === '/calculators/bead-converter') {
+        setCalculatorInitialTab('beads');
+      } else if (location.pathname === '/calculators/c2c-blanket-size') {
+        setCalculatorInitialTab('c2c');
+      }
+      updateDocumentMeta(calcRoute);
     } else if (location.pathname === '/gallery') {
       setIsStarterGalleryOpen(true);
       updateDocumentMeta(null);
-    } else if (location.pathname === '/calculators') {
-      setIsCalculatorsOpen(true);
-      document.title = 'Free Craft Calculators — Floss Skeins, Bead Grams & C2C Blanket Sizer | Pixel Craft Studio';
     } else {
       updateDocumentMeta(null);
     }
@@ -2027,13 +2037,14 @@ export default function App() {
         isOpen={isCalculatorsOpen}
         onClose={() => {
           setIsCalculatorsOpen(false);
-          if (location.pathname === '/calculators') {
+          if (location.pathname.startsWith('/calculators')) {
             navigate(getPathForCraft(config.craftType));
           }
         }}
         currentGridWidth={config.width}
         currentGridHeight={config.height}
         unitSystem={config.unitSystem}
+        initialTab={calculatorInitialTab}
         onApplyGridSize={(w, h) => {
           handleUpdateConfig({ width: w, height: h, lockAspectRatio: false });
           showToast(`📏 Applied blanket grid dimensions (${w} × ${h})!`);

@@ -16,6 +16,8 @@ import {
   type CrossStitchClothCount
 } from '../utils/craftCalculator';
 
+export type CalculatorTab = 'floss' | 'beads' | 'c2c';
+
 interface CraftCalculatorsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -23,9 +25,8 @@ interface CraftCalculatorsModalProps {
   currentGridHeight: number;
   unitSystem?: UnitSystem;
   onApplyGridSize?: (width: number, height: number) => void;
+  initialTab?: CalculatorTab;
 }
-
-type CalculatorTab = 'floss' | 'beads' | 'c2c';
 
 interface BeadSpec {
   id: string;
@@ -66,8 +67,15 @@ export const CraftCalculatorsModal: React.FC<CraftCalculatorsModalProps> = ({
   currentGridHeight,
   unitSystem = 'imperial',
   onApplyGridSize,
+  initialTab = 'floss',
 }) => {
-  const [activeTab, setActiveTab] = useState<CalculatorTab>('floss');
+  const [activeTab, setActiveTab] = useState<CalculatorTab>(initialTab);
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
 
   // 1. Floss Estimator State
   const [stitchCount, setStitchCount] = useState<number>(() => Math.max(100, currentGridWidth * currentGridHeight));
