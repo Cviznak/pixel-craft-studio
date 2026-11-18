@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { PaletteColor, CellProgress, CraftType } from '../types/craft';
+import type { PaletteColor, CellProgress, CraftType, PaletteMoodId } from '../types/craft';
 import { getContrastingTextColor } from '../utils/colorUtils';
 import { 
   buildAmazonColorSearchUrl, 
@@ -11,6 +11,8 @@ import {
   getPerceptualLuminance, 
   findSimilarPalettePairs 
 } from '../utils/threadEquivalents';
+import { PALETTE_MOOD_OPTIONS } from '../utils/craftCrossConverter';
+import { CRAFT_ROUTES } from '../utils/craftRoutes';
 import { 
   Eye, 
   EyeOff, 
@@ -26,7 +28,11 @@ import {
   ArrowLeftRight,
   ChevronRight,
   ArrowUpDown,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw,
+  Wand2,
+  ChevronDown,
+  Check
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -47,6 +53,9 @@ interface PaletteLegendProps {
   onAddColor?: (hex: string) => void;
   onSwapColor?: (sourceColorIndex: number, targetColorIndex: number) => void;
   onSwapWithNewColor?: (sourceColorIndex: number, newHex: string) => void;
+  onApplyPaletteMood?: (mood: PaletteMoodId) => void;
+  onCrossConvertCraft?: (targetCraft: CraftType) => void;
+  onOpenShoppingTrip?: () => void;
 }
 
 const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
@@ -67,6 +76,9 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onAddColor,
   onSwapColor,
   onSwapWithNewColor,
+  onApplyPaletteMood,
+  onCrossConvertCraft,
+  onOpenShoppingTrip,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'todo' | 'done'>('all');
@@ -74,6 +86,8 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   const [sortMode, setSortMode] = useState<'count' | 'hue' | 'luminance' | 'code'>('count');
   const [flossSystem, setFlossSystem] = useState<'dmc' | 'anchor' | 'both'>('dmc');
   const [showSimilarAlert, setShowSimilarAlert] = useState<boolean>(true);
+  const [isMoodMenuOpen, setIsMoodMenuOpen] = useState<boolean>(false);
+  const [isConvertMenuOpen, setIsConvertMenuOpen] = useState<boolean>(false);
 
   const isThreadCraft = craftType !== 'perler';
 
@@ -405,6 +419,117 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Mood Shifter & 1-Click Craft Cross-Converter */}
+          {(onApplyPaletteMood || onCrossConvertCraft) && (
+            <div className="flex items-center gap-1.5 pt-1 relative">
+              {onApplyPaletteMood && (
+                <div className="relative flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoodMenuOpen((prev) => !prev);
+                      setIsConvertMenuOpen(false);
+                    }}
+                    className={`w-full py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center justify-between transition ${
+                      isMoodMenuOpen
+                        ? 'bg-pink-500/25 border-pink-400 text-pink-200'
+                        : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-pink-300'
+                    }`}
+                    title="Restyle palette mood (Pastel, Autumn, Cyberpunk, Sunset...)"
+                  >
+                    <span className="flex items-center gap-1">
+                      <Wand2 className="w-3 h-3 text-pink-400" />
+                      <span>Mood Shifter</span>
+                    </span>
+                    <ChevronDown className="w-3 h-3 opacity-70" />
+                  </button>
+
+                  {isMoodMenuOpen && (
+                    <div className="absolute left-0 right-0 mt-1 z-30 bg-slate-950 border border-slate-700 rounded-xl p-1.5 shadow-2xl space-y-0.5 min-w-[195px]">
+                      <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold px-2 py-0.5">
+                        Palette Harmonies (Keeps Locked Colors)
+                      </div>
+                      {PALETTE_MOOD_OPTIONS.map((mood) => (
+                        <button
+                          key={mood.id}
+                          type="button"
+                          onClick={() => {
+                            onApplyPaletteMood(mood.id);
+                            setIsMoodMenuOpen(false);
+                          }}
+                          className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-slate-800 transition flex items-start gap-2"
+                        >
+                          <span className="text-sm leading-none mt-0.5">{mood.emoji}</span>
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-semibold text-slate-100 leading-tight">{mood.label}</div>
+                            <div className="text-[9px] text-slate-400 leading-tight">{mood.description}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {onCrossConvertCraft && (
+                <div className="relative flex-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsConvertMenuOpen((prev) => !prev);
+                      setIsMoodMenuOpen(false);
+                    }}
+                    className={`w-full py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center justify-between transition ${
+                      isConvertMenuOpen
+                        ? 'bg-teal-500/25 border-teal-400 text-teal-200'
+                        : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-teal-300'
+                    }`}
+                    title="1-Click convert pattern colors & specs to another craft"
+                  >
+                    <span className="flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 text-teal-400" />
+                      <span>Convert Craft</span>
+                    </span>
+                    <ChevronDown className="w-3 h-3 opacity-70" />
+                  </button>
+
+                  {isConvertMenuOpen && (
+                    <div className="absolute right-0 mt-1 z-30 bg-slate-950 border border-slate-700 rounded-xl p-1.5 shadow-2xl space-y-0.5 min-w-[185px]">
+                      <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold px-2 py-0.5">
+                        Cross-Convert Pattern To
+                      </div>
+                      {Object.values(CRAFT_ROUTES).map((route) => {
+                        const isCurrent = route.craftType === craftType;
+                        return (
+                          <button
+                            key={route.craftType}
+                            type="button"
+                            disabled={isCurrent}
+                            onClick={() => {
+                              onCrossConvertCraft(route.craftType);
+                              setIsConvertMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-2 py-1.5 rounded-lg transition flex items-center justify-between text-[11px] ${
+                              isCurrent
+                                ? 'bg-slate-900 text-slate-500 cursor-default'
+                                : 'hover:bg-slate-800 text-slate-200'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5 font-semibold">
+                              <span>{route.icon}</span>
+                              <span>{route.title}</span>
+                            </span>
+                            {isCurrent && <Check className="w-3 h-3 text-emerald-400" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -676,6 +801,17 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
 
       {/* Supplies & Shopping Footer */}
       <div className="p-2.5 border-t border-slate-800 bg-slate-950/80 flex flex-col gap-1.5 text-xs">
+        {onOpenShoppingTrip && (
+          <button
+            type="button"
+            onClick={onOpenShoppingTrip}
+            className="w-full py-1.5 px-2.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-lg border border-emerald-500/40 flex items-center justify-center gap-1.5 font-semibold transition"
+            title="Open mobile aisle checklist sorted by shade code with live cost estimate"
+          >
+            <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" />
+            <span>In-Store Shopping Checklist</span>
+          </button>
+        )}
         <a
           href={buildAmazonSuppliesUrl(craftType)}
           target="_blank"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { GridConfig, PaletteColor, CellProgress } from '../types/craft';
+import type { GridConfig, PaletteColor, CellProgress, BackstitchLine } from '../types/craft';
 import { 
   exportPixelArtPNG, 
   exportPrintableGridPNG, 
@@ -26,7 +26,10 @@ import {
   Share2,
   Tag,
   Link2,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Store
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -36,8 +39,10 @@ interface ExportModalProps {
   palette: PaletteColor[];
   config: GridConfig;
   completedCells: CellProgress;
+  backstitches?: BackstitchLine[];
   onOpenWrittenInstructions?: () => void;
   onOpenSocialCard?: () => void;
+  onOpenShoppingTrip?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -47,8 +52,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   palette,
   config,
   completedCells,
+  backstitches = [],
   onOpenWrittenInstructions,
   onOpenSocialCard,
+  onOpenShoppingTrip,
 }) => {
   const [projectName, setProjectName] = useState('My Pixel Craft Pattern');
   const [scale, setScale] = useState(16);
@@ -56,6 +63,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [pdfLayout, setPdfLayout] = useState<'single' | '2x2'>('single');
   const [colorMode, setColorMode] = useState<'color' | 'bw'>('color');
   const [includeWritten, setIncludeWritten] = useState(false);
+  const [includeCoverPage, setIncludeCoverPage] = useState(true);
+  const [designerName, setDesignerName] = useState('Pixel Craft Studio');
+  const [skillLevel, setSkillLevel] = useState<'Beginner' | 'Intermediate' | 'Advanced'>('Intermediate');
+  const [patternNotes, setPatternNotes] = useState('');
+  const [showOverlapMargins, setShowOverlapMargins] = useState(true);
+  const [showBookletSettings, setShowBookletSettings] = useState(false);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
 
   // Close on Escape key
@@ -79,6 +92,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         multiPage: pdfLayout,
         includeWritten,
         colorMode,
+        includeCoverPage,
+        designerName,
+        skillLevel,
+        patternNotes,
+        showOverlapMargins,
+        backstitches,
       });
       setIsExporting(false);
     }, 100);
@@ -100,11 +119,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleExportChartPNG = () => {
-    exportPrintableGridPNG(gridData, palette, 24, `${projectName.toLowerCase().replace(/\s+/g, '-')}-chart.png`);
+    exportPrintableGridPNG(gridData, palette, 24, `${projectName.toLowerCase().replace(/\s+/g, '-')}-chart.png`, backstitches);
   };
 
   const handleSaveJSON = () => {
-    saveProjectJSON(projectName, config, gridData, palette, completedCells);
+    saveProjectJSON(projectName, config, gridData, palette, completedCells, backstitches);
   };
 
   return (
@@ -161,7 +180,16 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div className="pt-1.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
               <span className="text-slate-400">Finished Size:</span>
               <span className="font-mono font-bold text-amber-300">
-                {getCraftDimensionsSummary(config.width, config.height, config.craftType)}
+                {getCraftDimensionsSummary(
+                  config.width,
+                  config.height,
+                  config.craftType,
+                  14,
+                  config.crochetGauge,
+                  config.knitGauge,
+                  config.beadLoom,
+                  config.unitSystem
+                )}
               </span>
             </div>
           </div>
@@ -267,7 +295,116 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </label>
                 )}
               </div>
+
+              {/* Expandable Etsy Booklet & Cover Options */}
+              <div className="pt-1.5 border-t border-indigo-500/15">
+                <button
+                  type="button"
+                  onClick={() => setShowBookletSettings((prev) => !prev)}
+                  className="w-full flex items-center justify-between text-[11px] font-semibold text-indigo-300 hover:text-indigo-200 transition py-0.5"
+                >
+                  <span>📑 Etsy Booklet Cover & Overlap Options</span>
+                  {showBookletSettings ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+
+                {showBookletSettings && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-slate-950/75 border border-slate-800 space-y-2 text-[11px]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="flex items-center gap-1.5 cursor-pointer text-slate-200 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={includeCoverPage}
+                          onChange={(e) => setIncludeCoverPage(e.target.checked)}
+                          className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5"
+                        />
+                        <span>Include Commercial Cover Page</span>
+                      </label>
+
+                      {pdfLayout === '2x2' && (
+                        <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 font-medium">
+                          <input
+                            type="checkbox"
+                            checked={showOverlapMargins}
+                            onChange={(e) => setShowOverlapMargins(e.target.checked)}
+                            className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5"
+                          />
+                          <span>3-Stitch Overlap Guide</span>
+                        </label>
+                      )}
+                    </div>
+
+                    {includeCoverPage && (
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Designer / Shop Name</label>
+                          <input
+                            type="text"
+                            value={designerName}
+                            onChange={(e) => setDesignerName(e.target.value)}
+                            className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-100 text-xs focus:border-indigo-500 focus:outline-none"
+                            placeholder="Your Shop / Name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Skill Level</label>
+                          <select
+                            value={skillLevel}
+                            onChange={(e) => setSkillLevel(e.target.value as 'Beginner' | 'Intermediate' | 'Advanced')}
+                            className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-100 text-xs focus:border-indigo-500 focus:outline-none"
+                          >
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate">Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                          </select>
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-[10px] text-slate-400 mb-0.5">Custom Craft Notes / Copyright</label>
+                          <textarea
+                            rows={2}
+                            value={patternNotes}
+                            onChange={(e) => setPatternNotes(e.target.value)}
+                            placeholder="Optional stitching notes, special stitch instructions, or copyright notice..."
+                            className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-slate-100 text-xs focus:border-indigo-500 focus:outline-none resize-none"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* In-Store Shopping Trip Checklist Card */}
+            {onOpenShoppingTrip && (
+              <div className="p-3.5 rounded-xl border border-emerald-500/40 bg-emerald-950/20 hover:bg-emerald-950/30 transition flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-600/30 text-emerald-300 mt-0.5">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5">
+                      <span>In-Store "Shopping Trip" Mode</span>
+                      <span className="text-[10px] bg-emerald-500/30 text-emerald-300 px-1.5 py-0.2 rounded font-normal">
+                        Store Aisle Checklist
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Mobile aisle checklist sorted by shade code with live cost & stash comparison.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenShoppingTrip();
+                  }}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5" />
+                  <span>Shop Mode</span>
+                </button>
+              </div>
+            )}
 
             {/* 2. Floss Bobbin & Bead Drops Printable Labels */}
             <div className="p-3.5 rounded-xl border border-sky-500/40 bg-sky-950/20 hover:bg-sky-950/30 transition flex items-center justify-between">

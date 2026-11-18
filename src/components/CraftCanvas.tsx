@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { GridConfig, PaletteColor, CellProgress } from '../types/craft';
+import type { GridConfig, PaletteColor, CellProgress, BackstitchLine } from '../types/craft';
 import { getContrastingTextColor } from '../utils/colorUtils';
 import { 
   ZoomIn, 
@@ -33,7 +33,10 @@ import {
   Check,
   Type,
   Contrast,
-  Smartphone
+  Smartphone,
+  Wand2,
+  PenTool,
+  Trash2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -75,9 +78,20 @@ interface CraftCanvasProps {
   ) => void;
   onOpenPixelTextModal?: () => void;
   showPegboardLines?: boolean;
+  backstitches?: BackstitchLine[];
+  onUpdateBackstitches?: (lines: BackstitchLine[]) => void;
 }
 
-export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eraser' | 'bucket' | 'eyedropper' | 'line' | 'rectangle';
+export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eraser' | 'bucket' | 'eyedropper' | 'line' | 'rectangle' | 'wand' | 'backstitch';
+
+function pointToSegmentDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
 
 // Bresenham's line algorithm for smooth continuous drag-tracking and drawing without gaps
 function getLineCells(x0: number, y0: number, x1: number, y1: number): { x: number; y: number }[] {
@@ -157,6 +171,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   onTransformGrid,
   onOpenPixelTextModal,
   showPegboardLines = false,
+  backstitches = [],
+  onUpdateBackstitches,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -164,6 +180,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   // Transform popover & wrap state
   const [isTransformOpen, setIsTransformOpen] = useState(false);
   const [wrapShift, setWrapShift] = useState(false);
+
+  // Magic Wand & Backstitch states
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+  const [wandMode, setWandMode] = useState<'contiguous' | 'all'>('contiguous');
+  const [backstitchStart, setBackstitchStart] = useState<{ x: number; y: number } | null>(null);
+  const [backstitchEnd, setBackstitchEnd] = useState<{ x: number; y: number } | null>(null);
 
   // Retro display shaders & authentic textures
   const [activeShader, setActiveShader] = useState<DisplayShader>('craft');
@@ -964,6 +986,69 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       ctx.restore();
     }
 
+    // Magic Wand Selected Cells Overlay
+    if (selectedCells.size > 0) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.28)';
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = Math.max(1, 1.5 / zoom);
+      selectedCells.forEach((key) => {
+        const [sxStr, syStr] = key.split(',');
+        const sx = parseInt(sxStr, 10);
+        const sy = parseInt(syStr, 10);
+        if (sx >= 0 && sx < gridWidth && sy >= 0 && sy < gridHeight) {
+          ctx.fillRect(sx * cellSize, sy * cellSize, cellSize, cellSize);
+          ctx.strokeRect(sx * cellSize, sy * cellSize, cellSize, cellSize);
+        }
+      });
+      ctx.restore();
+    }
+
+    // Backstitch Overlay Layer
+    if (backstitches.length > 0 || (backstitchStart && backstitchEnd)) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      for (const line of backstitches) {
+        const lx1 = line.x1 * cellSize;
+        const ly1 = line.y1 * cellSize;
+        const lx2 = line.x2 * cellSize;
+        const ly2 = line.y2 * cellSize;
+
+        // Subtle outer halo so dark lines show clearly on dark cells
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = Math.max(2.5, cellSize * 0.22);
+        ctx.beginPath();
+        ctx.moveTo(lx1, ly1);
+        ctx.lineTo(lx2, ly2);
+        ctx.stroke();
+
+        ctx.strokeStyle = line.colorHex;
+        ctx.lineWidth = Math.max(1.5, cellSize * 0.14);
+        ctx.beginPath();
+        ctx.moveTo(lx1, ly1);
+        ctx.lineTo(lx2, ly2);
+        ctx.stroke();
+      }
+
+      if (backstitchStart && backstitchEnd) {
+        const activeHex = palette[activeColorIndex]?.hex || '#f43f5e';
+        ctx.strokeStyle = activeHex;
+        ctx.lineWidth = Math.max(2, cellSize * 0.16);
+        ctx.setLineDash([4 / zoom, 3 / zoom]);
+        ctx.beginPath();
+        ctx.moveTo(backstitchStart.x * cellSize, backstitchStart.y * cellSize);
+        ctx.lineTo(backstitchEnd.x * cellSize, backstitchEnd.y * cellSize);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(backstitchEnd.x * cellSize, backstitchEnd.y * cellSize, Math.max(2.5, cellSize * 0.14), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // Hover box indicator
     if (hoverCoord && hoverCoord.x >= 0 && hoverCoord.x < gridWidth && hoverCoord.y >= 0 && hoverCoord.y < gridHeight) {
       ctx.strokeStyle = tool === 'eyedropper' ? '#a855f7' : tool === 'eraser' ? '#f43f5e' : '#2563eb';
@@ -1072,6 +1157,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     tool,
     activeShader,
     isValueCheckActive,
+    selectedCells,
+    backstitches,
+    backstitchStart,
+    backstitchEnd,
   ]);
 
   // Coordinate conversion helper from pointer/mouse event to cell [x, y]
@@ -1091,6 +1180,174 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     }
     return null;
   };
+
+  // Snaps pointer to nearest grid vertex/intersection (0..gridWidth, 0..gridHeight) for Backstitch
+  const getVertexFromPointer = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const cellSize = baseCellSize;
+    const vx = Math.max(0, Math.min(gridWidth, Math.round((mouseX - pan.x) / (cellSize * zoom))));
+    const vy = Math.max(0, Math.min(gridHeight, Math.round((mouseY - pan.y) / (cellSize * zoom))));
+    const fx = (mouseX - pan.x) / (cellSize * zoom);
+    const fy = (mouseY - pan.y) / (cellSize * zoom);
+    return { vx, vy, fx, fy };
+  };
+
+  // Magic Wand Selection
+  const handleMagicWandSelect = useCallback((startX: number, startY: number, additive: boolean) => {
+    if (startY < 0 || startY >= gridHeight || startX < 0 || startX >= gridWidth) return;
+    const targetIdx = gridData[startY][startX];
+    const nextSelected = additive ? new Set(selectedCells) : new Set<string>();
+
+    if (wandMode === 'all') {
+      for (let y = 0; y < gridHeight; y++) {
+        for (let x = 0; x < gridWidth; x++) {
+          if (gridData[y][x] === targetIdx) {
+            nextSelected.add(`${x},${y}`);
+          }
+        }
+      }
+    } else {
+      const visited = new Uint8Array(gridWidth * gridHeight);
+      const queue: [number, number][] = [[startX, startY]];
+      visited[startY * gridWidth + startX] = 1;
+
+      while (queue.length > 0) {
+        const [cx, cy] = queue.shift()!;
+        nextSelected.add(`${cx},${cy}`);
+        const neighbors: [number, number][] = [
+          [cx + 1, cy],
+          [cx - 1, cy],
+          [cx, cy + 1],
+          [cx, cy - 1],
+        ];
+        for (const [nx, ny] of neighbors) {
+          if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
+            const flatIdx = ny * gridWidth + nx;
+            if (!visited[flatIdx] && gridData[ny][nx] === targetIdx) {
+              visited[flatIdx] = 1;
+              queue.push([nx, ny]);
+            }
+          }
+        }
+      }
+    }
+
+    audioFeedback.playStitchSound(true);
+    setSelectedCells(nextSelected);
+  }, [gridData, gridWidth, gridHeight, wandMode, selectedCells]);
+
+  const handleNudgeSelection = useCallback((dx: number, dy: number) => {
+    if (selectedCells.size === 0) return;
+    onBeforePencilStroke?.();
+
+    const updates: { x: number; y: number; colorIndex: number }[] = [];
+    const newSelection = new Set<string>();
+    const snapshot = new Map<string, number>();
+
+    selectedCells.forEach((key) => {
+      const [sxStr, syStr] = key.split(',');
+      const sx = parseInt(sxStr, 10);
+      const sy = parseInt(syStr, 10);
+      if (sy >= 0 && sy < gridHeight && sx >= 0 && sx < gridWidth) {
+        snapshot.set(key, gridData[sy][sx]);
+      }
+    });
+
+    // Clear vacated cells that won't be overwritten by moved cells
+    const destKeys = new Set<string>();
+    snapshot.forEach((_, key) => {
+      const [sxStr, syStr] = key.split(',');
+      const nx = parseInt(sxStr, 10) + dx;
+      const ny = parseInt(syStr, 10) + dy;
+      if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
+        destKeys.add(`${nx},${ny}`);
+      }
+    });
+
+    snapshot.forEach((_, key) => {
+      if (!destKeys.has(key)) {
+        const [sxStr, syStr] = key.split(',');
+        updates.push({ x: parseInt(sxStr, 10), y: parseInt(syStr, 10), colorIndex: -1 });
+      }
+    });
+
+    snapshot.forEach((colorIdx, key) => {
+      const [sxStr, syStr] = key.split(',');
+      const nx = parseInt(sxStr, 10) + dx;
+      const ny = parseInt(syStr, 10) + dy;
+      if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
+        updates.push({ x: nx, y: ny, colorIndex: colorIdx });
+        newSelection.add(`${nx},${ny}`);
+      }
+    });
+
+    if (updates.length > 0) {
+      if (onBatchPaintCells) {
+        onBatchPaintCells(updates);
+      } else {
+        for (const u of updates) onPaintCell(u.x, u.y, u.colorIndex);
+      }
+      audioFeedback.playStitchSound(true);
+    }
+    setSelectedCells(newSelection);
+  }, [selectedCells, gridData, gridWidth, gridHeight, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
+
+  const handleRecolorSelection = useCallback(() => {
+    if (selectedCells.size === 0) return;
+    onBeforePencilStroke?.();
+    const updates: { x: number; y: number; colorIndex: number }[] = [];
+    selectedCells.forEach((key) => {
+      const [sxStr, syStr] = key.split(',');
+      const sx = parseInt(sxStr, 10);
+      const sy = parseInt(syStr, 10);
+      if (sx >= 0 && sx < gridWidth && sy >= 0 && sy < gridHeight) {
+        updates.push({ x: sx, y: sy, colorIndex: activeColorIndex });
+      }
+    });
+    if (updates.length > 0) {
+      if (onBatchPaintCells) onBatchPaintCells(updates);
+      else for (const u of updates) onPaintCell(u.x, u.y, u.colorIndex);
+      audioFeedback.playStitchSound(true);
+    }
+  }, [selectedCells, gridWidth, gridHeight, activeColorIndex, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
+
+  const handleInvertSelection = useCallback(() => {
+    const inverted = new Set<string>();
+    for (let y = 0; y < gridHeight; y++) {
+      for (let x = 0; x < gridWidth; x++) {
+        const key = `${x},${y}`;
+        if (!selectedCells.has(key)) {
+          inverted.add(key);
+        }
+      }
+    }
+    setSelectedCells(inverted);
+  }, [gridWidth, gridHeight, selectedCells]);
+
+  const handleDeleteSelection = useCallback(() => {
+    if (selectedCells.size === 0) return;
+    onBeforePencilStroke?.();
+    const updates: { x: number; y: number; colorIndex: number }[] = [];
+    selectedCells.forEach((key) => {
+      const [sxStr, syStr] = key.split(',');
+      const sx = parseInt(sxStr, 10);
+      const sy = parseInt(syStr, 10);
+      if (sx >= 0 && sx < gridWidth && sy >= 0 && sy < gridHeight) {
+        updates.push({ x: sx, y: sy, colorIndex: -1 });
+      }
+    });
+    if (updates.length > 0) {
+      if (onBatchPaintCells) onBatchPaintCells(updates);
+      else for (const u of updates) onPaintCell(u.x, u.y, -1);
+      audioFeedback.playStitchSound(false);
+    }
+    setSelectedCells(new Set());
+  }, [selectedCells, gridWidth, gridHeight, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
 
   // Studio Flood Fill (BFS 4-way area fill)
   const handleFloodFill = useCallback((startX: number, startY: number, fillIndex: number) => {
@@ -1157,7 +1414,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     // If two fingers are actively pinching, let pinch handler take precedence
     if (pinchStateRef.current) return;
 
-    if (e.button === 1 || tool === 'pan' || (e.shiftKey && tool !== 'rectangle')) {
+    if (e.button === 1 || tool === 'pan' || (e.shiftKey && tool !== 'rectangle' && tool !== 'wand' && tool !== 'backstitch')) {
       // Middle click or Pan tool
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -1166,6 +1423,39 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       } catch {
         // Ignore
       }
+      return;
+    }
+
+    if (tool === 'backstitch') {
+      const vertex = getVertexFromPointer(e);
+      if (!vertex) return;
+
+      // Shift-click or Right-click erases nearest backstitch segment
+      if ((e.shiftKey || e.button === 2) && onUpdateBackstitches) {
+        let bestIdx = -1;
+        let bestDist = 0.6;
+        backstitches.forEach((line, idx) => {
+          const d = pointToSegmentDist(vertex.fx, vertex.fy, line.x1, line.y1, line.x2, line.y2);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = idx;
+          }
+        });
+        if (bestIdx !== -1) {
+          onUpdateBackstitches(backstitches.filter((_, idx) => idx !== bestIdx));
+          audioFeedback.playStitchSound(false);
+        }
+        return;
+      }
+
+      setIsInteracting(true);
+      try {
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        // Ignore
+      }
+      setBackstitchStart({ x: vertex.vx, y: vertex.vy });
+      setBackstitchEnd({ x: vertex.vx, y: vertex.vy });
       return;
     }
 
@@ -1179,7 +1469,9 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       // Ignore
     }
 
-    if (tool === 'tracker') {
+    if (tool === 'wand') {
+      handleMagicWandSelect(cell.x, cell.y, e.shiftKey);
+    } else if (tool === 'tracker') {
       const isDone = !!completedCells[`${cell.x},${cell.y}`];
       const targetMode = !isDone;
       dragTrackModeRef.current = targetMode;
@@ -1269,6 +1561,14 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       return;
     }
 
+    if (isInteracting && tool === 'backstitch' && backstitchStart) {
+      const vertex = getVertexFromPointer(e);
+      if (vertex) {
+        setBackstitchEnd((prev) => (prev && prev.x === vertex.vx && prev.y === vertex.vy ? prev : { x: vertex.vx, y: vertex.vy }));
+      }
+      return;
+    }
+
     if (isInteracting && cell) {
       if (tool === 'tracker') {
         if (dragTrackModeRef.current !== null && lastTrackedCellRef.current) {
@@ -1354,6 +1654,26 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (tool === 'backstitch' && backstitchStart && backstitchEnd && onUpdateBackstitches) {
+      if (backstitchStart.x !== backstitchEnd.x || backstitchStart.y !== backstitchEnd.y) {
+        const activeCol = palette[activeColorIndex];
+        const newLine: BackstitchLine = {
+          id: `bs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          x1: backstitchStart.x,
+          y1: backstitchStart.y,
+          x2: backstitchEnd.x,
+          y2: backstitchEnd.y,
+          colorHex: activeCol?.hex || '#000000',
+          colorCode: activeCol?.code,
+          strands: 2,
+        };
+        onUpdateBackstitches([...backstitches, newLine]);
+        audioFeedback.playStitchSound(true);
+      }
+      setBackstitchStart(null);
+      setBackstitchEnd(null);
+    }
+
     if ((tool === 'line' || tool === 'rectangle') && previewCells && previewCells.length > 0) {
       onBeforePencilStroke?.();
       const updates = previewCells
@@ -1394,25 +1714,29 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
 
       // Nudge shortcuts (Shift + Arrows)
-      if (e.shiftKey && onTransformGrid) {
+      if (e.shiftKey && (selectedCells.size > 0 || onTransformGrid)) {
+        const nudgeFn = (dx: number, dy: number) => {
+          if (selectedCells.size > 0) handleNudgeSelection(dx, dy);
+          else handleNudge(dx, dy);
+        };
         if (e.key === 'ArrowUp') {
           e.preventDefault();
-          handleNudge(0, -1);
+          nudgeFn(0, -1);
           return;
         }
         if (e.key === 'ArrowDown') {
           e.preventDefault();
-          handleNudge(0, 1);
+          nudgeFn(0, 1);
           return;
         }
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
-          handleNudge(-1, 0);
+          nudgeFn(-1, 0);
           return;
         }
         if (e.key === 'ArrowRight') {
           e.preventDefault();
-          handleNudge(1, 0);
+          nudgeFn(1, 0);
           return;
         }
       }
@@ -1426,6 +1750,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         setTool('eraser');
       } else if (key === 'g') {
         setTool('bucket');
+      } else if (key === 'w') {
+        setTool('wand');
+      } else if (key === 'k') {
+        setTool('backstitch');
       } else if (key === 'i') {
         setTool('eyedropper');
       } else if (key === 'l') {
@@ -1438,12 +1766,14 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         setTool('tracker');
       } else if (key === 'h' || key === ' ') {
         setTool('pan');
+      } else if (key === 'escape' && selectedCells.size > 0) {
+        setSelectedCells(new Set());
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setTool, onTransformGrid, handleNudge]);
+  }, [setTool, onTransformGrid, handleNudge, selectedCells, handleNudgeSelection]);
 
   // Native non-passive Wheel & Touch Pinch listener (persistent across zoom renders)
   useEffect(() => {
@@ -1899,6 +2229,16 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           </button>
 
           <button
+            onClick={() => setTool('wand')}
+            className={`p-1.5 rounded-lg transition-all ${
+              tool === 'wand' ? 'bg-cyan-500 text-slate-950 font-bold shadow-md ring-1 ring-cyan-300' : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60'
+            }`}
+            title="Magic Wand (W): Select connected pixels or all pixels of a color to move/recolor/delete"
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+          </button>
+
+          <button
             onClick={() => setTool('eyedropper')}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'eyedropper' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1926,6 +2266,16 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             title="Rectangle (U): Drag to draw boxes (Hold Shift for filled)"
           >
             <Square className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => setTool('backstitch')}
+            className={`p-1.5 rounded-lg transition-all ${
+              tool === 'backstitch' ? 'bg-rose-500 text-white shadow-md ring-1 ring-rose-300' : 'text-slate-400 hover:text-rose-300 hover:bg-slate-800/60'
+            }`}
+            title="Backstitch / Outline (K): Drag along grid edges to draw stitch outlines"
+          >
+            <PenTool className="w-3.5 h-3.5" />
           </button>
 
           {/* Pixel Text & Monogram Tool */}
@@ -2114,6 +2464,9 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onPointerLeave={handlePointerUp}
+        onContextMenu={(e) => {
+          if (tool === 'backstitch') e.preventDefault();
+        }}
         className={`w-full h-full block touch-none ${
           tool === 'pan' ? (isDragging ? 'cursor-grabbing' : 'cursor-grab') :
           tool === 'tracker' ? 'cursor-cell' :
@@ -2122,6 +2475,135 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           'cursor-crosshair'
         }`}
       />
+
+      {/* Magic Wand Selection Action Toolbar */}
+      {(tool === 'wand' || selectedCells.size > 0) && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 bg-slate-950/95 border border-cyan-500/50 backdrop-blur-xl px-2.5 py-1.5 rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-1.5 max-w-[94vw] animate-in fade-in duration-150">
+          <div className="flex items-center gap-1 text-[11px] font-bold text-cyan-300 pr-1 border-r border-slate-800">
+            <Wand2 className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{selectedCells.size} sel</span>
+          </div>
+
+          {/* Connected vs All Occurrences Toggle */}
+          <div className="flex items-center bg-slate-900 rounded-lg p-0.5 border border-slate-800 text-[10px]">
+            <button
+              type="button"
+              onClick={() => setWandMode('contiguous')}
+              className={`px-1.5 py-0.5 rounded font-semibold transition ${
+                wandMode === 'contiguous' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Select connected pixels of the same color"
+            >
+              Connected
+            </button>
+            <button
+              type="button"
+              onClick={() => setWandMode('all')}
+              className={`px-1.5 py-0.5 rounded font-semibold transition ${
+                wandMode === 'all' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="Select every pixel of this color across the entire canvas"
+            >
+              All Color
+            </button>
+          </div>
+
+          {selectedCells.size > 0 && (
+            <>
+              {/* Nudge Directional Buttons */}
+              <div className="flex items-center gap-0.5 bg-slate-900 rounded-lg p-0.5 border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleNudgeSelection(-1, 0)}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-200"
+                  title="Nudge Selection Left"
+                >
+                  <ArrowLeft className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNudgeSelection(0, -1)}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-200"
+                  title="Nudge Selection Up"
+                >
+                  <ArrowUp className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNudgeSelection(0, 1)}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-200"
+                  title="Nudge Selection Down"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleNudgeSelection(1, 0)}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-200"
+                  title="Nudge Selection Right"
+                >
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRecolorSelection}
+                className="px-2 py-1 rounded-lg bg-indigo-600/80 hover:bg-indigo-500 text-white text-[10px] font-bold transition"
+                title="Paint selected cells with active color"
+              >
+                Recolor
+              </button>
+              <button
+                type="button"
+                onClick={handleInvertSelection}
+                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-semibold transition"
+                title="Invert selection"
+              >
+                Invert
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSelection}
+                className="p-1 rounded-lg bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/30 transition"
+                title="Erase selected cells to transparent"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedCells(new Set())}
+                className="px-1.5 py-1 rounded-lg text-slate-400 hover:text-white text-[10px] font-semibold"
+                title="Clear selection (Esc)"
+              >
+                ✕
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Backstitch Tool Floating Bar */}
+      {tool === 'backstitch' && (
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-20 bg-slate-950/95 border border-rose-500/50 backdrop-blur-xl px-3 py-1.5 rounded-2xl shadow-2xl flex items-center gap-2 text-[11px] animate-in fade-in duration-150">
+          <PenTool className="w-3.5 h-3.5 text-rose-400" />
+          <span className="font-bold text-rose-200">
+            Backstitch ({backstitches.length} lines)
+          </span>
+          <span className="hidden sm:inline text-[10px] text-slate-400">
+            Drag corners to outline • Shift/Right-click to delete
+          </span>
+          {backstitches.length > 0 && onUpdateBackstitches && (
+            <button
+              type="button"
+              onClick={() => onUpdateBackstitches([])}
+              className="ml-1 px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-[10px] font-semibold transition"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Mirror Symmetry Badge */}
       {isMirrorMode && (

@@ -1,9 +1,87 @@
 import { jsPDF } from 'jspdf';
-import type { GridConfig, PaletteColor, CraftProject, CellProgress } from '../types/craft';
+import type { GridConfig, PaletteColor, CraftProject, CellProgress, BackstitchLine } from '../types/craft';
 import { getContrastingTextColor } from './colorUtils';
 import { getCraftDimensionsSummary } from './craftCalculator';
 import { generateCrochetInstructions } from './crochetInstructions';
 import { getAnchorEquivalent, getBeadEquivalents } from './threadEquivalents';
+
+/**
+ * Shared helper to draw backstitch lines onto a 2D canvas slice with white casing halo.
+ */
+function drawBackstitchLinesOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  backstitches: BackstitchLine[],
+  startX: number,
+  endX: number,
+  startY: number,
+  endY: number,
+  rulerSize: number,
+  cellSize: number,
+  forceBlack = false
+) {
+  if (!backstitches || backstitches.length === 0) return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(rulerSize, rulerSize, (endX - startX) * cellSize, (endY - startY) * cellSize);
+  ctx.clip();
+  ctx.lineCap = 'round';
+
+  for (const line of backstitches) {
+    const px1 = rulerSize + (line.x1 - startX) * cellSize;
+    const py1 = rulerSize + (line.y1 - startY) * cellSize;
+    const px2 = rulerSize + (line.x2 - startX) * cellSize;
+    const py2 = rulerSize + (line.y2 - startY) * cellSize;
+
+    // White halo for legibility over dark stitches
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = Math.max(3, cellSize * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(px1, py1);
+    ctx.lineTo(px2, py2);
+    ctx.stroke();
+
+    // Inner backstitch thread line
+    ctx.strokeStyle = forceBlack ? '#000000' : line.colorHex;
+    ctx.lineWidth = Math.max(1.8, cellSize * 0.13);
+    ctx.beginPath();
+    ctx.moveTo(px1, py1);
+    ctx.lineTo(px2, py2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Renders a clean full-color square preview PNG of the finished pattern for the booklet cover.
+ */
+function renderCoverPreviewDataUrl(gridData: number[][], palette: PaletteColor[]): string {
+  const height = gridData.length;
+  const width = height > 0 ? gridData[0].length : 0;
+  if (width === 0 || height === 0) return '';
+
+  const scale = Math.max(4, Math.min(16, Math.floor(480 / Math.max(width, height))));
+  const canvas = document.createElement('canvas');
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = gridData[y][x];
+      const color = idx >= 0 ? palette[idx] : undefined;
+      ctx.fillStyle = color ? color.hex : '#f8fafc';
+      ctx.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+
+  return canvas.toDataURL('image/png');
+}
 
 // Export crisp, pixelated PNG (scale factor like 16x per pixel)
 export function exportPixelArtPNG(
@@ -44,7 +122,8 @@ export function exportPrintableGridPNG(
   gridData: number[][],
   palette: PaletteColor[],
   cellSize = 24,
-  filename = 'craft-pattern-grid.png'
+  filename = 'craft-pattern-grid.png',
+  backstitches: BackstitchLine[] = []
 ) {
   const height = gridData.length;
   const width = height > 0 ? gridData[0].length : 0;
@@ -131,6 +210,8 @@ export function exportPrintableGridPNG(
     ctx.stroke();
   }
 
+  drawBackstitchLinesOnCanvas(ctx, backstitches, 0, width, 0, height, rulerSize, cellSize, false);
+
   const link = document.createElement('a');
   link.download = filename;
   link.href = canvas.toDataURL('image/png');
@@ -148,7 +229,9 @@ function renderGridSliceCanvas(
   startY: number,
   endY: number,
   renderCellSize = 22,
-  colorMode: 'color' | 'bw' = 'color'
+  colorMode: 'color' | 'bw' = 'color',
+  backstitches: BackstitchLine[] = [],
+  overlapBounds?: { origX0: number; origX1: number; origY0: number; origY1: number }
 ): string {
   const sliceW = endX - startX;
   const sliceH = endY - startY;
@@ -220,6 +303,18 @@ function renderGridSliceCanvas(
         }
       }
 
+      if (overlapBounds) {
+        const isOverlapCell =
+          x < overlapBounds.origX0 ||
+          x >= overlapBounds.origX1 ||
+          y < overlapBounds.origY0 ||
+          y >= overlapBounds.origY1;
+        if (isOverlapCell) {
+          ctx.fillStyle = 'rgba(100, 116, 139, 0.28)';
+          ctx.fillRect(px, py, renderCellSize, renderCellSize);
+        }
+      }
+
       ctx.strokeStyle = '#d1d5db';
       ctx.lineWidth = 1;
       ctx.strokeRect(px, py, renderCellSize, renderCellSize);
@@ -248,6 +343,18 @@ function renderGridSliceCanvas(
     }
   }
 
+  drawBackstitchLinesOnCanvas(
+    ctx,
+    backstitches,
+    startX,
+    endX,
+    startY,
+    endY,
+    rulerSize,
+    renderCellSize,
+    colorMode === 'bw'
+  );
+
   return canvas.toDataURL('image/png');
 }
 
@@ -255,6 +362,12 @@ export interface PdfExportOptions {
   multiPage?: 'single' | '2x2';
   includeWritten?: boolean;
   colorMode?: 'color' | 'bw';
+  includeCoverPage?: boolean;
+  designerName?: string;
+  skillLevel?: 'Beginner' | 'Intermediate' | 'Advanced';
+  patternNotes?: string;
+  showOverlapMargins?: boolean;
+  backstitches?: BackstitchLine[];
 }
 
 // Generate complete PDF Pattern Document with jsPDF
@@ -274,8 +387,111 @@ export function generatePatternPDF(
   const pageWidth = 210;
   const pageHeight = 297;
   const margin = 15;
+  const totalCells = config.width * config.height;
+  const sizeSummary = getCraftDimensionsSummary(
+    config.width,
+    config.height,
+    config.craftType,
+    14,
+    config.crochetGauge,
+    config.knitGauge,
+    config.beadLoom,
+    config.unitSystem
+  );
+  const backstitches = options.backstitches || [];
 
-  // Header Title
+  // Optional Commercial / Etsy Pattern Booklet Cover Page (Page 1)
+  if (options.includeCoverPage) {
+    // Top Accent Header Banner
+    doc.setFillColor(79, 70, 229);
+    doc.rect(margin, 14, pageWidth - margin * 2, 10, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    const levelLabel = (options.skillLevel || 'Intermediate').toUpperCase();
+    doc.text(`OFFICIAL CRAFT PATTERN BOOKLET  •  SKILL LEVEL: ${levelLabel}`, margin + 4, 20.5);
+
+    // Pattern Title & Designer Attribution
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(17, 24, 39);
+    doc.text(projectName, margin, 36);
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(11);
+    doc.setTextColor(75, 85, 99);
+    doc.text(`Designed by ${options.designerName?.trim() || 'Independent Craft Designer'}`, margin, 43);
+
+    // Full-Color Mockup Preview Frame
+    const frameX = margin;
+    const frameY = 52;
+    const frameW = pageWidth - margin * 2;
+    const frameH = 100;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(frameX, frameY, frameW, frameH, 'FD');
+
+    const previewDataUrl = renderCoverPreviewDataUrl(gridData, palette);
+    if (previewDataUrl) {
+      const innerPad = 6;
+      const maxImgW = frameW - innerPad * 2;
+      const maxImgH = frameH - innerPad * 2;
+      const aspect = config.width / Math.max(1, config.height);
+      let drawW = maxImgW;
+      let drawH = drawW / aspect;
+      if (drawH > maxImgH) {
+        drawH = maxImgH;
+        drawW = drawH * aspect;
+      }
+      const imgX = frameX + (frameW - drawW) / 2;
+      const imgY = frameY + (frameH - drawH) / 2;
+      doc.addImage(previewDataUrl, 'PNG', imgX, imgY, drawW, drawH);
+    }
+
+    // Pattern Specifications Box
+    doc.setFillColor(243, 244, 246);
+    doc.setDrawColor(209, 213, 219);
+    doc.rect(margin, 160, pageWidth - margin * 2, 35, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(31, 41, 55);
+    doc.text('Pattern Specifications', margin + 4, 167);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(55, 65, 81);
+    doc.text(`• Craft Discipline: ${config.craftType.toUpperCase()}`, margin + 4, 174);
+    doc.text(`• Stitch / Bead Grid: ${config.width} × ${config.height} (${totalCells.toLocaleString()} total)`, margin + 4, 180);
+    doc.text(`• Palette Shades: ${palette.length} colors${backstitches.length > 0 ? ` (+ ${backstitches.length} backstitch lines)` : ''}`, margin + 4, 186);
+    const wrappedSize = doc.splitTextToSize(`• Finished Size: ${sizeSummary}`, pageWidth - margin * 2 - 8);
+    doc.text(wrappedSize[0] || '', margin + 4, 192);
+
+    // Designer Notes & Stitching Instructions Box
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(209, 213, 219);
+    doc.rect(margin, 202, pageWidth - margin * 2, 63, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(31, 41, 55);
+    doc.text('Designer Notes & Instructions', margin + 4, 210);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.setTextColor(75, 85, 99);
+    const defaultNotes =
+      'Start stitching from the center of your fabric/canvas outward. Each square on the chart corresponds to one full stitch or bead. Check off your completed colors using the material shopping key on the following page.';
+    const notesText = options.patternNotes?.trim() ? options.patternNotes.trim() : defaultNotes;
+    const wrappedNotes = doc.splitTextToSize(notesText, pageWidth - margin * 2 - 8);
+    doc.text(wrappedNotes.slice(0, 9), margin + 4, 217);
+
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('Generated with Pixel Craft Studio • www.pixel-craft-studio.com', margin, 282);
+
+    doc.addPage();
+  }
+
+  // Header Title (Page 1 if no cover page, or Page 2 Color Key)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(33, 37, 41);
@@ -284,8 +500,6 @@ export function generatePatternPDF(
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(108, 117, 125);
-  const totalCells = config.width * config.height;
-  const sizeSummary = getCraftDimensionsSummary(config.width, config.height, config.craftType);
   const subtitle = `Craft: ${config.craftType.toUpperCase()} | Grid: ${config.width} x ${config.height} (${totalCells} cells) | Size: ${sizeSummary}`;
   doc.text(subtitle, margin, 26);
 
@@ -407,7 +621,17 @@ export function generatePatternPDF(
     doc.setTextColor(108, 117, 125);
     doc.text('Each square corresponds to 1 bead, cross-stitch, or stitch. Bold lines every 10 squares.', margin, 24);
 
-    const sliceDataUrl = renderGridSliceCanvas(gridData, palette, 0, config.width, 0, config.height, 18, options.colorMode || 'color');
+    const sliceDataUrl = renderGridSliceCanvas(
+      gridData,
+      palette,
+      0,
+      config.width,
+      0,
+      config.height,
+      18,
+      options.colorMode || 'color',
+      backstitches
+    );
     if (sliceDataUrl) {
       const availableWidth = pageWidth - margin * 2;
       const availableHeight = pageHeight - 35 - margin;
@@ -427,6 +651,7 @@ export function generatePatternPDF(
     // 2x2 Multi-Page Poster Split (4 Pages)
     const midX = Math.ceil(config.width / 2);
     const midY = Math.ceil(config.height / 2);
+    const overlap = options.showOverlapMargins ? 3 : 0;
 
     const quadrants = [
       { name: 'Top-Left (Part 1 of 4)', x0: 0, x1: midX, y0: 0, y1: midY, mapCol: 0, mapRow: 0 },
@@ -438,6 +663,11 @@ export function generatePatternPDF(
     quadrants.forEach((q) => {
       doc.addPage();
 
+      const drawX0 = q.x0 > 0 ? Math.max(0, q.x0 - overlap) : 0;
+      const drawX1 = q.x1 < config.width ? Math.min(config.width, q.x1 + overlap) : q.x1;
+      const drawY0 = q.y0 > 0 ? Math.max(0, q.y0 - overlap) : 0;
+      const drawY1 = q.y1 < config.height ? Math.min(config.height, q.y1 + overlap) : q.y1;
+
       // Header
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(14);
@@ -447,7 +677,8 @@ export function generatePatternPDF(
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
       doc.setTextColor(108, 117, 125);
-      doc.text(`Columns ${q.x0 + 1}–${q.x1} • Rows ${q.y0 + 1}–${q.y1}`, margin, 24);
+      const overlapNote = overlap > 0 ? ` (includes shaded ${overlap}-stitch overlap)` : '';
+      doc.text(`Columns ${q.x0 + 1}–${q.x1} • Rows ${q.y0 + 1}–${q.y1}${overlapNote}`, margin, 24);
 
       // Mini page map indicator in top-right
       const mapX = pageWidth - margin - 22;
@@ -461,13 +692,24 @@ export function generatePatternPDF(
       doc.setFillColor(99, 102, 241);
       doc.rect(mapX + q.mapCol * 10, mapY + q.mapRow * 7, 10, 7, 'F');
 
-      const sliceDataUrl = renderGridSliceCanvas(gridData, palette, q.x0, q.x1, q.y0, q.y1, 22, options.colorMode || 'color');
+      const sliceDataUrl = renderGridSliceCanvas(
+        gridData,
+        palette,
+        drawX0,
+        drawX1,
+        drawY0,
+        drawY1,
+        22,
+        options.colorMode || 'color',
+        backstitches,
+        overlap > 0 ? { origX0: q.x0, origX1: q.x1, origY0: q.y0, origY1: q.y1 } : undefined
+      );
       if (sliceDataUrl) {
         const availableWidth = pageWidth - margin * 2;
         const availableHeight = pageHeight - 35 - margin;
-        const qW = q.x1 - q.x0;
-        const qH = q.y1 - q.y0;
-        const aspect = qW / qH;
+        const qW = drawX1 - drawX0;
+        const qH = drawY1 - drawY0;
+        const aspect = qW / Math.max(1, qH);
 
         let drawW = availableWidth;
         let drawH = drawW / aspect;
@@ -522,7 +764,8 @@ export function saveProjectJSON(
   gridConfig: GridConfig,
   gridData: number[][],
   palette: PaletteColor[],
-  completedCells: CellProgress
+  completedCells: CellProgress,
+  backstitches?: BackstitchLine[]
 ) {
   const project: CraftProject = {
     version: '1.0',
@@ -532,6 +775,7 @@ export function saveProjectJSON(
     gridData,
     palette,
     completedCells,
+    backstitches: backstitches && backstitches.length > 0 ? backstitches : undefined,
   };
 
   const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });

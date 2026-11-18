@@ -7,7 +7,10 @@ import type {
   SampleImage, 
   CraftProject,
   AiHistoryItem,
-  UploadHistoryItem 
+  UploadHistoryItem,
+  BackstitchLine,
+  PaletteMoodId,
+  CraftType
 } from './types/craft';
 import { SAMPLE_IMAGES } from './utils/sampleImages';
 import { extractBeautifulPalette } from './utils/paletteExtractor';
@@ -33,6 +36,9 @@ import { TimelapseModal } from './components/TimelapseModal';
 import { PixelTextModal } from './components/PixelTextModal';
 import { MyStashModal } from './components/MyStashModal';
 import { StitchCompanionModal } from './components/StitchCompanionModal';
+import { ShoppingTripModal } from './components/ShoppingTripModal';
+import { CraftCalculatorsModal } from './components/CraftCalculatorsModal';
+import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb } from './utils/colorUtils';
 import { 
@@ -116,6 +122,9 @@ export default function App() {
   const [isPixelTextOpen, setIsPixelTextOpen] = useState<boolean>(false);
   const [isMyStashOpen, setIsMyStashOpen] = useState<boolean>(false);
   const [isStitchCompanionOpen, setIsStitchCompanionOpen] = useState<boolean>(false);
+  const [isShoppingTripOpen, setIsShoppingTripOpen] = useState<boolean>(false);
+  const [isCalculatorsOpen, setIsCalculatorsOpen] = useState<boolean>(false);
+  const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
   const [showPegboardLines, setShowPegboardLines] = useState<boolean>(false);
   const [useMyStashOnly, setUseMyStashOnly] = useState<boolean>(false);
   const useMyStashOnlyRef = useRef<boolean>(false);
@@ -488,6 +497,9 @@ export default function App() {
     } else if (location.pathname === '/gallery') {
       setIsStarterGalleryOpen(true);
       updateDocumentMeta(null);
+    } else if (location.pathname === '/calculators') {
+      setIsCalculatorsOpen(true);
+      document.title = 'Free Craft Calculators — Floss Skeins, Bead Grams & C2C Blanket Sizer | Pixel Craft Studio';
     } else {
       updateDocumentMeta(null);
     }
@@ -1250,6 +1262,42 @@ export default function App() {
     });
   };
 
+  const handleApplyPaletteMood = useCallback(
+    (mood: PaletteMoodId) => {
+      if (palette.length === 0 || gridData.length === 0) return;
+      handleBeforePencilStroke();
+      const { newPalette, newGrid } = applyPaletteMood(palette, gridData, mood, config.craftType);
+      setPalette(newPalette);
+      paletteRef.current = newPalette;
+      setGridData(newGrid);
+      showToast(`✨ Applied "${mood}" harmony to palette!`);
+    },
+    [palette, gridData, config.craftType, handleBeforePencilStroke, showToast]
+  );
+
+  const handleCrossConvertCraft = useCallback(
+    (targetCraft: CraftType) => {
+      if (palette.length === 0 || gridData.length === 0) {
+        handleUpdateConfig({ craftType: targetCraft });
+        return;
+      }
+      handleBeforePencilStroke();
+      const { newGrid, newPalette, mergedCount } = convertPatternToCraft(gridData, palette, targetCraft);
+      setPalette(newPalette);
+      paletteRef.current = newPalette;
+      setGridData(newGrid);
+      const nextStandard =
+        targetCraft === 'perler' ? 'perler' : targetCraft === 'pixel' ? 'custom' : 'dmc';
+      handleUpdateConfig({ craftType: targetCraft, craftStandard: nextStandard });
+      showToast(
+        `🔄 Converted pattern to ${targetCraft.toUpperCase()} (${newPalette.length} colors${
+          mergedCount > 0 ? `, ${mergedCount} merged` : ''
+        })!`
+      );
+    },
+    [palette, gridData, handleBeforePencilStroke, handleUpdateConfig, showToast]
+  );
+
   const handleResetProgress = () => {
     if (Object.keys(completedCells).length === 0) return;
     if (window.confirm('Reset all completed stitches/beads progress?')) {
@@ -1261,6 +1309,7 @@ export default function App() {
     if (window.confirm('Start fresh with default sample image? This will reset custom edits.')) {
       await clearSavedAppState();
       setCompletedCells({});
+      setBackstitches([]);
       setSpotlightColorId(null);
       setGridHistory([]);
       setGridFuture([]);
@@ -1274,6 +1323,7 @@ export default function App() {
     setGridData(project.gridData);
     setPalette(project.palette);
     setCompletedCells(project.completedCells || {});
+    setBackstitches(project.backstitches || []);
     setGridHistory([]);
     setGridFuture([]);
   };
@@ -1318,6 +1368,8 @@ export default function App() {
         onOpenPixelTextModal={() => setIsPixelTextOpen(true)}
         onOpenMyStashModal={() => setIsMyStashOpen(true)}
         onOpenStitchCompanionModal={() => setIsStitchCompanionOpen(true)}
+        onOpenShoppingTripModal={() => setIsShoppingTripOpen(true)}
+        onOpenCalculatorsModal={() => setIsCalculatorsOpen(true)}
         isZenMode={isZenMode}
         onToggleZenMode={() => setIsZenMode((prev) => !prev)}
         onResetProgress={handleResetProgress}
@@ -1438,6 +1490,8 @@ export default function App() {
           onTransformGrid={handleTransformGrid}
           onOpenPixelTextModal={() => setIsPixelTextOpen(true)}
           showPegboardLines={showPegboardLines}
+          backstitches={backstitches}
+          onUpdateBackstitches={setBackstitches}
         />
 
         {/* Right Palette Legend (Desktop Sidebar & Mobile Drawer) */}
@@ -1476,6 +1530,12 @@ export default function App() {
               onSwapColor={handleSwapColor}
               onSwapWithNewColor={handleSwapWithNewColor}
               onToggleCollapse={() => setIsRightPanelOpen(false)}
+              onApplyPaletteMood={handleApplyPaletteMood}
+              onCrossConvertCraft={handleCrossConvertCraft}
+              onOpenShoppingTrip={() => {
+                setIsMobilePaletteOpen(false);
+                setIsShoppingTripOpen(true);
+              }}
             />
           </div>
         )}
@@ -1588,6 +1648,7 @@ export default function App() {
         palette={palette}
         config={config}
         completedCells={completedCells}
+        backstitches={backstitches}
         onOpenWrittenInstructions={() => {
           setIsExportOpen(false);
           setIsWrittenInstructionsOpen(true);
@@ -1595,6 +1656,10 @@ export default function App() {
         onOpenSocialCard={() => {
           setIsExportOpen(false);
           setIsSocialCardOpen(true);
+        }}
+        onOpenShoppingTrip={() => {
+          setIsExportOpen(false);
+          setIsShoppingTripOpen(true);
         }}
       />
 
@@ -1767,6 +1832,38 @@ export default function App() {
         palette={palette}
         completedCells={completedCells}
         onBatchSetCellsCompleted={handleBatchSetCellsCompleted}
+      />
+
+      {/* In-Store Shopping Trip Checklist Modal */}
+      <ShoppingTripModal
+        isOpen={isShoppingTripOpen}
+        onClose={() => setIsShoppingTripOpen(false)}
+        palette={palette}
+        gridData={gridData}
+        craftType={config.craftType}
+        onStashUpdated={() => {
+          if (useMyStashOnly && sourceImageRef.current) {
+            reprocessCurrentImage();
+          }
+        }}
+      />
+
+      {/* Standalone Craft Calculators Suite */}
+      <CraftCalculatorsModal
+        isOpen={isCalculatorsOpen}
+        onClose={() => {
+          setIsCalculatorsOpen(false);
+          if (location.pathname === '/calculators') {
+            navigate(getPathForCraft(config.craftType));
+          }
+        }}
+        currentGridWidth={config.width}
+        currentGridHeight={config.height}
+        unitSystem={config.unitSystem}
+        onApplyGridSize={(w, h) => {
+          handleUpdateConfig({ width: w, height: h, lockAspectRatio: false });
+          showToast(`📏 Applied blanket grid dimensions (${w} × ${h})!`);
+        }}
       />
     </div>
   );

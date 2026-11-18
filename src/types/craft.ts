@@ -10,6 +10,19 @@ export type UnitSystem = 'imperial' | 'metric';
 
 export type CraftStandard = 'custom' | 'dmc' | 'perler';
 
+export type PaletteMoodId = 'pastel' | 'autumn' | 'cyberpunk' | 'cottagecore' | 'sunset' | 'monochrome';
+
+export interface BackstitchLine {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  colorHex: string;
+  colorCode?: string;
+  strands?: 1 | 2;
+}
+
 export type CrochetStitchType = 'sc' | 'hdc' | 'wc' | 'c2c';
 export type CrochetYarnWeight = 'fingering' | 'dk' | 'worsted' | 'bulky' | 'super-bulky';
 
@@ -115,4 +128,5 @@ export interface CraftProject {
   gridData: number[][]; // 2D array of palette indices
   palette: PaletteColor[];
   completedCells: CellProgress;
+  backstitches?: BackstitchLine[];
 }

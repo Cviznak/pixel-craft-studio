@@ -22,7 +22,9 @@ import {
   Package,
   Maximize2,
   Minimize2,
-  ChevronDown
+  ChevronDown,
+  ShoppingCart,
+  Calculator
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -38,6 +40,8 @@ interface HeaderProps {
   onOpenPixelTextModal?: () => void;
   onOpenMyStashModal?: () => void;
   onOpenStitchCompanionModal?: () => void;
+  onOpenShoppingTripModal?: () => void;
+  onOpenCalculatorsModal?: () => void;
   isZenMode?: boolean;
   onToggleZenMode?: () => void;
   onResetProgress: () => void;
@@ -63,6 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPixelTextModal,
   onOpenMyStashModal,
   onOpenStitchCompanionModal,
+  onOpenShoppingTripModal,
+  onOpenCalculatorsModal,
   isZenMode = false,
   onToggleZenMode,
   onResetProgress,
@@ -529,6 +535,34 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Smartphone className="w-3.5 h-3.5 text-teal-400" />
                   <span>Stitch Companion (Phone Mode)</span>
+                </button>
+              )}
+
+              {/* In-Store Shopping Trip Mode */}
+              {onOpenShoppingTripModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenShoppingTripModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
+                >
+                  <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>In-Store Shopping Checklist</span>
+                </button>
+              )}
+
+              {/* Craft Calculators Suite */}
+              {onOpenCalculatorsModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenCalculatorsModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left"
+                >
+                  <Calculator className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Craft Calculators Suite</span>
                 </button>
               )}
 
