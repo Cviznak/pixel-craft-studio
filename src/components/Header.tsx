@@ -21,7 +21,8 @@ import {
   Type,
   Package,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ChevronDown
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -76,6 +77,8 @@ export const Header: React.FC<HeaderProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [isMobileCraftMenuOpen, setIsMobileCraftMenuOpen] = useState(false);
+  const mobileCraftMenuRef = useRef<HTMLDivElement>(null);
 
   // PWA installation state
   const [installPrompt, setInstallPrompt] = useState<any>(null);
@@ -128,18 +131,21 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsProjectMenuOpen(false);
       }
+      if (mobileCraftMenuRef.current && !mobileCraftMenuRef.current.contains(e.target as Node)) {
+        setIsMobileCraftMenuOpen(false);
+      }
     };
-    if (isProjectMenuOpen) {
+    if (isProjectMenuOpen || isMobileCraftMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isProjectMenuOpen]);
+  }, [isProjectMenuOpen, isMobileCraftMenuOpen]);
 
   const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -174,10 +180,12 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'pixel', label: 'Pixel', icon: '🔲' },
   ];
 
+  const currentCraft = craftTypes.find((c) => c.id === config.craftType) || craftTypes[0];
+
   return (
-    <header className="h-14 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 flex items-center justify-between px-3 sm:px-4 z-30 shrink-0 select-none">
+    <header className="h-14 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 flex items-center justify-between px-2.5 sm:px-4 z-30 shrink-0 select-none">
       {/* Brand & Left Panel Toggle */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3">
         {onToggleLeftPanel && (
           <button
             onClick={onToggleLeftPanel}
@@ -192,16 +200,17 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-pink-500 via-indigo-600 to-amber-400 p-[1.5px] shadow-md shadow-indigo-500/20 shrink-0">
-            <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-              <Scissors className="w-4 h-4 text-pink-400" />
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-pink-500 via-indigo-600 to-amber-400 p-[1.5px] shadow-md shadow-indigo-500/20 shrink-0">
+            <div className="w-full h-full bg-slate-950 rounded-[9px] sm:rounded-[10px] flex items-center justify-center">
+              <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-pink-400" />
             </div>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h1 className="text-sm font-extrabold tracking-tight text-white m-0">
-                Pixel Craft Studio
+              <h1 className="text-xs sm:text-sm font-extrabold tracking-tight text-white m-0">
+                <span className="hidden sm:inline">Pixel Craft Studio</span>
+                <span className="sm:hidden">PixelCraft</span>
               </h1>
               <span className="hidden 2xl:inline text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
                 Pattern Maker
@@ -211,8 +220,51 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center: Craft Style Segmented Control (Smart compact sizing) */}
-      <div className="flex items-center bg-slate-900/90 border border-slate-800/90 rounded-xl p-1 gap-0.5 shadow-inner">
+      {/* Center: Mobile Craft Dropdown (< md) */}
+      <div className="md:hidden relative" ref={mobileCraftMenuRef}>
+        <button
+          onClick={() => setIsMobileCraftMenuOpen(!isMobileCraftMenuOpen)}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700/80 text-xs font-bold text-slate-100 shadow-md active:scale-95 transition"
+        >
+          <span className="text-sm">{currentCraft.icon}</span>
+          <span className="max-w-[85px] truncate font-bold">{currentCraft.label}</span>
+          <ChevronDown className="w-3.5 h-3.5 text-indigo-400" />
+        </button>
+
+        {isMobileCraftMenuOpen && (
+          <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-50 w-52 bg-slate-950/98 backdrop-blur-2xl border border-slate-700/90 rounded-2xl shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              Select Craft Mode
+            </div>
+            {craftTypes.map((item) => {
+              const isItemActive = config.craftType === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    onUpdateConfig({ craftType: item.id });
+                    setIsMobileCraftMenuOpen(false);
+                  }}
+                  className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-left transition ${
+                    isItemActive
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                  }`}
+                >
+                  <span className="text-sm">{item.icon}</span>
+                  <span className="flex-1 font-medium">{item.label}</span>
+                  {isItemActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Center: Desktop Craft Style Segmented Control (hidden md:flex) */}
+      <div className="hidden md:flex items-center bg-slate-900/90 border border-slate-800/90 rounded-xl p-1 gap-0.5 shadow-inner">
         {craftTypes.map((item) => {
           const isActive = config.craftType === item.id;
           return (
@@ -248,7 +300,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onToggleZenMode && (
           <button
             onClick={onToggleZenMode}
-            className={`flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold border transition ${
+            className={`hidden md:flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold border transition ${
               isZenMode
                 ? 'bg-indigo-600/30 border-indigo-500/60 text-indigo-300'
                 : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
@@ -279,7 +331,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenSocialCardModal && (
           <button
             onClick={onOpenSocialCardModal}
-            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
+            className="hidden md:flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
             title="Create an aesthetic social card for Pinterest, TikTok & Instagram"
           >
             <Share2 className="w-3.5 h-3.5 text-rose-400" />
@@ -292,7 +344,7 @@ export const Header: React.FC<HeaderProps> = ({
           href="https://buymeacoffee.com/orjustdosomething"
           target="_blank"
           rel="noopener noreferrer"
-          className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/30 transition flex items-center justify-center"
+          className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/30 transition flex items-center justify-center shrink-0"
           title="Support Pixel Craft Studio on Buy Me a Coffee"
         >
           <Coffee className="w-4 h-4" />
@@ -301,7 +353,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Help / Guide button */}
         <button
           onClick={onToggleHelpModal}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800 transition"
+          className="hidden sm:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800 transition shrink-0"
           title="Guide & craft instructions"
         >
           <HelpCircle className="w-4 h-4" />
@@ -358,6 +410,44 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Wand2 className="w-3.5 h-3.5 text-purple-400" />
                 <span>Ask AI Motif Generator</span>
+              </button>
+
+              {/* Mobile-only Quick Actions */}
+              {onOpenSocialCardModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenSocialCardModal();
+                  }}
+                  className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg text-rose-300 hover:bg-slate-800 transition text-left"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Share Social Card</span>
+                </button>
+              )}
+
+              {onToggleZenMode && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onToggleZenMode();
+                  }}
+                  className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left"
+                >
+                  {isZenMode ? <Minimize2 className="w-3.5 h-3.5 text-indigo-400" /> : <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />}
+                  <span>{isZenMode ? 'Exit Focus Mode' : 'Focus Canvas Mode'}</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  setIsProjectMenuOpen(false);
+                  onToggleHelpModal();
+                }}
+                className="sm:hidden flex items-center gap-2 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition text-left"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Help & Guide</span>
               </button>
 
               <div className="my-1 border-t border-slate-800/80" />

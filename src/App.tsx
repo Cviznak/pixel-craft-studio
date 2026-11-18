@@ -43,7 +43,7 @@ import {
 import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
 import { getRouteByPath, getPathForCraft, updateDocumentMeta } from './utils/craftRoutes';
-import { SlidersHorizontal, Sparkles, Wand2, Palette, Paintbrush, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -1472,44 +1472,20 @@ export default function App() {
         )}
 
         {/* Mobile & Tablet Bottom Navigation Bar */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800/90 px-3 py-1 flex items-center justify-around shadow-2xl">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/98 backdrop-blur-2xl border-t border-slate-800/90 px-2 py-1.5 flex items-center justify-around shadow-2xl safe-area-pb">
           <button
             onClick={() => {
               setIsMobilePaletteOpen(false);
               setIsMobileControlsOpen((prev) => !prev);
             }}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition ${
+            className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition ${
               isMobileControlsOpen
                 ? 'text-indigo-400 bg-indigo-500/15'
                 : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
-            <span className="text-[10px] font-semibold">Settings</span>
-          </button>
-
-          <button
-            onClick={() => setIsAiModalOpen(true)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-purple-400 hover:text-purple-300 transition"
-          >
-            <Wand2 className="w-4 h-4" />
-            <span className="text-[10px] font-semibold">AI Draw</span>
-          </button>
-
-          <button
-            onClick={() => setIsStarterGalleryOpen(true)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-pink-400 hover:text-pink-300 transition"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span className="text-[10px] font-semibold">Starters</span>
-          </button>
-
-          <button
-            onClick={() => setIsNewCanvasModalOpen(true)}
-            className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-amber-400 hover:text-amber-300 transition"
-          >
-            <Paintbrush className="w-4 h-4" />
-            <span className="text-[10px] font-semibold">Draw</span>
+            <span className="text-[10px] font-semibold">Controls</span>
           </button>
 
           <button
@@ -1517,7 +1493,7 @@ export default function App() {
               setIsMobileControlsOpen(false);
               setIsMobilePaletteOpen((prev) => !prev);
             }}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition relative ${
+            className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition relative ${
               isMobilePaletteOpen
                 ? 'text-pink-400 bg-pink-500/15'
                 : 'text-slate-400 hover:text-slate-200'
@@ -1530,6 +1506,30 @@ export default function App() {
               </span>
             </div>
             <span className="text-[10px] font-semibold">Palette</span>
+          </button>
+
+          <button
+            onClick={() => setIsWrittenInstructionsOpen(true)}
+            className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-emerald-400 hover:text-emerald-300 transition"
+          >
+            <FileText className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">Written</span>
+          </button>
+
+          <button
+            onClick={() => setIsStarterGalleryOpen(true)}
+            className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-amber-400 hover:text-amber-300 transition"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">Starters</span>
+          </button>
+
+          <button
+            onClick={() => setIsAiModalOpen(true)}
+            className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-purple-400 hover:text-purple-300 transition"
+          >
+            <Wand2 className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">AI Draw</span>
           </button>
         </nav>
 

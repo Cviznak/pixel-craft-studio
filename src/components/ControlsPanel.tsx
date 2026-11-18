@@ -143,7 +143,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   };
 
   return (
-    <aside className="w-72 xl:w-80 max-w-[88vw] h-full bg-slate-900 border-r border-slate-800/90 flex flex-col z-10 shrink-0 overflow-hidden shadow-2xl lg:shadow-none select-none">
+    <aside className="w-80 max-w-[92vw] sm:w-72 xl:w-80 h-full bg-slate-900 border-r border-slate-800/90 flex flex-col z-10 shrink-0 overflow-hidden shadow-2xl lg:shadow-none select-none">
       {/* 1. Top Section: Picture Source */}
       <div className="p-3.5 border-b border-slate-800/90 bg-slate-950/40">
         <div className="flex items-center justify-between mb-2.5">
@@ -401,7 +401,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
       </div>
 
       {/* 3. Tab Contents */}
-      <div className="p-3.5 space-y-4 flex-1 overflow-y-auto">
+      <div className="p-3.5 space-y-4 flex-1 overflow-y-auto pb-24 lg:pb-4">
         {/* TAB 1: GRID & SIZING */}
         {activeTab === 'grid' && (
           <div className="space-y-4">

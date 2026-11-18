@@ -67,7 +67,7 @@ function aiImageProxyPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: './',
+  base: '/',
   plugins: [react(), tailwindcss(), aiImageProxyPlugin()],
   build: {
     chunkSizeWarningLimit: 1000,
