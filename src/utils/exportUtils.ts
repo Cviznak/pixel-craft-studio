@@ -147,7 +147,8 @@ function renderGridSliceCanvas(
   endX: number,
   startY: number,
   endY: number,
-  renderCellSize = 22
+  renderCellSize = 22,
+  colorMode: 'color' | 'bw' = 'color'
 ): string {
   const sliceW = endX - startX;
   const sliceH = endY - startY;
@@ -200,13 +201,23 @@ function renderGridSliceCanvas(
       const px = rulerSize + (x - startX) * renderCellSize;
       const py = rulerSize + (y - startY) * renderCellSize;
 
-      ctx.fillStyle = color ? color.hex : '#ffffff';
-      ctx.fillRect(px, py, renderCellSize, renderCellSize);
-
-      if (color) {
-        ctx.fillStyle = getContrastingTextColor(color.r, color.g, color.b);
-        ctx.font = `bold ${Math.floor(renderCellSize * 0.62)}px sans-serif`;
-        ctx.fillText(color.symbol, px + renderCellSize / 2, py + renderCellSize / 2 + 1);
+      // Fill cell
+      if (colorMode === 'bw') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px, py, renderCellSize, renderCellSize);
+        if (color) {
+          ctx.fillStyle = '#000000';
+          ctx.font = `bold ${Math.floor(renderCellSize * 0.65)}px sans-serif`;
+          ctx.fillText(color.symbol, px + renderCellSize / 2, py + renderCellSize / 2 + 1);
+        }
+      } else {
+        ctx.fillStyle = color ? color.hex : '#ffffff';
+        ctx.fillRect(px, py, renderCellSize, renderCellSize);
+        if (color) {
+          ctx.fillStyle = getContrastingTextColor(color.r, color.g, color.b);
+          ctx.font = `bold ${Math.floor(renderCellSize * 0.62)}px sans-serif`;
+          ctx.fillText(color.symbol, px + renderCellSize / 2, py + renderCellSize / 2 + 1);
+        }
       }
 
       ctx.strokeStyle = '#d1d5db';
@@ -243,6 +254,7 @@ function renderGridSliceCanvas(
 export interface PdfExportOptions {
   multiPage?: 'single' | '2x2';
   includeWritten?: boolean;
+  colorMode?: 'color' | 'bw';
 }
 
 // Generate complete PDF Pattern Document with jsPDF
@@ -251,7 +263,7 @@ export function generatePatternPDF(
   palette: PaletteColor[],
   config: GridConfig,
   projectName = 'Pixel Craft Pattern',
-  options: PdfExportOptions = { multiPage: 'single', includeWritten: false }
+  options: PdfExportOptions = { multiPage: 'single', includeWritten: false, colorMode: 'color' }
 ) {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -328,10 +340,21 @@ export function generatePatternPDF(
     x += colWidths[0];
 
     // Swatch box
-    doc.setFillColor(color.r, color.g, color.b);
-    doc.rect(x + 2, rowY + 1.2, 10, 4, 'F');
-    doc.setDrawColor(180, 180, 180);
-    doc.rect(x + 2, rowY + 1.2, 10, 4, 'S');
+    if (options.colorMode === 'bw') {
+      doc.setFillColor(255, 255, 255);
+      doc.rect(x + 2, rowY + 1.2, 10, 4, 'F');
+      doc.setDrawColor(40, 40, 40);
+      doc.rect(x + 2, rowY + 1.2, 10, 4, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+      doc.text(color.symbol, x + 6, rowY + 4.2);
+    } else {
+      doc.setFillColor(color.r, color.g, color.b);
+      doc.rect(x + 2, rowY + 1.2, 10, 4, 'F');
+      doc.setDrawColor(180, 180, 180);
+      doc.rect(x + 2, rowY + 1.2, 10, 4, 'S');
+    }
     x += colWidths[1];
 
     // Code & Equivalents
@@ -384,7 +407,7 @@ export function generatePatternPDF(
     doc.setTextColor(108, 117, 125);
     doc.text('Each square corresponds to 1 bead, cross-stitch, or stitch. Bold lines every 10 squares.', margin, 24);
 
-    const sliceDataUrl = renderGridSliceCanvas(gridData, palette, 0, config.width, 0, config.height, 18);
+    const sliceDataUrl = renderGridSliceCanvas(gridData, palette, 0, config.width, 0, config.height, 18, options.colorMode || 'color');
     if (sliceDataUrl) {
       const availableWidth = pageWidth - margin * 2;
       const availableHeight = pageHeight - 35 - margin;
@@ -438,7 +461,7 @@ export function generatePatternPDF(
       doc.setFillColor(99, 102, 241);
       doc.rect(mapX + q.mapCol * 10, mapY + q.mapRow * 7, 10, 7, 'F');
 
-      const sliceDataUrl = renderGridSliceCanvas(gridData, palette, q.x0, q.x1, q.y0, q.y1, 22);
+      const sliceDataUrl = renderGridSliceCanvas(gridData, palette, q.x0, q.x1, q.y0, q.y1, 22, options.colorMode || 'color');
       if (sliceDataUrl) {
         const availableWidth = pageWidth - margin * 2;
         const availableHeight = pageHeight - 35 - margin;
@@ -518,4 +541,132 @@ export function saveProjectJSON(
   a.download = `${name.toLowerCase().replace(/\s+/g, '-')}-project.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/**
+ * Generates a printable PDF sheet of cut-out Floss Bobbin Labels / Bead Organizer Drops
+ */
+export function exportBobbinLabelsPDF(
+  palette: PaletteColor[],
+  projectName = 'Floss Bobbin Labels',
+  craftType = 'cross-stitch'
+) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const marginX = 14;
+  const marginY = 22;
+
+  const cardW = 43;
+  const cardH = 39;
+  const gapX = 3;
+  const gapY = 4;
+  const cols = 4;
+  const rows = 6;
+  const cardsPerPage = cols * rows; // 24
+
+  let cardIndex = 0;
+
+  const drawPageHeader = () => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(33, 37, 41);
+    doc.text(`${projectName} — Floss Bobbin Labels & Swatch Tags`, marginX, 12);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(108, 117, 125);
+    doc.text('Cut along dashed lines to slot or tape onto standard plastic floss bobbins & organizer boxes', marginX, 16);
+  };
+
+  drawPageHeader();
+
+  palette.forEach((color, i) => {
+    if (i > 0 && i % cardsPerPage === 0) {
+      doc.addPage();
+      drawPageHeader();
+      cardIndex = 0;
+    }
+
+    const col = cardIndex % cols;
+    const row = Math.floor(cardIndex / cols);
+
+    const x = marginX + col * (cardW + gapX);
+    const y = marginY + row * (cardH + gapY);
+
+    // Dashed cut outline
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineDashPattern([2, 1], 0);
+    doc.rect(x, y, cardW, cardH, 'S');
+
+    // Solid border for content box
+    doc.setLineDashPattern([], 0);
+
+    // Top color swatch bar
+    doc.setFillColor(color.r, color.g, color.b);
+    doc.rect(x + 1.5, y + 1.5, cardW - 3, 7, 'F');
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(x + 1.5, y + 1.5, cardW - 3, 7, 'S');
+
+    // Craft Symbol in swatch bar
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    const textColor = getContrastingTextColor(color.r, color.g, color.b);
+    const rgbText = textColor === '#000000' ? 0 : 255;
+    doc.setTextColor(rgbText, rgbText, rgbText);
+    doc.text(color.symbol, x + 3.5, y + 6.2);
+
+    // Main shade code
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(17, 24, 39);
+    const anchor = getAnchorEquivalent(color.code);
+    const bead = getBeadEquivalents(color.code);
+
+    const mainCode = color.code || color.hex;
+    doc.text(mainCode, x + 3, y + 14);
+
+    // Anchor or Bead equivalent
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    if (craftType !== 'perler' && anchor) {
+      doc.text(`Anch: ${anchor.code}`, x + 3, y + 18);
+    } else if (craftType === 'perler' && bead) {
+      doc.text(`Artkal ${bead.artkal} • Hama ${bead.hama}`, x + 3, y + 18);
+    }
+
+    // Color name
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(71, 85, 105);
+    const rawName = color.name || 'Custom Color';
+    const truncatedName = rawName.length > 20 ? rawName.substring(0, 18) + '..' : rawName;
+    doc.text(truncatedName, x + 3, y + 23);
+
+    // Divider line
+    doc.setDrawColor(226, 232, 240);
+    doc.line(x + 2, y + 26, x + cardW - 2, y + 26);
+
+    // Stitches count & skeins
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(30, 41, 59);
+    doc.text(`${color.count} sts`, x + 3, y + 32);
+
+    // Skein estimate
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    const skeinText = craftType === 'perler'
+      ? `${Math.max(1, Math.ceil(color.count / 1000))} pk`
+      : `${color.count > 1800 ? `${(color.count / 1800).toFixed(1)} sk` : '1 sk'}`;
+    doc.text(skeinText, x + cardW - 12, y + 32);
+
+    cardIndex++;
+  });
+
+  doc.save(`${projectName.toLowerCase().replace(/\s+/g, '-')}-bobbin-labels.pdf`);
 }

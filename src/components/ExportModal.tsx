@@ -4,8 +4,10 @@ import {
   exportPixelArtPNG, 
   exportPrintableGridPNG, 
   generatePatternPDF, 
-  saveProjectJSON 
+  saveProjectJSON,
+  exportBobbinLabelsPDF
 } from '../utils/exportUtils';
+import { buildShareablePatternUrl } from '../utils/shareUtils';
 import { buildAmazonSuppliesUrl } from '../utils/amazonUtils';
 import { getCraftDimensionsSummary } from '../utils/craftCalculator';
 import { 
@@ -21,7 +23,10 @@ import {
   BookOpen,
   Layers,
   Coffee,
-  Share2
+  Share2,
+  Tag,
+  Link2,
+  Check
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -49,7 +54,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [scale, setScale] = useState(16);
   const [isExporting, setIsExporting] = useState(false);
   const [pdfLayout, setPdfLayout] = useState<'single' | '2x2'>('single');
+  const [colorMode, setColorMode] = useState<'color' | 'bw'>('color');
   const [includeWritten, setIncludeWritten] = useState(false);
+  const [isCopiedLink, setIsCopiedLink] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -71,9 +78,21 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       generatePatternPDF(gridData, palette, config, projectName, {
         multiPage: pdfLayout,
         includeWritten,
+        colorMode,
       });
       setIsExporting(false);
     }, 100);
+  };
+
+  const handleCopyShareLink = async () => {
+    const shareUrl = buildShareablePatternUrl(config, gridData, palette, projectName);
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setIsCopiedLink(true);
+      setTimeout(() => setIsCopiedLink(false), 2500);
+    } catch {
+      window.prompt('Copy pattern share link:', shareUrl);
+    }
   };
 
   const handleExportCleanPNG = () => {
@@ -208,6 +227,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </button>
                 </div>
 
+                {/* Color Mode: Full Color vs B&W Ink Saver */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Mode:</span>
+                  <button
+                    type="button"
+                    onClick={() => setColorMode('color')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                      colorMode === 'color'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Color
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setColorMode('bw')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                      colorMode === 'bw'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Print black & white symbol chart to save colored printer ink"
+                  >
+                    B&W (Ink Saver)
+                  </button>
+                </div>
+
                 {config.craftType === 'crochet' && (
                   <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-pink-300 font-medium">
                     <input
@@ -220,6 +267,64 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </label>
                 )}
               </div>
+            </div>
+
+            {/* 2. Floss Bobbin & Bead Drops Printable Labels */}
+            <div className="p-3.5 rounded-xl border border-sky-500/40 bg-sky-950/20 hover:bg-sky-950/30 transition flex items-center justify-between">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-sky-600/30 text-sky-300 mt-0.5">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5">
+                    <span>Floss Bobbin Labels & Drops (PDF)</span>
+                    <span className="text-[10px] bg-sky-500/30 text-sky-300 px-1.5 py-0.2 rounded font-normal">
+                      Print & Cut
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Cut-out labels for bobbins & organizer boxes with DMC/Anchor numbers, symbols & skein counts.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => exportBobbinLabelsPDF(palette, projectName, config.craftType)}
+                className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                Bobbin PDF
+              </button>
+            </div>
+
+            {/* 3. 1-Click Pattern Sharing Link */}
+            <div className="p-3.5 rounded-xl border border-indigo-500/30 bg-slate-950/60 hover:bg-slate-950/80 transition flex items-center justify-between">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 mt-0.5">
+                  <Link2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5">
+                    <span>Share Pattern Link</span>
+                    <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.2 rounded font-mono">
+                      Instant Web Sync
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Copy a direct link to send to friends or open on your mobile or tablet.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleCopyShareLink}
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5 ${
+                  isCopiedLink
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                }`}
+              >
+                {isCopiedLink ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+                <span>{isCopiedLink ? 'Copied!' : 'Copy Link'}</span>
+              </button>
             </div>
 
             {/* Written Row-by-Row Crochet Instructions Card */}

@@ -36,6 +36,7 @@ interface PaletteLegendProps {
   activeColorIndex: number;
   completedCells: CellProgress;
   craftType?: CraftType;
+  unitSystem?: 'imperial' | 'metric';
   onSelectColor: (index: number) => void;
   onToggleSpotlight: (colorId: string) => void;
   onUpdateColorHex: (index: number, newHex: string) => void;
@@ -55,6 +56,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   activeColorIndex,
   completedCells,
   craftType = 'perler',
+  unitSystem = 'imperial',
   onSelectColor,
   onToggleSpotlight,
   onUpdateColorHex,
@@ -595,8 +597,8 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
                       </span>
                     )}
                     {craftType === 'crochet' && (
-                      <span className="text-[9px] text-pink-400 font-sans shrink-0" title="Estimated yarn yardage & skeins">
-                        • ~{Math.round(total * 0.9)} yd
+                      <span className="text-[9px] text-pink-400 font-sans shrink-0" title="Estimated yarn length & skeins">
+                        • ~{unitSystem === 'metric' ? `${Math.round(total * 0.9 * 0.9144)} m` : `${Math.round(total * 0.9)} yd`}
                       </span>
                     )}
                   </div>

@@ -30,6 +30,8 @@ interface SizeAndFrameModalProps {
   gridData: number[][];
   palette: PaletteColor[];
   craftType: CraftType;
+  unitSystem?: 'imperial' | 'metric';
+  onToggleUnitSystem?: (unit: 'imperial' | 'metric') => void;
   onTogglePegboardLines?: () => void;
   showPegboardLines?: boolean;
 }
@@ -72,10 +74,13 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
   gridData,
   palette,
   craftType: initialCraftType,
+  unitSystem = 'imperial',
+  onToggleUnitSystem,
   onTogglePegboardLines,
   showPegboardLines = false,
 }) => {
   const [selectedCraftType, setSelectedCraftType] = useState<CraftType>(initialCraftType);
+  const [localUnit, setLocalUnit] = useState<'imperial' | 'metric'>(unitSystem);
   const [aidaCount, setAidaCount] = useState<CrossStitchClothCount>(14);
   const [perlerType, setPerlerType] = useState<PerlerBeadType>('midi-5mm');
   const [frameType, setFrameType] = useState<FrameType>('hoop');
@@ -423,12 +428,46 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px] font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setLocalUnit('imperial');
+                  onToggleUnitSystem?.('imperial');
+                }}
+                className={`px-2 py-0.5 rounded transition ${
+                  localUnit !== 'metric'
+                    ? 'bg-amber-500/25 text-amber-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Yards & Inches"
+              >
+                Yards / In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLocalUnit('metric');
+                  onToggleUnitSystem?.('metric');
+                }}
+                className={`px-2 py-0.5 rounded transition ${
+                  localUnit === 'metric'
+                    ? 'bg-amber-500/25 text-amber-300'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Meters & Centimeters"
+              >
+                Meters / cm
+              </button>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -616,7 +655,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
                   <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
                     <div className="text-slate-400">Leading Floss Needed:</div>
                     <div className="font-bold text-emerald-300 font-mono mt-0.5">
-                      ~{sizingMetrics.alpha.estimatedLeadingYardsTotal} yds (~{sizingMetrics.alpha.estimatedLeadingSkeinsTotal} skeins)
+                      ~{localUnit === 'metric' ? `${sizingMetrics.alpha.estimatedLeadingMetersTotal} m` : `${sizingMetrics.alpha.estimatedLeadingYardsTotal} yds`} (~{sizingMetrics.alpha.estimatedLeadingSkeinsTotal} skeins)
                     </div>
                   </div>
                 </div>
@@ -658,7 +697,7 @@ export const SizeAndFrameModal: React.FC<SizeAndFrameModalProps> = ({
                   <div className="bg-slate-950/60 p-2 rounded-lg border border-slate-800">
                     <div className="text-slate-400">Estimated Yarn Needed:</div>
                     <div className="font-bold text-emerald-300 font-mono mt-0.5">
-                      ~{sizingMetrics.knitting.estimatedTotalYards} yds (~{sizingMetrics.knitting.estimatedSkeins} skeins)
+                      ~{localUnit === 'metric' ? `${sizingMetrics.knitting.estimatedTotalMeters} m` : `${sizingMetrics.knitting.estimatedTotalYards} yds`} (~{sizingMetrics.knitting.estimatedSkeins} skeins)
                     </div>
                   </div>
                 </div>

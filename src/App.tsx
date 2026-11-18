@@ -43,7 +43,8 @@ import {
 import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
 import { getRouteByPath, getPathForCraft, updateDocumentMeta } from './utils/craftRoutes';
-import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { decodePatternFromHash } from './utils/shareUtils';
+import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText, Smartphone } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -63,6 +64,7 @@ const DEFAULT_CONFIG: GridConfig = {
   showSymbols: true,
   cellSize: 24,
   transparentMode: 'white',
+  unitSystem: 'imperial',
   crochetGauge: DEFAULT_CROCHET_GAUGE,
 };
 
@@ -377,6 +379,24 @@ export default function App() {
   useEffect(() => {
     const restoreState = async () => {
       try {
+        if (window.location.hash && window.location.hash.includes('pattern=')) {
+          const shared = decodePatternFromHash(window.location.hash);
+          if (shared) {
+            setConfig({
+              ...DEFAULT_CONFIG,
+              craftType: shared.craftType,
+              width: shared.width,
+              height: shared.height,
+            });
+            setGridData(shared.gridData);
+            setPalette(shared.palette);
+            setToastMessage(`Loaded shared pattern: "${shared.title || 'Shared Pattern'}"`);
+            setTimeout(() => setToastMessage(null), 3500);
+            setIsInitialLoaded(true);
+            return;
+          }
+        }
+
         const saved = await loadAppState();
         if (saved) {
           const route = getRouteByPath(location.pathname);
@@ -1445,6 +1465,7 @@ export default function App() {
               activeColorIndex={activeColorIndex}
               completedCells={completedCells}
               craftType={config.craftType}
+              unitSystem={config.unitSystem}
               onSelectColor={(idx) => setActiveColorIndex(idx)}
               onToggleSpotlight={handleToggleSpotlight}
               onUpdateColorHex={handleUpdateColorHex}
@@ -1493,7 +1514,7 @@ export default function App() {
               setIsMobileControlsOpen(false);
               setIsMobilePaletteOpen((prev) => !prev);
             }}
-            className={`flex flex-col items-center gap-1 px-3 py-1 rounded-xl transition relative ${
+            className={`flex flex-col items-center gap-1 px-2.5 py-1 rounded-xl transition relative ${
               isMobilePaletteOpen
                 ? 'text-pink-400 bg-pink-500/15'
                 : 'text-slate-400 hover:text-slate-200'
@@ -1509,8 +1530,17 @@ export default function App() {
           </button>
 
           <button
+            onClick={() => setIsStitchCompanionOpen(true)}
+            className="flex flex-col items-center gap-1 px-2.5 py-1 rounded-xl text-teal-400 hover:text-teal-300 transition"
+            title="Couch Mode: Hands-free row-by-row stitch tracker with screen keep-awake"
+          >
+            <Smartphone className="w-4 h-4" />
+            <span className="text-[10px] font-semibold">Couch</span>
+          </button>
+
+          <button
             onClick={() => setIsWrittenInstructionsOpen(true)}
-            className="flex flex-col items-center gap-1 px-3 py-1 rounded-xl text-emerald-400 hover:text-emerald-300 transition"
+            className="flex flex-col items-center gap-1 px-2.5 py-1 rounded-xl text-emerald-400 hover:text-emerald-300 transition"
           >
             <FileText className="w-4 h-4" />
             <span className="text-[10px] font-semibold">Written</span>
@@ -1685,6 +1715,8 @@ export default function App() {
         gridData={gridData}
         palette={palette}
         craftType={config.craftType}
+        unitSystem={config.unitSystem}
+        onToggleUnitSystem={(u) => handleUpdateConfig({ unitSystem: u })}
         showPegboardLines={showPegboardLines}
         onTogglePegboardLines={() => setShowPegboardLines((prev) => !prev)}
       />

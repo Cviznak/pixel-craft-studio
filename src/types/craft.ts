@@ -6,6 +6,8 @@ export type DitherType = 'none' | 'floyd-steinberg' | 'atkinson' | 'bayer';
 
 export type TransparentBackgroundMode = 'white' | 'empty' | 'dark' | 'custom';
 
+export type UnitSystem = 'imperial' | 'metric';
+
 export type CraftStandard = 'custom' | 'dmc' | 'perler';
 
 export type CrochetStitchType = 'sc' | 'hdc' | 'wc' | 'c2c';
@@ -70,6 +72,7 @@ export interface GridConfig {
   cellSize: number; // visual scale in canvas
   transparentMode: TransparentBackgroundMode;
   transparentCustomColor?: string;
+  unitSystem?: UnitSystem;
   crochetGauge?: CrochetGaugeConfig;
   knitGauge?: KnitGaugeConfig;
   beadLoom?: BeadLoomConfig;

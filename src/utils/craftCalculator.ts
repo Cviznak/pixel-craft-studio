@@ -635,6 +635,36 @@ export function calculateBeadLoomDimensions(
 }
 
 /**
+ * Format physical dimensions summary according to user's unit system (imperial or metric)
+ */
+export function formatDimensionSummary(
+  widthInches: number,
+  heightInches: number,
+  widthCm: number,
+  heightCm: number,
+  unitSystem: 'imperial' | 'metric' = 'imperial'
+): string {
+  if (unitSystem === 'metric') {
+    return `${widthCm} × ${heightCm} cm (${widthInches}" × ${heightInches}")`;
+  }
+  return `${widthInches}" × ${heightInches}" (${widthCm} × ${heightCm} cm)`;
+}
+
+/**
+ * Format yarn / thread length according to user's unit system
+ */
+export function formatYarnLength(
+  yards: number,
+  meters: number,
+  unitSystem: 'imperial' | 'metric' = 'imperial'
+): string {
+  if (unitSystem === 'metric') {
+    return `~${meters} m (~${yards} yds)`;
+  }
+  return `~${yards} yds (~${meters} m)`;
+}
+
+/**
  * General helper to format sizing summary for any craft
  */
 export function getCraftDimensionsSummary(
@@ -644,35 +674,43 @@ export function getCraftDimensionsSummary(
   clothCount: CrossStitchClothCount = 14,
   crochetGauge: CrochetGaugeConfig = DEFAULT_CROCHET_GAUGE,
   knitGauge: KnitGaugeConfig = DEFAULT_KNIT_GAUGE,
-  beadLoom: BeadLoomConfig = DEFAULT_BEAD_LOOM_CONFIG
+  beadLoom: BeadLoomConfig = DEFAULT_BEAD_LOOM_CONFIG,
+  unitSystem: 'imperial' | 'metric' = 'imperial'
 ): string {
   if (craftType === 'loom') {
     const res = calculateBeadLoomDimensions(gridWidth, gridHeight, beadLoom);
-    return `${res.dimensions.summary} • Delica 11/0 (${res.totalBeads.toLocaleString()} beads • ${res.recommendedClaspSize})`;
+    const dim = formatDimensionSummary(res.dimensions.widthInches, res.dimensions.heightInches, res.dimensions.widthCm, res.dimensions.heightCm, unitSystem);
+    return `${dim} • Delica 11/0 (${res.totalBeads.toLocaleString()} beads • ${res.recommendedClaspSize})`;
   }
   if (craftType === 'knitting') {
     const res = calculateKnittingDimensions(gridWidth, gridHeight, knitGauge);
-    return `${res.dimensions.summary} • Knit (${res.needleRecommendation})`;
+    const dim = formatDimensionSummary(res.dimensions.widthInches, res.dimensions.heightInches, res.dimensions.widthCm, res.dimensions.heightCm, unitSystem);
+    return `${dim} • Knit (${res.needleRecommendation})`;
   }
   if (craftType === 'alpha') {
     const res = calculateAlphaDimensions(gridWidth, gridHeight);
-    return `${res.dimensions.summary} • ${res.baseStringsCount} Base Strings (${res.recommendedHardware})`;
+    const dim = formatDimensionSummary(res.dimensions.widthInches, res.dimensions.heightInches, res.dimensions.widthCm, res.dimensions.heightCm, unitSystem);
+    return `${dim} • ${res.baseStringsCount} Base Strings (${res.recommendedHardware})`;
   }
   if (craftType === 'cross-stitch') {
     const res = calculateCrossStitchDimensions(gridWidth, gridHeight, clothCount);
-    return `${res.dimensions.summary} on ${clothCount}-count Aida`;
+    const dim = formatDimensionSummary(res.dimensions.widthInches, res.dimensions.heightInches, res.dimensions.widthCm, res.dimensions.heightCm, unitSystem);
+    return `${dim} on ${clothCount}-count Aida`;
   }
   if (craftType === 'perler') {
     const res = calculatePerlerDimensions(gridWidth, gridHeight, 'midi-5mm');
-    return `${res.dimensions.summary} • ${res.totalPegboards} ${res.totalPegboards === 1 ? 'board' : 'boards'}`;
+    const dim = formatDimensionSummary(res.dimensions.widthInches, res.dimensions.heightInches, res.dimensions.widthCm, res.dimensions.heightCm, unitSystem);
+    return `${dim} • ${res.totalPegboards} ${res.totalPegboards === 1 ? 'board' : 'boards'}`;
   }
   if (craftType === 'diamond') {
     const res = calculateDiamondDimensions(gridWidth, gridHeight, 'square-2.5mm');
-    return `${res.dimensions.summary} (2.5mm drills)`;
+    const dim = formatDimensionSummary(res.dimensions.widthInches, res.dimensions.heightInches, res.dimensions.widthCm, res.dimensions.heightCm, unitSystem);
+    return `${dim} (2.5mm drills)`;
   }
   if (craftType === 'crochet') {
     const res = calculateCrochetDimensions(gridWidth, gridHeight, crochetGauge);
-    return `${res.dimensions.summary} • Tapestry Crochet (${crochetGauge.stitchesPer4Inches} sts × ${crochetGauge.rowsPer4Inches} rows / 4")`;
+    const dim = formatDimensionSummary(res.dimensions.widthInches, res.dimensions.heightInches, res.dimensions.widthCm, res.dimensions.heightCm, unitSystem);
+    return `${dim} • Tapestry Crochet (${crochetGauge.stitchesPer4Inches} sts × ${crochetGauge.rowsPer4Inches} rows / 4")`;
   }
   return `${gridWidth} × ${gridHeight} pixels`;
 }

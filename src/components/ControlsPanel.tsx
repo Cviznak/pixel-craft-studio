@@ -18,6 +18,7 @@ import {
   calculateKnittingDimensions,
   calculateAlphaDimensions,
   calculateBeadLoomDimensions,
+  formatDimensionSummary,
   CROCHET_YARN_PRESETS,
   DEFAULT_CROCHET_GAUGE,
   DEFAULT_KNIT_GAUGE,
@@ -574,16 +575,58 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 )}
               </div>
 
+              {/* Measurement Units: Yards/Inches vs Meters/Centimeters */}
+              <div className="flex items-center justify-between text-[11px] bg-slate-900/80 px-2.5 py-1.5 rounded-lg border border-slate-800">
+                <span className="text-slate-400 font-medium">Measurement Units:</span>
+                <div className="flex items-center bg-slate-950 p-0.5 rounded-md border border-slate-800 text-[10px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateConfig({ unitSystem: 'imperial' })}
+                    className={`px-2 py-0.5 rounded transition ${
+                      config.unitSystem !== 'metric'
+                        ? 'bg-amber-500/25 text-amber-300 border border-amber-500/30 shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Yards & Inches (Imperial standard)"
+                  >
+                    Yards / In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdateConfig({ unitSystem: 'metric' })}
+                    className={`px-2 py-0.5 rounded transition ${
+                      config.unitSystem === 'metric'
+                        ? 'bg-amber-500/25 text-amber-300 border border-amber-500/30 shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Meters & Centimeters (Metric standard)"
+                  >
+                    Meters / cm
+                  </button>
+                </div>
+              </div>
+
               {/* Cross Stitch Sizing */}
               {config.craftType === 'cross-stitch' && (() => {
                 const res = calculateCrossStitchDimensions(config.width, config.height, clothCount);
+                const summary = formatDimensionSummary(
+                  res.dimensions.widthInches,
+                  res.dimensions.heightInches,
+                  res.dimensions.widthCm,
+                  res.dimensions.heightCm,
+                  config.unitSystem
+                );
                 return (
                   <div className="space-y-1 text-xs">
                     <div className="text-amber-200 font-bold font-mono">
-                      {res.dimensions.summary}
+                      {summary}
                     </div>
                     <div className="text-[10px] text-slate-400">
-                      Recommended cut: <span className="text-slate-200 font-medium">{res.recommendedFabricSizeInches.width}" × {res.recommendedFabricSizeInches.height}"</span> (with 3" margins)
+                      Recommended cut: <span className="text-slate-200 font-medium">
+                        {config.unitSystem === 'metric'
+                          ? `${res.recommendedFabricSizeCm.width} × ${res.recommendedFabricSizeCm.height} cm`
+                          : `${res.recommendedFabricSizeInches.width}" × ${res.recommendedFabricSizeInches.height}"`}
+                      </span> (with 3"/7.5cm margins)
                     </div>
                   </div>
                 );
@@ -593,11 +636,18 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               {config.craftType === 'crochet' && (() => {
                 const currentGauge = config.crochetGauge || DEFAULT_CROCHET_GAUGE;
                 const res = calculateCrochetDimensions(config.width, config.height, currentGauge);
+                const summary = formatDimensionSummary(
+                  res.dimensions.widthInches,
+                  res.dimensions.heightInches,
+                  res.dimensions.widthCm,
+                  res.dimensions.heightCm,
+                  config.unitSystem
+                );
 
                 return (
                   <div className="space-y-2.5 text-xs">
                     <div className="text-amber-200 font-bold font-mono">
-                      {res.dimensions.summary}
+                      {summary}
                     </div>
 
                     {/* Yarn Weight Preset */}
@@ -686,7 +736,9 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                       <div className="flex justify-between items-center">
                         <span>Total Yarn Needed:</span>
                         <span className="text-emerald-400 font-bold font-mono">
-                          ~{res.estimatedYardsTotal} yds ({res.estimatedMetersTotal} m)
+                          {config.unitSystem === 'metric'
+                            ? `~${res.estimatedMetersTotal} m (~${res.estimatedYardsTotal} yds)`
+                            : `~${res.estimatedYardsTotal} yds (~${res.estimatedMetersTotal} m)`}
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-slate-400">
@@ -716,11 +768,18 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               {config.craftType === 'knitting' && (() => {
                 const currentGauge = config.knitGauge || DEFAULT_KNIT_GAUGE;
                 const res = calculateKnittingDimensions(config.width, config.height, currentGauge);
+                const summary = formatDimensionSummary(
+                  res.dimensions.widthInches,
+                  res.dimensions.heightInches,
+                  res.dimensions.widthCm,
+                  res.dimensions.heightCm,
+                  config.unitSystem
+                );
 
                 return (
                   <div className="space-y-2.5 text-xs">
                     <div className="text-purple-200 font-bold font-mono">
-                      {res.dimensions.summary}
+                      {summary}
                     </div>
 
                     {/* Yarn Weight Preset */}
@@ -763,7 +822,11 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                       </div>
                       <div className="flex justify-between items-center text-slate-400">
                         <span>Estimated Yarn:</span>
-                        <span className="text-emerald-400 font-mono font-bold">~{res.estimatedTotalYards} yds ({res.estimatedSkeins} sk)</span>
+                        <span className="text-emerald-400 font-mono font-bold">
+                          {config.unitSystem === 'metric'
+                            ? `~${res.estimatedTotalMeters} m (${res.estimatedSkeins} sk)`
+                            : `~${res.estimatedTotalYards} yds (${res.estimatedSkeins} sk)`}
+                        </span>
                       </div>
                     </div>
 
@@ -785,13 +848,20 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               {/* Alpha Keychain & Bracelet Sizing */}
               {config.craftType === 'alpha' && (() => {
                 const res = calculateAlphaDimensions(config.width, config.height);
+                const summary = formatDimensionSummary(
+                  res.dimensions.widthInches,
+                  res.dimensions.heightInches,
+                  res.dimensions.widthCm,
+                  res.dimensions.heightCm,
+                  config.unitSystem
+                );
                 return (
                   <div className="space-y-1 text-xs">
                     <div className="text-amber-200 font-bold font-mono">
-                      {res.dimensions.summary}
+                      {summary}
                     </div>
                     <div className="text-[10px] text-slate-400">
-                      Base: <span className="text-slate-200 font-bold">{res.baseStringsCount} strings</span> (~{res.estimatedLeadingYardsTotal} yds leading floss)
+                      Base: <span className="text-slate-200 font-bold">{res.baseStringsCount} strings</span> (~{config.unitSystem === 'metric' ? res.estimatedLeadingMetersTotal + ' m' : res.estimatedLeadingYardsTotal + ' yds'} leading floss)
                     </div>
                     <div className="text-[10px] text-indigo-300">
                       Hardware: {res.recommendedHardware}

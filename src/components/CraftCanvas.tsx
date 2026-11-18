@@ -32,7 +32,8 @@ import {
   Tv,
   Check,
   Type,
-  Contrast
+  Contrast,
+  Smartphone
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -170,6 +171,40 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
   // Tonal Contrast / Grayscale Value Check mode
   const [isValueCheckActive, setIsValueCheckActive] = useState<boolean>(false);
+
+  // Screen Wake Lock (Couch Mode - keeps phone/tablet display awake)
+  const [isWakeLockActive, setIsWakeLockActive] = useState<boolean>(false);
+  const wakeLockRef = useRef<any>(null);
+
+  const toggleWakeLock = async () => {
+    if (isWakeLockActive) {
+      if (wakeLockRef.current) {
+        try {
+          await wakeLockRef.current.release();
+        } catch {}
+        wakeLockRef.current = null;
+      }
+      setIsWakeLockActive(false);
+    } else {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          setIsWakeLockActive(true);
+        }
+      } catch (err) {
+        console.warn('Wake Lock request failed:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch(() => {});
+        wakeLockRef.current = null;
+      }
+    };
+  }, []);
 
   // Viewport transforms: pan and zoom
   const [zoom, setZoom] = useState<number>(1);
@@ -2051,6 +2086,23 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           >
             {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
           </button>
+
+          {/* Screen Wake Lock Toggle (Couch Mode) */}
+          <button
+            onClick={toggleWakeLock}
+            className={`p-1.5 rounded-lg transition ${
+              isWakeLockActive
+                ? 'text-teal-300 bg-teal-500/20 shadow-xs'
+                : 'text-slate-500 hover:text-slate-400 hover:bg-slate-800'
+            }`}
+            title={
+              isWakeLockActive
+                ? 'Screen Wake Lock ON (Screen stays awake while crafting)'
+                : 'Keep Screen Awake (Couch mode - prevents phone/tablet from sleeping)'
+            }
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -2090,6 +2142,21 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             title="Return to full color view"
           >
             Exit
+          </button>
+        </div>
+      )}
+
+      {/* Screen Wake Lock Active Badge */}
+      {isWakeLockActive && (
+        <div className="absolute top-12 right-3 sm:top-14 sm:right-4 z-20 bg-slate-950/90 border border-teal-500/50 backdrop-blur-md px-3 py-1.5 rounded-xl text-xs font-semibold text-teal-300 flex items-center gap-2 shadow-xl animate-in fade-in duration-150">
+          <Smartphone className="w-3.5 h-3.5 text-teal-400" />
+          <span>Screen Awake Active 📱</span>
+          <button
+            onClick={toggleWakeLock}
+            className="ml-1 text-slate-400 hover:text-white text-[10px] bg-slate-800 hover:bg-slate-700 px-1.5 py-0.5 rounded transition"
+            title="Turn off wake lock"
+          >
+            Off
           </button>
         </div>
       )}
