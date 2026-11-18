@@ -6,6 +6,8 @@ export type DitherType = 'none' | 'floyd-steinberg' | 'atkinson' | 'bayer';
 
 export type TransparentBackgroundMode = 'white' | 'empty' | 'dark' | 'custom';
 
+export type CanvasShapeMask = 'none' | 'round-hoop' | 'oval-hoop' | 'heart';
+
 export type UnitSystem = 'imperial' | 'metric';
 
 export type CraftStandard = 'custom' | 'dmc' | 'perler';
@@ -86,6 +88,7 @@ export interface GridConfig {
   transparentMode: TransparentBackgroundMode;
   transparentCustomColor?: string;
   unitSystem?: UnitSystem;
+  shapeMask?: CanvasShapeMask;
   crochetGauge?: CrochetGaugeConfig;
   knitGauge?: KnitGaugeConfig;
   beadLoom?: BeadLoomConfig;

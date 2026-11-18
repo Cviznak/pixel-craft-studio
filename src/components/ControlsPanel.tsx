@@ -956,6 +956,21 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 Visual Guides
               </span>
 
+              {/* Shape / Hoop Mask Guide */}
+              <div className="p-2 rounded-lg bg-slate-950/40 border border-slate-800/80 text-xs flex items-center justify-between">
+                <span className="text-slate-300 font-medium">Hoop & Frame Mask</span>
+                <select
+                  value={config.shapeMask || 'none'}
+                  onChange={(e) => onUpdateConfig({ shapeMask: e.target.value as any })}
+                  className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none"
+                >
+                  <option value="none">Off (Square)</option>
+                  <option value="round-hoop">Round Hoop ⭕</option>
+                  <option value="oval-hoop">Oval Frame ⬭</option>
+                  <option value="heart">Heart Shape 💖</option>
+                </select>
+              </div>
+
               <label className="flex items-center justify-between p-2 rounded-lg bg-slate-950/40 border border-slate-800/80 cursor-pointer text-xs">
                 <span className="text-slate-300 font-medium">Show Craft Symbols</span>
                 <input

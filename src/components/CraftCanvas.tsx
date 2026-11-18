@@ -36,7 +36,8 @@ import {
   Smartphone,
   Wand2,
   PenTool,
-  Trash2
+  Trash2,
+  Circle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -77,6 +78,7 @@ interface CraftCanvasProps {
     newHeight?: number
   ) => void;
   onOpenPixelTextModal?: () => void;
+  onToggleShapeMask?: () => void;
   showPegboardLines?: boolean;
   backstitches?: BackstitchLine[];
   onUpdateBackstitches?: (lines: BackstitchLine[]) => void;
@@ -170,6 +172,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   onSelectColor,
   onTransformGrid,
   onOpenPixelTextModal,
+  onToggleShapeMask,
   showPegboardLines = false,
   backstitches = [],
   onUpdateBackstitches,
@@ -824,6 +827,59 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         ctx.lineTo(totalW, y * cellSize);
         ctx.stroke();
       }
+      ctx.restore();
+    }
+
+    // Draw Hoop & Framing Shape Mask Overlay (Round Hoop / Oval Hoop / Heart)
+    if (config.shapeMask && config.shapeMask !== 'none') {
+      ctx.save();
+      const cx = totalW / 2;
+      const cy = totalH / 2;
+      const rx = totalW / 2;
+      const ry = totalH / 2;
+
+      ctx.beginPath();
+      // Outer rect around canvas
+      ctx.rect(0, 0, totalW, totalH);
+
+      if (config.shapeMask === 'round-hoop') {
+        const radius = Math.min(rx, ry);
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2, true);
+      } else if (config.shapeMask === 'oval-hoop') {
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2, true);
+      } else if (config.shapeMask === 'heart') {
+        ctx.moveTo(cx, cy + ry * 0.7);
+        ctx.bezierCurveTo(cx - rx * 0.9, cy + ry * 0.2, cx - rx * 0.9, cy - ry * 0.7, cx - rx * 0.4, cy - ry * 0.7);
+        ctx.bezierCurveTo(cx, cy - ry * 0.7, cx, cy - ry * 0.3, cx, cy - ry * 0.3);
+        ctx.bezierCurveTo(cx, cy - ry * 0.3, cx, cy - ry * 0.7, cx + rx * 0.4, cy - ry * 0.7);
+        ctx.bezierCurveTo(cx + rx * 0.9, cy - ry * 0.7, cx + rx * 0.9, cy + ry * 0.2, cx, cy + ry * 0.7);
+        ctx.closePath();
+      }
+
+      // Shaded vignette outside the framing shape
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.65)';
+      ctx.fill();
+
+      // High-contrast framing contour line
+      ctx.beginPath();
+      if (config.shapeMask === 'round-hoop') {
+        const radius = Math.min(rx, ry);
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      } else if (config.shapeMask === 'oval-hoop') {
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      } else if (config.shapeMask === 'heart') {
+        ctx.moveTo(cx, cy + ry * 0.7);
+        ctx.bezierCurveTo(cx - rx * 0.9, cy + ry * 0.2, cx - rx * 0.9, cy - ry * 0.7, cx - rx * 0.4, cy - ry * 0.7);
+        ctx.bezierCurveTo(cx, cy - ry * 0.7, cx, cy - ry * 0.3, cx, cy - ry * 0.3);
+        ctx.bezierCurveTo(cx, cy - ry * 0.3, cx, cy - ry * 0.7, cx + rx * 0.4, cy - ry * 0.7);
+        ctx.bezierCurveTo(cx + rx * 0.9, cy - ry * 0.7, cx + rx * 0.9, cy + ry * 0.2, cx, cy + ry * 0.7);
+        ctx.closePath();
+      }
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5 / zoom;
+      ctx.setLineDash([8 / zoom, 4 / zoom]);
+      ctx.stroke();
+
       ctx.restore();
     }
 
@@ -2286,6 +2342,29 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
               title="Pixel Text & Monogram Tool: Stamp letters, names & dates"
             >
               <Type className="w-3.5 h-3.5 text-amber-400" />
+            </button>
+          )}
+
+          {/* Hoop & Frame Shape Mask Toggle */}
+          {onToggleShapeMask && (
+            <button
+              onClick={onToggleShapeMask}
+              className={`p-1.5 rounded-lg transition-all ${
+                config.shapeMask && config.shapeMask !== 'none'
+                  ? 'bg-amber-500 text-white shadow-md ring-1 ring-amber-300'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+              title={`Hoop & Frame Mask: ${
+                config.shapeMask === 'round-hoop'
+                  ? 'Round Hoop ⭕ (Click to switch to Oval)'
+                  : config.shapeMask === 'oval-hoop'
+                  ? 'Oval Frame ⬭ (Click to switch to Heart)'
+                  : config.shapeMask === 'heart'
+                  ? 'Heart Shape 💖 (Click to turn OFF)'
+                  : 'OFF (Click to preview in Round Hoop)'
+              }`}
+            >
+              <Circle className="w-3.5 h-3.5" />
             </button>
           )}
 

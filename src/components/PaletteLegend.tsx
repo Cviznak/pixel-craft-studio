@@ -32,7 +32,8 @@ import {
   RefreshCw,
   Wand2,
   ChevronDown,
-  Check
+  Check,
+  Camera
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -56,6 +57,7 @@ interface PaletteLegendProps {
   onApplyPaletteMood?: (mood: PaletteMoodId) => void;
   onCrossConvertCraft?: (targetCraft: CraftType) => void;
   onOpenShoppingTrip?: () => void;
+  onOpenPhotoPalette?: () => void;
 }
 
 const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
@@ -79,6 +81,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onApplyPaletteMood,
   onCrossConvertCraft,
   onOpenShoppingTrip,
+  onOpenPhotoPalette,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'todo' | 'done'>('all');
@@ -420,9 +423,20 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
             </div>
           </div>
 
-          {/* Mood Shifter & 1-Click Craft Cross-Converter */}
-          {(onApplyPaletteMood || onCrossConvertCraft) && (
+          {/* Mood Shifter & 1-Click Craft Cross-Converter & Photo Extractor */}
+          {(onApplyPaletteMood || onCrossConvertCraft || onOpenPhotoPalette) && (
             <div className="flex items-center gap-1.5 pt-1 relative">
+              {onOpenPhotoPalette && (
+                <button
+                  type="button"
+                  onClick={onOpenPhotoPalette}
+                  className="py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center gap-1 transition bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-amber-300"
+                  title="Extract color palette from an inspiration photo"
+                >
+                  <Camera className="w-3 h-3 text-amber-400" />
+                  <span>Photo</span>
+                </button>
+              )}
               {onApplyPaletteMood && (
                 <div className="relative flex-1">
                   <button

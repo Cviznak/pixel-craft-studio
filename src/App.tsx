@@ -11,7 +11,8 @@ import type {
   UploadHistoryItem,
   BackstitchLine,
   PaletteMoodId,
-  CraftType
+  CraftType,
+  CanvasShapeMask
 } from './types/craft';
 import { SAMPLE_IMAGES } from './utils/sampleImages';
 import { extractBeautifulPalette } from './utils/paletteExtractor';
@@ -41,9 +42,10 @@ import { ShoppingTripModal } from './components/ShoppingTripModal';
 import { CraftCalculatorsModal } from './components/CraftCalculatorsModal';
 import { ProjectVaultModal } from './components/ProjectVaultModal';
 import { EtsySellerKitModal } from './components/EtsySellerKitModal';
+import { PhotoPaletteModal } from './components/PhotoPaletteModal';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
-import { hexToRgb } from './utils/colorUtils';
+import { hexToRgb, rgbToLab, deltaE } from './utils/colorUtils';
 import { 
   createPaletteFromPreset, 
   createBlankCanvasGrid, 
@@ -129,6 +131,7 @@ export default function App() {
   const [isCalculatorsOpen, setIsCalculatorsOpen] = useState<boolean>(false);
   const [isProjectVaultOpen, setIsProjectVaultOpen] = useState<boolean>(false);
   const [isEtsyKitOpen, setIsEtsyKitOpen] = useState<boolean>(false);
+  const [isPhotoPaletteOpen, setIsPhotoPaletteOpen] = useState<boolean>(false);
   const [vaultProjectsCount, setVaultProjectsCount] = useState<number>(0);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
@@ -1327,6 +1330,94 @@ export default function App() {
     [palette, gridData, handleBeforePencilStroke, handleUpdateConfig, showToast]
   );
 
+  const handleApplyPhotoPaletteToGrid = useCallback(
+    (newPalette: PaletteColor[]) => {
+      if (newPalette.length === 0 || gridData.length === 0) return;
+      handleBeforePencilStroke();
+
+      // Map old palette indices to nearest new palette indices via CIELAB
+      const indexMapping: number[] = palette.map((oldCol) => {
+        let closestIdx = 0;
+        let minDistance = Infinity;
+        const oldRgb = hexToRgb(oldCol.hex);
+        const oldLab = rgbToLab(oldRgb.r, oldRgb.g, oldRgb.b);
+
+        newPalette.forEach((newCol, newIdx) => {
+          const newRgb = hexToRgb(newCol.hex);
+          const newLab = rgbToLab(newRgb.r, newRgb.g, newRgb.b);
+          const dist = deltaE(oldLab, newLab);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestIdx = newIdx;
+          }
+        });
+        return closestIdx;
+      });
+
+      const newGrid = gridData.map((row) =>
+        row.map((idx) => {
+          if (idx < 0 || idx >= indexMapping.length) return idx;
+          return indexMapping[idx];
+        })
+      );
+
+      // Compute counts
+      const counts = new Array(newPalette.length).fill(0);
+      let total = 0;
+      for (const row of newGrid) {
+        for (const cell of row) {
+          if (cell >= 0 && cell < newPalette.length) {
+            counts[cell]++;
+            total++;
+          }
+        }
+      }
+
+      const paletteWithCounts: PaletteColor[] = newPalette.map((col, idx) => ({
+        ...col,
+        count: counts[idx] || 0,
+        percentage: total > 0 ? Math.round(((counts[idx] || 0) / total) * 100) : 0,
+      }));
+
+      setPalette(paletteWithCounts);
+      paletteRef.current = paletteWithCounts;
+      setGridData(newGrid);
+      showToast(`✨ Remapped pattern to photo palette harmony!`);
+    },
+    [palette, gridData, handleBeforePencilStroke, showToast]
+  );
+
+  const handleSetPhotoPaletteOnly = useCallback(
+    (newPalette: PaletteColor[]) => {
+      setPalette(newPalette);
+      paletteRef.current = newPalette;
+      showToast(`🎨 Loaded ${newPalette.length} photo colors into your palette drawer!`);
+    },
+    [showToast]
+  );
+
+  const handleToggleShapeMask = useCallback(() => {
+    const cycle: Record<CanvasShapeMask, CanvasShapeMask> = {
+      none: 'round-hoop',
+      'round-hoop': 'oval-hoop',
+      'oval-hoop': 'heart',
+      heart: 'none',
+    };
+    const next = cycle[config.shapeMask || 'none'];
+    handleUpdateConfig({ shapeMask: next });
+    showToast(
+      `Hoop Mask: ${
+        next === 'round-hoop'
+          ? 'Round Hoop ⭕'
+          : next === 'oval-hoop'
+          ? 'Oval Frame ⬭'
+          : next === 'heart'
+          ? 'Heart Shape 💖'
+          : 'OFF'
+      }`
+    );
+  }, [config.shapeMask, handleUpdateConfig, showToast]);
+
   const handleResetProgress = () => {
     if (Object.keys(completedCells).length === 0) return;
     if (window.confirm('Reset all completed stitches/beads progress?')) {
@@ -1550,6 +1641,7 @@ export default function App() {
           onSelectColor={(idx) => setActiveColorIndex(idx)}
           onTransformGrid={handleTransformGrid}
           onOpenPixelTextModal={() => setIsPixelTextOpen(true)}
+          onToggleShapeMask={handleToggleShapeMask}
           showPegboardLines={showPegboardLines}
           backstitches={backstitches}
           onUpdateBackstitches={setBackstitches}
@@ -1593,6 +1685,7 @@ export default function App() {
               onToggleCollapse={() => setIsRightPanelOpen(false)}
               onApplyPaletteMood={handleApplyPaletteMood}
               onCrossConvertCraft={handleCrossConvertCraft}
+              onOpenPhotoPalette={() => setIsPhotoPaletteOpen(true)}
               onOpenShoppingTrip={() => {
                 setIsMobilePaletteOpen(false);
                 setIsShoppingTripOpen(true);
@@ -1969,6 +2062,14 @@ export default function App() {
         gridData={gridData}
         palette={palette}
         backstitches={backstitches}
+      />
+
+      {/* Photo & Inspiration Palette Extractor Modal */}
+      <PhotoPaletteModal
+        isOpen={isPhotoPaletteOpen}
+        onClose={() => setIsPhotoPaletteOpen(false)}
+        onApplyPaletteToGrid={handleApplyPhotoPaletteToGrid}
+        onSetActivePaletteOnly={handleSetPhotoPaletteOnly}
       />
     </div>
   );
