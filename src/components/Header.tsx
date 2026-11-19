@@ -27,7 +27,8 @@ import {
   Calculator,
   FolderArchive,
   ShoppingBag,
-  Palette
+  Palette,
+  Eraser
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -49,6 +50,7 @@ interface HeaderProps {
   onOpenEtsyKitModal?: () => void;
   onOpenMaterialKitModal?: () => void;
   onOpenColorChartModal?: () => void;
+  onOpenBgRemoverModal?: () => void;
   savedProjectsCount?: number;
   isAutoSaving?: boolean;
   isZenMode?: boolean;
@@ -82,6 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenEtsyKitModal,
   onOpenMaterialKitModal,
   onOpenColorChartModal,
+  onOpenBgRemoverModal,
   savedProjectsCount = 0,
   isAutoSaving = false,
   isZenMode = false,
@@ -483,6 +486,19 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Paintbrush className="w-3.5 h-3.5 text-amber-400" />
                   <span>New Blank Canvas (Draw)</span>
+                </button>
+              )}
+
+              {onOpenBgRemoverModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenBgRemoverModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-teal-300 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <Eraser className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Smart Background Remover</span>
                 </button>
               )}
 

@@ -46,6 +46,7 @@ import { PhotoPaletteModal } from './components/PhotoPaletteModal';
 import { MaterialKitModal } from './components/MaterialKitModal';
 import { ColorChartModal, type ColorChartTab } from './components/ColorChartModal';
 import { PatternDetailModal } from './components/PatternDetailModal';
+import { BackgroundRemoverModal } from './components/BackgroundRemoverModal';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb, rgbToLab, deltaE } from './utils/colorUtils';
@@ -149,6 +150,7 @@ export default function App() {
   const [isColorChartOpen, setIsColorChartOpen] = useState<boolean>(false);
   const [colorChartInitialTab, setColorChartInitialTab] = useState<ColorChartTab>('hex-matcher');
   const [activePatternSlug, setActivePatternSlug] = useState<string | null>(null);
+  const [isBgRemoverOpen, setIsBgRemoverOpen] = useState<boolean>(false);
   const [vaultProjectsCount, setVaultProjectsCount] = useState<number>(0);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
@@ -859,6 +861,32 @@ export default function App() {
       setUploadHistory((prev) => [newItem, ...prev.filter((p) => p.dataUrl !== croppedDataUrl)].slice(0, 25));
     };
     img.src = croppedDataUrl;
+  };
+
+  const handleApplyBgCutout = (cutoutDataUrl: string) => {
+    const nextConfig: GridConfig = {
+      ...latestConfigRef.current,
+      transparentMode: 'empty',
+    };
+    latestConfigRef.current = nextConfig;
+    setConfig(nextConfig);
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      applyImageAndProcess(img, cutoutDataUrl, '', nextConfig);
+      const newItem: UploadHistoryItem = {
+        id: `cutout-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        name: `Subject Cutout (No BG)`,
+        dataUrl: cutoutDataUrl,
+        timestamp: Date.now(),
+        width: img.width,
+        height: img.height,
+      };
+      setUploadHistory((prev) => [newItem, ...prev.filter((p) => p.dataUrl !== cutoutDataUrl)].slice(0, 25));
+      showToast('✂️ Background removed! Empty cells are skipped automatically.');
+    };
+    img.src = cutoutDataUrl;
   };
 
   const handleSelectUploadItem = (item: UploadHistoryItem) => {
@@ -1638,6 +1666,7 @@ export default function App() {
         onOpenEtsyKitModal={() => setIsEtsyKitOpen(true)}
         onOpenMaterialKitModal={() => setIsMaterialKitOpen(true)}
         onOpenColorChartModal={() => navigate('/color-chart')}
+        onOpenBgRemoverModal={() => setIsBgRemoverOpen(true)}
         savedProjectsCount={vaultProjectsCount}
         isAutoSaving={isAutoSaving}
         isZenMode={isZenMode}
@@ -1689,6 +1718,10 @@ export default function App() {
                 setIsAiModalOpen(true);
               }}
               onOpenCropModal={handleOpenCropModal}
+              onOpenBgRemoverModal={() => {
+                setIsMobileControlsOpen(false);
+                setIsBgRemoverOpen(true);
+              }}
               onOpenNewCanvasModal={() => {
                 setIsMobileControlsOpen(false);
                 setIsNewCanvasModalOpen(true);
@@ -2036,6 +2069,16 @@ export default function App() {
         gridAspectRatio={config.width / Math.max(1, config.height)}
       />
 
+      {/* Smart Background Remover & Subject Cutout Modal */}
+      <BackgroundRemoverModal
+        isOpen={isBgRemoverOpen}
+        onClose={() => setIsBgRemoverOpen(false)}
+        imageUrl={sourceImageDataUrl || sourceImage?.src || ''}
+        gridWidth={config.width}
+        gridHeight={config.height}
+        onApplyCutout={handleApplyBgCutout}
+      />
+
       {/* Uploaded & AI Picture History Gallery Modal */}
       <ImageHistoryModal
         isOpen={isHistoryModalOpen}
@@ -2133,6 +2176,7 @@ export default function App() {
         gridData={gridData}
         palette={palette}
         completedCells={completedCells}
+        craftType={config.craftType}
         onBatchSetCellsCompleted={handleBatchSetCellsCompleted}
       />
 

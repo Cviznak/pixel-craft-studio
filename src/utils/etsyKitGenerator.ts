@@ -598,6 +598,7 @@ Create your own beautiful handmade project with this easy-to-read, professional 
 • Stitch Count: ${width} wide × ${height} high (${totalStitches.toLocaleString()} total stitches)
 • Floss / Colors: ${palette.length} Colors (Official DMC Embroidery Floss)
 • Stitches Used: Full Cross Stitches (No fractional quarter stitches!)
+• Pattern Keeper & Markup R-XP Compatible Single-Page Vector PDF Included!
 
 Finished Dimensions:
 • 14 Count Aida: ${(width / 14).toFixed(1)}" × ${(height / 14).toFixed(1)}" (${(width / 14 * 2.54).toFixed(1)} × ${(height / 14 * 2.54).toFixed(1)} cm)
@@ -640,7 +641,8 @@ export async function createEtsySellerZip(
   chartCanvas: HTMLCanvasElement,
   sizeCanvas: HTMLCanvasElement,
   listingData: EtsyListingData,
-  patternName: string
+  patternName: string,
+  patternKeeperPdfBlob?: Blob
 ): Promise<Blob> {
   const zip = new JSZip();
 
@@ -663,6 +665,9 @@ export async function createEtsySellerZip(
   zip.file('02_color_palette_guide.png', paletteBlob);
   zip.file('03_chart_symbols_quality.png', chartBlob);
   zip.file('04_finished_size_guide.png', sizeBlob);
+  if (patternKeeperPdfBlob) {
+    zip.file('05_Pattern_Keeper_Digital_Chart.pdf', patternKeeperPdfBlob);
+  }
 
   // Add Listing Info text file
   const infoText = `ETSY LISTING INFORMATION

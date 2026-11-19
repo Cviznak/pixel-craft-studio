@@ -19,8 +19,11 @@ import {
   ChevronUp,
   Palette,
   CheckCircle2,
-  ListFilter
+  ListFilter,
+  Volume2,
+  Square
 } from 'lucide-react';
+import { isSpeechSupported, speakText, stopSpeaking } from '../utils/voiceNarrator';
 
 interface CrochetWrittenInstructionsModalProps {
   isOpen: boolean;
@@ -55,15 +58,23 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
   const [showSettings, setShowSettings] = useState(false);
   const [showKey, setShowKey] = useState(true);
   const [displayMode, setDisplayMode] = useState<'chips' | 'text'>('chips');
+  const [speakingRowNum, setSpeakingRowNum] = useState<number | null>(null);
+  const speechAvailable = isSpeechSupported();
 
-  // Close on Escape key
+  // Close on Escape key & cleanup speech synthesis
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      stopSpeaking();
+      return;
+    }
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      stopSpeaking();
+    };
   }, [isOpen, onClose]);
 
   // Persist completed rows
@@ -471,6 +482,45 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
                       <span className="text-[10px] text-slate-500">
                         ({row.totalStitches} sts)
                       </span>
+                      {speechAvailable && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (speakingRowNum === row.rowNumber) {
+                              stopSpeaking();
+                              setSpeakingRowNum(null);
+                              return;
+                            }
+                            const sideLabel = row.side === 'RS' ? 'right side' : 'wrong side';
+                            const segText = row.segments
+                              .map((s) => `${s.count} ${s.colorName}`)
+                              .join(', ');
+                            setSpeakingRowNum(row.rowNumber);
+                            speakText(`Row ${row.rowNumber}, ${sideLabel}: ${segText}.`, {
+                              onEnd: () => setSpeakingRowNum(null),
+                            });
+                          }}
+                          className={`px-2 py-0.5 rounded-md border text-[10px] font-semibold flex items-center gap-1 transition ${
+                            speakingRowNum === row.rowNumber
+                              ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                              : 'bg-slate-900 border-slate-700/80 text-slate-400 hover:text-indigo-300 hover:border-indigo-500/40'
+                          }`}
+                          title={speakingRowNum === row.rowNumber ? 'Stop voice reading' : 'Read this row aloud'}
+                        >
+                          {speakingRowNum === row.rowNumber ? (
+                            <>
+                              <Square className="w-2.5 h-2.5 fill-current" />
+                              <span>Stop</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3 h-3" />
+                              <span>Read</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                       {isDone && (
                         <span className="ml-auto text-[10px] font-bold text-emerald-400 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" />

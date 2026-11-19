@@ -4,6 +4,7 @@ import {
   exportPixelArtPNG, 
   exportPrintableGridPNG, 
   generatePatternPDF, 
+  generatePatternKeeperPDF,
   saveProjectJSON,
   exportBobbinLabelsPDF
 } from '../utils/exportUtils';
@@ -75,6 +76,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [patternNotes, setPatternNotes] = useState('');
   const [showOverlapMargins, setShowOverlapMargins] = useState(true);
   const [showBookletSettings, setShowBookletSettings] = useState(false);
+  const [pkColorMode, setPkColorMode] = useState<'color' | 'bw'>('color');
   const [isCopiedLink, setIsCopiedLink] = useState(false);
 
   // Close on Escape key
@@ -130,6 +132,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const handleSaveJSON = () => {
     saveProjectJSON(projectName, config, gridData, palette, completedCells, backstitches);
+  };
+
+  const handleExportPatternKeeperPDF = () => {
+    setIsExporting(true);
+    setTimeout(() => {
+      generatePatternKeeperPDF(gridData, palette, config, projectName, {
+        colorMode: pkColorMode,
+        designerName,
+        backstitches,
+      });
+      setIsExporting(false);
+    }, 60);
   };
 
   return (
@@ -377,6 +391,65 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                     )}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* 1B. Digital App Vector PDF (Pattern Keeper & Markup R-XP Compatible) */}
+            <div className="p-3.5 rounded-xl border border-cyan-500/40 bg-cyan-950/20 hover:bg-cyan-950/30 transition flex flex-col gap-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 mt-0.5">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5 flex-wrap">
+                      <span>Digital App Vector PDF</span>
+                      <span className="text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-1.5 py-0.2 rounded font-semibold">
+                        Pattern Keeper • Markup R-XP
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Single-page selectable vector symbols & machine-readable DMC legend — imports cleanly on tablets.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportPatternKeeperPDF}
+                  disabled={isExporting}
+                  className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Vector PDF</span>
+                </button>
+              </div>
+
+              <div className="pt-2 border-t border-cyan-500/20 flex items-center justify-between gap-2 text-xs">
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Chart Fill:</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setPkColorMode('color')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                      pkColorMode === 'color'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Color Vector
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPkColorMode('bw')}
+                    className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
+                      pkColorMode === 'bw'
+                        ? 'bg-cyan-600 text-white shadow-sm'
+                        : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    B&W Vector
+                  </button>
+                </div>
               </div>
             </div>
 

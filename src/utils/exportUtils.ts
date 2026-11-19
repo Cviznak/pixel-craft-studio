@@ -1,9 +1,10 @@
 import { jsPDF } from 'jspdf';
 import type { GridConfig, PaletteColor, CraftProject, CellProgress, BackstitchLine } from '../types/craft';
 import { getContrastingTextColor } from './colorUtils';
-import { getCraftDimensionsSummary } from './craftCalculator';
+import { getCraftDimensionsSummary, estimateDmcSkeins } from './craftCalculator';
 import { generateCrochetInstructions } from './crochetInstructions';
-import { getAnchorEquivalent, getBeadEquivalents } from './threadEquivalents';
+import { getAnchorEquivalent, getBeadEquivalents, extractDmcNumber } from './threadEquivalents';
+import { getPatternKeeperSymbol } from './symbols';
 
 /**
  * Shared helper to draw backstitch lines onto a 2D canvas slice with white casing halo.
@@ -756,6 +757,294 @@ export function generatePatternPDF(
   }
 
   doc.save(`${projectName.toLowerCase().replace(/\s+/g, '-')}-chart.pdf`);
+}
+
+export interface PatternKeeperPdfOptions {
+  colorMode?: 'color' | 'bw';
+  designerName?: string;
+  backstitches?: BackstitchLine[];
+  returnBlob?: boolean;
+}
+
+/**
+ * Generates a single-page true vector symbol chart PDF + machine-parseable floss legend table
+ * optimized for Pattern Keeper & Markup R-XP digital chart import apps.
+ */
+export function generatePatternKeeperPDF(
+  gridData: number[][],
+  palette: PaletteColor[],
+  config: GridConfig,
+  projectName = 'Pixel Craft Pattern',
+  options: PatternKeeperPdfOptions = {}
+): Blob | void {
+  const colorMode = options.colorMode || 'color';
+  const backstitches = options.backstitches || [];
+  const gridWidth = config.width;
+  const gridHeight = config.height;
+
+  const cellMm =
+    gridWidth > 100 || gridHeight > 100
+      ? 2.8
+      : gridWidth > 60 || gridHeight > 60
+      ? 3.5
+      : 4.2;
+
+  const rulerPad = 10;
+  const margin = 14;
+  const headerPad = 24;
+  const gridWmm = gridWidth * cellMm;
+  const gridHmm = gridHeight * cellMm;
+
+  const pageW = Math.max(210, gridWmm + margin * 2 + rulerPad * 2);
+  const pageH = Math.max(297, gridHmm + margin * 2 + headerPad + rulerPad);
+
+  const doc = new jsPDF({
+    orientation: pageW > pageH ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: [pageW, pageH],
+  });
+
+  // Page 1 Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(17, 24, 39);
+  doc.text(projectName, margin, margin + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text(
+    `${gridWidth}w × ${gridHeight}h • ${palette.length} Colors • Digital Vector Chart (Pattern Keeper & Markup R-XP Compatible)`,
+    margin,
+    margin + 11
+  );
+
+  const originX = (pageW - gridWmm) / 2;
+  const originY = margin + headerPad;
+  const symFontSize = Math.max(5.2, cellMm * 2.1);
+
+  // Render Vector Stitches (skip empty/negative indices)
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(symFontSize);
+
+  for (let y = 0; y < gridHeight; y++) {
+    const row = gridData[y];
+    if (!row) continue;
+    for (let x = 0; x < gridWidth; x++) {
+      const cellIdx = row[x];
+      if (cellIdx < 0 || !palette[cellIdx]) continue;
+      const color = palette[cellIdx];
+      const cellX = originX + x * cellMm;
+      const cellY = originY + y * cellMm;
+      const sym = getPatternKeeperSymbol(cellIdx);
+
+      if (colorMode === 'color') {
+        doc.setFillColor(color.r, color.g, color.b);
+        doc.rect(cellX, cellY, cellMm, cellMm, 'F');
+        const lum = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
+        if (lum > 0.55) {
+          doc.setTextColor(20, 20, 20);
+        } else {
+          doc.setTextColor(255, 255, 255);
+        }
+      } else {
+        doc.setTextColor(15, 23, 42);
+      }
+
+      doc.text(sym, cellX + cellMm / 2, cellY + cellMm / 2, {
+        align: 'center',
+        baseline: 'middle',
+      });
+    }
+  }
+
+  // Vector Minor Grid Lines
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.12);
+  for (let x = 0; x <= gridWidth; x++) {
+    if (x % 10 === 0) continue;
+    const lx = originX + x * cellMm;
+    doc.line(lx, originY, lx, originY + gridHmm);
+  }
+  for (let y = 0; y <= gridHeight; y++) {
+    if (y % 10 === 0) continue;
+    const ly = originY + y * cellMm;
+    doc.line(originX, ly, originX + gridWmm, ly);
+  }
+
+  // Vector Major 10x10 Grid Lines
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.45);
+  for (let x = 10; x < gridWidth; x += 10) {
+    const lx = originX + x * cellMm;
+    doc.line(lx, originY, lx, originY + gridHmm);
+  }
+  for (let y = 10; y < gridHeight; y += 10) {
+    const ly = originY + y * cellMm;
+    doc.line(originX, ly, originX + gridWmm, ly);
+  }
+
+  // Outer Frame Border
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.65);
+  doc.rect(originX, originY, gridWmm, gridHmm, 'S');
+
+  // Column & Row Ruler Coordinates (every 10 stitches)
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(51, 65, 85);
+
+  for (let x = 0; x <= gridWidth; x += 10) {
+    const lx = originX + x * cellMm;
+    doc.text(`${x}`, lx, originY - 2, { align: 'center' });
+  }
+  for (let y = 0; y <= gridHeight; y += 10) {
+    const ly = originY + y * cellMm;
+    doc.text(`${y}`, originX - 2, ly + 0.8, { align: 'right' });
+  }
+
+  // Vector Center Midpoint Triangles on All 4 Edges
+  const midX = originX + gridWmm / 2;
+  const midY = originY + gridHmm / 2;
+  doc.setFillColor(225, 29, 72);
+  doc.triangle(midX - 1.5, originY - 1.2, midX + 1.5, originY - 1.2, midX, originY, 'F');
+  doc.triangle(midX - 1.5, originY + gridHmm + 1.2, midX + 1.5, originY + gridHmm + 1.2, midX, originY + gridHmm, 'F');
+  doc.triangle(originX - 1.2, midY - 1.5, originX - 1.2, midY + 1.5, originX, midY, 'F');
+  doc.triangle(originX + gridWmm + 1.2, midY - 1.5, originX + gridWmm + 1.2, midY + 1.5, originX + gridWmm, midY, 'F');
+
+  // Optional Vector Backstitch Lines
+  if (backstitches.length > 0) {
+    doc.setLineWidth(0.55);
+    for (const line of backstitches) {
+      const hex = (line.colorHex || '#111827').replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16) || 17;
+      const g = parseInt(hex.substring(2, 4), 16) || 24;
+      const b = parseInt(hex.substring(4, 6), 16) || 39;
+      doc.setDrawColor(r, g, b);
+      doc.line(
+        originX + line.x1 * cellMm,
+        originY + line.y1 * cellMm,
+        originX + line.x2 * cellMm,
+        originY + line.y2 * cellMm
+      );
+    }
+  }
+
+  // Page 2+: Machine-Parseable Floss Key & DMC Color Legend (A4 Portrait)
+  doc.addPage('a4', 'portrait');
+  const a4W = 210;
+  const a4Margin = 15;
+  const totalStitches = palette.reduce((sum, c) => sum + c.count, 0);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(17, 24, 39);
+  doc.text('Floss Key & DMC Color Legend', a4Margin, 20);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(75, 85, 99);
+  doc.text(
+    `Pattern: ${projectName}   |   Grid: ${gridWidth} x ${gridHeight}   |   Stitches: ${totalStitches.toLocaleString()}   |   Designer: ${options.designerName?.trim() || 'Pixel Craft Studio'}`,
+    a4Margin,
+    27
+  );
+
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.line(a4Margin, 31, a4W - a4Margin, 31);
+
+  const colWidths = [16, 16, 20, 32, 56, 22, 18]; // Sum = 180mm (matches 210 - 30)
+  const headers = ['Sym', 'Color', 'Brand', 'Code', 'Shade Name', 'Stitches', 'Skeins'];
+
+  const renderLegendHeader = (yPos: number): number => {
+    doc.setFillColor(241, 245, 249);
+    doc.rect(a4Margin, yPos, 180, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(51, 65, 85);
+    let cx = a4Margin;
+    headers.forEach((h, i) => {
+      doc.text(h, cx + 2, yPos + 5.5);
+      cx += colWidths[i];
+    });
+    return yPos + 10;
+  };
+
+  let curY = renderLegendHeader(36);
+
+  palette.forEach((color, idx) => {
+    if (curY > 278) {
+      doc.addPage('a4', 'portrait');
+      curY = renderLegendHeader(20);
+    }
+
+    if (idx % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(a4Margin, curY, 180, 7, 'F');
+    }
+
+    let cx = a4Margin;
+    const sym = getPatternKeeperSymbol(idx);
+
+    // Sym
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(sym, cx + 5, curY + 5);
+    cx += colWidths[0];
+
+    // Swatch
+    doc.setFillColor(color.r, color.g, color.b);
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.2);
+    doc.rect(cx + 2, curY + 1.5, 10, 4, 'FD');
+    cx += colWidths[1];
+
+    // Brand
+    const brandStr =
+      color.brand ||
+      (config.craftType === 'perler' ? 'Perler' : config.craftStandard === 'dmc' ? 'DMC' : 'DMC');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(brandStr, cx + 2, curY + 5);
+    cx += colWidths[2];
+
+    // Clean Code (e.g. "310" for DMC 310)
+    const cleanCode = extractDmcNumber(color.code) || color.code || color.hex;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(17, 24, 39);
+    doc.text(cleanCode, cx + 2, curY + 5);
+    cx += colWidths[3];
+
+    // Shade Name
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(75, 85, 99);
+    doc.text((color.name || 'Custom Color').slice(0, 32), cx + 2, curY + 5);
+    cx += colWidths[4];
+
+    // Stitches
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(17, 24, 39);
+    doc.text(`${color.count}`, cx + 2, curY + 5);
+    cx += colWidths[5];
+
+    // Skeins
+    const skeins = Math.max(1, estimateDmcSkeins(color.count).skeinsToBuy);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${skeins}`, cx + 2, curY + 5);
+
+    curY += 7;
+  });
+
+  if (options.returnBlob) {
+    return doc.output('blob');
+  }
+
+  doc.save(`${projectName.toLowerCase().replace(/\s+/g, '-')}-pattern-keeper.pdf`);
 }
 
 // Project JSON Save & Load

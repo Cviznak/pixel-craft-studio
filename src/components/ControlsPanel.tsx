@@ -44,6 +44,7 @@ import {
   ChevronRight,
   Ruler,
   Crop,
+  Scissors,
   FileText,
   Paintbrush,
   Package
@@ -57,6 +58,7 @@ interface ControlsPanelProps {
   onRegenerate: () => void;
   onOpenAiModal: () => void;
   onOpenCropModal?: () => void;
+  onOpenBgRemoverModal?: () => void;
   onInspectCurrentPhoto?: () => void;
   onOpenStarterGallery?: () => void;
   onOpenNewCanvasModal?: () => void;
@@ -85,6 +87,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   onRegenerate,
   onOpenAiModal,
   onOpenCropModal,
+  onOpenBgRemoverModal,
   onInspectCurrentPhoto,
   onOpenStarterGallery,
   onOpenNewCanvasModal,
@@ -195,10 +198,10 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
           </div>
         </div>
 
-        {/* Action Button Row: Upload / Crop / Draw / AI Draw / Starters */}
-        <div className="grid grid-cols-5 gap-1 mb-2.5">
+        {/* Action Button Row: Upload / Crop / Cutout BG / Draw / AI / Starters */}
+        <div className="grid grid-cols-3 gap-1.5 mb-2.5">
           <label 
-            className="cursor-pointer py-1.5 px-0.5 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition text-center"
+            className="cursor-pointer py-1.5 px-1 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition text-center"
             title="Upload image (or press Ctrl+V anywhere to paste)"
           >
             <Upload className="w-3 h-3 shrink-0" />
@@ -215,7 +218,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             <button
               type="button"
               onClick={onOpenCropModal}
-              className="py-1.5 px-0.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
+              className="py-1.5 px-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition"
               title="Cut & crop the image"
             >
               <Crop className="w-3 h-3 shrink-0" />
@@ -223,11 +226,23 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
             </button>
           )}
 
+          {onOpenBgRemoverModal && (
+            <button
+              type="button"
+              onClick={onOpenBgRemoverModal}
+              className="py-1.5 px-1 bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition"
+              title="Remove background from image cleanly (zero API cost)"
+            >
+              <Scissors className="w-3 h-3 shrink-0" />
+              <span className="truncate">Cutout BG</span>
+            </button>
+          )}
+
           {onOpenNewCanvasModal && (
             <button
               type="button"
               onClick={onOpenNewCanvasModal}
-              className="py-1.5 px-0.5 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
+              className="py-1.5 px-1 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition"
               title="Create a new blank canvas to draw freely"
             >
               <Paintbrush className="w-3 h-3 shrink-0" />
@@ -238,19 +253,19 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
           <button
             type="button"
             onClick={onOpenAiModal}
-            className="py-1.5 px-0.5 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
+            className="py-1.5 px-1 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition"
             title="Ask AI to generate a craft motif"
           >
             <Wand2 className="w-3 h-3 shrink-0" />
-            <span className="truncate">AI</span>
+            <span className="truncate">AI Draw</span>
           </button>
 
           {onOpenStarterGallery && (
             <button
               type="button"
               onClick={onOpenStarterGallery}
-              className="py-1.5 px-0.5 bg-pink-600/15 hover:bg-pink-600/25 border border-pink-500/30 text-pink-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-0.5 transition"
-              title="Browse pre-made starter patterns"
+              className="py-1.5 px-1 bg-pink-600/15 hover:bg-pink-600/25 border border-pink-500/30 text-pink-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition"
+              title="Browse curated showcase & starter patterns"
             >
               <Sparkles className="w-3 h-3 shrink-0" />
               <span className="truncate">Starters</span>

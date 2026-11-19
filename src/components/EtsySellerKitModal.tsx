@@ -18,6 +18,7 @@ import {
   generateEtsyListingCopy,
   createEtsySellerZip
 } from '../utils/etsyKitGenerator';
+import { generatePatternKeeperPDF } from '../utils/exportUtils';
 
 interface EtsySellerKitModalProps {
   isOpen: boolean;
@@ -115,13 +116,21 @@ export const EtsySellerKitModal: React.FC<EtsySellerKitModalProps> = ({
 
     setIsGeneratingZip(true);
     try {
+      const pkBlob = generatePatternKeeperPDF(gridData, palette, config, patternTitle, {
+        colorMode: 'color',
+        designerName,
+        backstitches,
+        returnBlob: true,
+      }) as Blob | undefined;
+
       const zipBlob = await createEtsySellerZip(
         heroCanvasRef.current,
         paletteCanvasRef.current,
         chartCanvasRef.current,
         sizeCanvasRef.current,
         listingData,
-        patternTitle
+        patternTitle,
+        pkBlob
       );
 
       const url = URL.createObjectURL(zipBlob);
@@ -164,7 +173,7 @@ export const EtsySellerKitModal: React.FC<EtsySellerKitModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Turn your craft into ready-to-sell Etsy products with mockups, pre-written tags, and descriptions.
+                Turn your craft into ready-to-sell Etsy products with mockups, tags, descriptions &amp; Pattern Keeper PDF (`05_Pattern_Keeper_Digital_Chart.pdf` in ZIP).
               </p>
             </div>
           </div>
