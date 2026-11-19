@@ -17,6 +17,28 @@
   ],
   "rewrites": [
     {
+      "source": "/p/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=p&id=:id"
+    },
+    {
+      "source": "/patterns/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=pattern&slug=:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

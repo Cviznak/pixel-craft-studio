@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import type { 
@@ -24,37 +24,42 @@ import { Header } from './components/Header';
 import { ControlsPanel } from './components/ControlsPanel';
 import { CraftCanvas } from './components/CraftCanvas';
 import { PaletteLegend } from './components/PaletteLegend';
-import { ExportModal } from './components/ExportModal';
-import { HelpModal } from './components/HelpModal';
-import { AiGenerateModal } from './components/AiGenerateModal';
-import { ImageInspectModal } from './components/ImageInspectModal';
-import { StarterGalleryModal } from './components/StarterGalleryModal';
-import { ImageCropModal } from './components/ImageCropModal';
-import { ImageHistoryModal } from './components/ImageHistoryModal';
-import { CrochetWrittenInstructionsModal } from './components/CrochetWrittenInstructionsModal';
-import { NewCanvasModal } from './components/NewCanvasModal';
-import { SocialCardModal } from './components/SocialCardModal';
-import { SizeAndFrameModal } from './components/SizeAndFrameModal';
-import { TimelapseModal } from './components/TimelapseModal';
-import { PixelTextModal } from './components/PixelTextModal';
-import { MyStashModal } from './components/MyStashModal';
-import { StitchCompanionModal } from './components/StitchCompanionModal';
-import { ShoppingTripModal } from './components/ShoppingTripModal';
-import { CraftCalculatorsModal } from './components/CraftCalculatorsModal';
-import { ProjectVaultModal } from './components/ProjectVaultModal';
-import { EtsySellerKitModal } from './components/EtsySellerKitModal';
-import { PhotoPaletteModal } from './components/PhotoPaletteModal';
-import { MaterialKitModal } from './components/MaterialKitModal';
-import { ColorChartModal, type ColorChartTab } from './components/ColorChartModal';
-import { PatternDetailModal } from './components/PatternDetailModal';
-import { BackgroundRemoverModal } from './components/BackgroundRemoverModal';
-import { BorderBuilderModal } from './components/BorderBuilderModal';
-import { WipTrackerModal } from './components/WipTrackerModal';
-import { CommandPaletteModal, type CommandPaletteItem } from './components/CommandPaletteModal';
-import { CloudAuthModal } from './components/CloudAuthModal';
-import { PublishPatternModal } from './components/PublishPatternModal';
-import { SharedPatternModal } from './components/SharedPatternModal';
+import type { ColorChartTab } from './components/ColorChartModal';
+import type { CommandPaletteItem } from './components/CommandPaletteModal';
+
+const ExportModal = lazy(() => import('./components/ExportModal').then((m) => ({ default: m.ExportModal })));
+const HelpModal = lazy(() => import('./components/HelpModal').then((m) => ({ default: m.HelpModal })));
+const AiGenerateModal = lazy(() => import('./components/AiGenerateModal').then((m) => ({ default: m.AiGenerateModal })));
+const ImageInspectModal = lazy(() => import('./components/ImageInspectModal').then((m) => ({ default: m.ImageInspectModal })));
+const StarterGalleryModal = lazy(() => import('./components/StarterGalleryModal').then((m) => ({ default: m.StarterGalleryModal })));
+const ImageCropModal = lazy(() => import('./components/ImageCropModal').then((m) => ({ default: m.ImageCropModal })));
+const ImageHistoryModal = lazy(() => import('./components/ImageHistoryModal').then((m) => ({ default: m.ImageHistoryModal })));
+const CrochetWrittenInstructionsModal = lazy(() => import('./components/CrochetWrittenInstructionsModal').then((m) => ({ default: m.CrochetWrittenInstructionsModal })));
+const NewCanvasModal = lazy(() => import('./components/NewCanvasModal').then((m) => ({ default: m.NewCanvasModal })));
+const SocialCardModal = lazy(() => import('./components/SocialCardModal').then((m) => ({ default: m.SocialCardModal })));
+const SizeAndFrameModal = lazy(() => import('./components/SizeAndFrameModal').then((m) => ({ default: m.SizeAndFrameModal })));
+const TimelapseModal = lazy(() => import('./components/TimelapseModal').then((m) => ({ default: m.TimelapseModal })));
+const PixelTextModal = lazy(() => import('./components/PixelTextModal').then((m) => ({ default: m.PixelTextModal })));
+const MyStashModal = lazy(() => import('./components/MyStashModal').then((m) => ({ default: m.MyStashModal })));
+const StitchCompanionModal = lazy(() => import('./components/StitchCompanionModal').then((m) => ({ default: m.StitchCompanionModal })));
+const ShoppingTripModal = lazy(() => import('./components/ShoppingTripModal').then((m) => ({ default: m.ShoppingTripModal })));
+const CraftCalculatorsModal = lazy(() => import('./components/CraftCalculatorsModal').then((m) => ({ default: m.CraftCalculatorsModal })));
+const ProjectVaultModal = lazy(() => import('./components/ProjectVaultModal').then((m) => ({ default: m.ProjectVaultModal })));
+const EtsySellerKitModal = lazy(() => import('./components/EtsySellerKitModal').then((m) => ({ default: m.EtsySellerKitModal })));
+const PhotoPaletteModal = lazy(() => import('./components/PhotoPaletteModal').then((m) => ({ default: m.PhotoPaletteModal })));
+const MaterialKitModal = lazy(() => import('./components/MaterialKitModal').then((m) => ({ default: m.MaterialKitModal })));
+const ColorChartModal = lazy(() => import('./components/ColorChartModal').then((m) => ({ default: m.ColorChartModal })));
+const PatternDetailModal = lazy(() => import('./components/PatternDetailModal').then((m) => ({ default: m.PatternDetailModal })));
+const BackgroundRemoverModal = lazy(() => import('./components/BackgroundRemoverModal').then((m) => ({ default: m.BackgroundRemoverModal })));
+const BorderBuilderModal = lazy(() => import('./components/BorderBuilderModal').then((m) => ({ default: m.BorderBuilderModal })));
+const WipTrackerModal = lazy(() => import('./components/WipTrackerModal').then((m) => ({ default: m.WipTrackerModal })));
+const CommandPaletteModal = lazy(() => import('./components/CommandPaletteModal').then((m) => ({ default: m.CommandPaletteModal })));
+const CloudAuthModal = lazy(() => import('./components/CloudAuthModal').then((m) => ({ default: m.CloudAuthModal })));
+const PublishPatternModal = lazy(() => import('./components/PublishPatternModal').then((m) => ({ default: m.PublishPatternModal })));
+const SharedPatternModal = lazy(() => import('./components/SharedPatternModal').then((m) => ({ default: m.SharedPatternModal })));
+
 import { recalculatePaletteCounts } from './utils/borderGenerator';
+import { exportPatternToOXS, exportPatternToSVG } from './utils/oxsFormat';
 import { loadWipStats, saveWipStats, type WipStats, type WipSessionLog } from './utils/wipTracker';
 import { isSupabaseConfigured, supabase } from './utils/supabaseClient';
 import {
@@ -212,6 +217,8 @@ export default function App() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState<boolean>(false);
   const [activeSharedPatternId, setActiveSharedPatternId] = useState<string | null>(null);
   const [galleryInitialTab, setGalleryInitialTab] = useState<'curated' | 'community'>('curated');
+  const [galleryAuthorFilter, setGalleryAuthorFilter] = useState<string | null>(null);
+  const [remixedFrom, setRemixedFrom] = useState<{ shortId: string; title: string } | null>(null);
   const [cloudUser, setCloudUser] = useState<User | null>(null);
   const [cloudDisplayName, setCloudDisplayName] = useState<string>(() =>
     typeof window !== 'undefined' ? localStorage.getItem('pcs_cloud_display_name') || '' : ''
@@ -408,6 +415,7 @@ export default function App() {
     sourceImageRef.current = img;
     setSourceImageDataUrl(dataUrl);
     setSampleImageId(sampleId);
+    setRemixedFrom(null);
 
     let activeConfig = { ...targetConfig };
     let targetWidth = activeConfig.width;
@@ -1115,6 +1123,7 @@ export default function App() {
     setSpotlightColorId(null);
     setGridHistory([]);
     setGridFuture([]);
+    setRemixedFrom(null);
 
     if (previewDataUrl) {
       setSourceImageDataUrl(previewDataUrl);
@@ -1904,6 +1913,7 @@ export default function App() {
       setGridData(decodedGrid);
       setCompletedCells({});
       setBackstitches(record.backstitches || []);
+      setRemixedFrom({ shortId: record.short_id, title: record.title });
 
       const previewUrl = generateCanvasDataUrl(decodedGrid, recalculatedPalette);
       if (previewUrl) {
@@ -2242,6 +2252,38 @@ export default function App() {
         onExecute: () => setIsExportOpen(true),
       },
       {
+        id: 'export-oxs',
+        label: 'Export Open Cross-Stitch (.OXS)',
+        description: 'Universal XML cross-stitch chart for Pattern Keeper, Saga & WinStitch',
+        category: 'Export & Shop',
+        keywords: ['oxs', 'xml', 'saga', 'winstitch', 'pattern keeper', 'export'],
+        icon: <Download className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => {
+          exportPatternToOXS(gridData, palette, config, 'pixel-craft-pattern.oxs', {
+            title: lastAiPrompt || 'Pixel Craft Pattern',
+            author: cloudDisplayName || undefined,
+            backstitches,
+          });
+          showToast('🧵 Exported .OXS Open Cross-Stitch XML file!');
+        },
+      },
+      {
+        id: 'export-svg',
+        label: 'Export Layered Vector (.SVG)',
+        description: 'Color-grouped Inkscape, Illustrator & Cricut cut-ready SVG layers',
+        category: 'Export & Shop',
+        keywords: ['svg', 'vector', 'illustrator', 'inkscape', 'cricut', 'export'],
+        icon: <Download className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => {
+          exportPatternToSVG(gridData, palette, config, 'pixel-craft-vector.svg', {
+            title: lastAiPrompt || 'Pixel Craft Pattern',
+            includeGridLines: config.showGridLines,
+            backstitches,
+          });
+          showToast('✨ Exported color-layered .SVG vector chart!');
+        },
+      },
+      {
         id: 'export-supply-kit',
         label: 'Smart Craft Supply Kit & Amazon Lookup',
         description: 'Fabric cut dimensions, hoop sizes, pegboards & missing thread shopping list',
@@ -2278,7 +2320,7 @@ export default function App() {
         onExecute: () => setIsMyStashOpen(true),
       },
     ];
-  }, [config.craftType, sourceImage, cloudUser, handleSyncCloudAll, handleUpdateConfig, handleUndo, handleRedo, navigate, showToast]);
+  }, [config, gridData, palette, backstitches, lastAiPrompt, cloudDisplayName, sourceImage, cloudUser, handleSyncCloudAll, handleUpdateConfig, handleUndo, handleRedo, navigate, showToast]);
 
   const handleResetProgress = () => {
     if (Object.keys(completedCells).length === 0) return;
@@ -2295,6 +2337,7 @@ export default function App() {
       setSpotlightColorId(null);
       setGridHistory([]);
       setGridFuture([]);
+      setRemixedFrom(null);
       setConfig(DEFAULT_CONFIG);
       handleSelectSample(SAMPLE_IMAGES[0]);
     }
@@ -2302,12 +2345,16 @@ export default function App() {
 
   const handleLoadProjectJSON = (project: CraftProject) => {
     setConfig(project.gridConfig);
+    latestConfigRef.current = project.gridConfig;
     setGridData(project.gridData);
     setPalette(project.palette);
+    paletteRef.current = project.palette;
     setCompletedCells(project.completedCells || {});
     setBackstitches(project.backstitches || []);
     setGridHistory([]);
     setGridFuture([]);
+    setRemixedFrom(null);
+    showToast(`📂 Loaded ${project.gridConfig.width}×${project.gridConfig.height} pattern (${project.palette.length} colors)!`);
   };
 
   const handleLoadVaultProject = useCallback((project: SavedProject) => {
@@ -2699,472 +2746,545 @@ export default function App() {
         </div>
       )}
 
-      {/* Export & Print Modal */}
-      <ExportModal
-        isOpen={isExportOpen}
-        onClose={() => setIsExportOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        config={config}
-        completedCells={completedCells}
-        backstitches={backstitches}
-        onOpenWrittenInstructions={() => {
-          setIsExportOpen(false);
-          setIsWrittenInstructionsOpen(true);
-        }}
-        onOpenSocialCard={() => {
-          setIsExportOpen(false);
-          setIsSocialCardOpen(true);
-        }}
-        onOpenShoppingTrip={() => {
-          setIsExportOpen(false);
-          setIsShoppingTripOpen(true);
-        }}
-        onOpenEtsyKit={() => {
-          setIsExportOpen(false);
-          setIsEtsyKitOpen(true);
-        }}
-        onOpenMaterialKit={() => {
-          setIsExportOpen(false);
-          setIsMaterialKitOpen(true);
-        }}
-        onOpenPublishModal={() => {
-          setIsExportOpen(false);
-          setIsPublishModalOpen(true);
-        }}
-      />
+      <Suspense fallback={null}>
+        {/* Export & Print Modal */}
+        {isExportOpen && (
+          <ExportModal
+            isOpen={isExportOpen}
+            onClose={() => setIsExportOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            config={config}
+            completedCells={completedCells}
+            backstitches={backstitches}
+            onOpenWrittenInstructions={() => {
+              setIsExportOpen(false);
+              setIsWrittenInstructionsOpen(true);
+            }}
+            onOpenSocialCard={() => {
+              setIsExportOpen(false);
+              setIsSocialCardOpen(true);
+            }}
+            onOpenShoppingTrip={() => {
+              setIsExportOpen(false);
+              setIsShoppingTripOpen(true);
+            }}
+            onOpenEtsyKit={() => {
+              setIsExportOpen(false);
+              setIsEtsyKitOpen(true);
+            }}
+            onOpenMaterialKit={() => {
+              setIsExportOpen(false);
+              setIsMaterialKitOpen(true);
+            }}
+            onOpenPublishModal={() => {
+              setIsExportOpen(false);
+              setIsPublishModalOpen(true);
+            }}
+          />
+        )}
 
-      {/* Tapestry Crochet & Alpha Knot Written Row-by-Row Instructions Modal */}
-      <CrochetWrittenInstructionsModal
-        isOpen={isWrittenInstructionsOpen}
-        onClose={() => setIsWrittenInstructionsOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        projectName="Pixel Craft Pattern"
-        craftType={config.craftType}
-        beadStitchStyle={config.beadLoom?.stitchStyle || 'loom'}
-      />
+        {/* Tapestry Crochet & Alpha Knot Written Row-by-Row Instructions Modal */}
+        {isWrittenInstructionsOpen && (
+          <CrochetWrittenInstructionsModal
+            isOpen={isWrittenInstructionsOpen}
+            onClose={() => setIsWrittenInstructionsOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            projectName="Pixel Craft Pattern"
+            craftType={config.craftType}
+            beadStitchStyle={config.beadLoom?.stitchStyle || 'loom'}
+          />
+        )}
 
-      {/* Starter Patterns & Inspiration Gallery Modal */}
-      <StarterGalleryModal
-        isOpen={isStarterGalleryOpen}
-        onClose={() => {
-          setIsStarterGalleryOpen(false);
-          setGalleryInitialTab('curated');
-          if (location.pathname === '/gallery') {
-            navigate(getPathForCraft(config.craftType));
-          }
-        }}
-        onSelectStarter={(sample, craftType, gridSize, colorsCount) => {
-          handleSelectSample(sample, craftType, gridSize, colorsCount);
-          if (location.pathname === '/gallery') {
-            navigate(getPathForCraft(craftType || config.craftType));
-          }
-        }}
-        onOpenAiGenerator={() => setIsAiModalOpen(true)}
-        onOpenSocialCard={() => setIsSocialCardOpen(true)}
-        initialTab={galleryInitialTab}
-        onOpenPublishModal={() => setIsPublishModalOpen(true)}
-        onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
-        onOpenCommunityPattern={handleOpenPublishedPatternInStudio}
-        user={cloudUser}
-        likedPatternIds={likedPatternIds}
-        onToggleCommunityLike={handleToggleCommunityLike}
-      />
+        {/* Starter Patterns & Inspiration Gallery Modal */}
+        {isStarterGalleryOpen && (
+          <StarterGalleryModal
+            isOpen={isStarterGalleryOpen}
+            onClose={() => {
+              setIsStarterGalleryOpen(false);
+              setGalleryInitialTab('curated');
+              setGalleryAuthorFilter(null);
+              if (location.pathname === '/gallery') {
+                navigate(getPathForCraft(config.craftType));
+              }
+            }}
+            onSelectStarter={(sample, craftType, gridSize, colorsCount) => {
+              handleSelectSample(sample, craftType, gridSize, colorsCount);
+              if (location.pathname === '/gallery') {
+                navigate(getPathForCraft(craftType || config.craftType));
+              }
+            }}
+            onOpenAiGenerator={() => setIsAiModalOpen(true)}
+            onOpenSocialCard={() => setIsSocialCardOpen(true)}
+            initialTab={galleryInitialTab}
+            initialAuthorFilter={galleryAuthorFilter}
+            onOpenPublishModal={() => setIsPublishModalOpen(true)}
+            onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
+            onOpenCommunityPattern={handleOpenPublishedPatternInStudio}
+            user={cloudUser}
+            likedPatternIds={likedPatternIds}
+            onToggleCommunityLike={handleToggleCommunityLike}
+          />
+        )}
 
-      {/* Ask AI to Generate Picture Modal with History */}
-      <AiGenerateModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        onImageGenerated={handleAiImageGenerated}
-        history={aiHistory}
-        onDeleteHistoryItem={handleDeleteHistoryItem}
-        onClearHistory={handleClearHistory}
-        onInspectImage={(url, prompt, style) => handleOpenInspect(url, 'AI Picture Inspection', prompt, style)}
-        initialPrompt={lastAiPrompt}
-        initialStyleId={lastAiStyle}
-      />
+        {/* Ask AI to Generate Picture Modal with History */}
+        {isAiModalOpen && (
+          <AiGenerateModal
+            isOpen={isAiModalOpen}
+            onClose={() => setIsAiModalOpen(false)}
+            onImageGenerated={handleAiImageGenerated}
+            history={aiHistory}
+            onDeleteHistoryItem={handleDeleteHistoryItem}
+            onClearHistory={handleClearHistory}
+            onInspectImage={(url, prompt, style) => handleOpenInspect(url, 'AI Picture Inspection', prompt, style)}
+            initialPrompt={lastAiPrompt}
+            initialStyleId={lastAiStyle}
+          />
+        )}
 
-      {/* Full High-Resolution Image Inspection Modal */}
-      <ImageInspectModal
-        isOpen={inspectModalOpen}
-        onClose={() => setInspectModalOpen(false)}
-        imageUrl={inspectData?.url || null}
-        title={inspectData?.title}
-        prompt={inspectData?.prompt}
-        styleName={inspectData?.styleName}
-        onUseForCraft={(url) => {
-          const img = new Image();
-          img.crossOrigin = 'anonymous';
-          img.onload = () => {
-            applyImageAndProcess(img, url, '');
-          };
-          img.src = url;
-        }}
-      />
+        {/* Full High-Resolution Image Inspection Modal */}
+        {inspectModalOpen && (
+          <ImageInspectModal
+            isOpen={inspectModalOpen}
+            onClose={() => setInspectModalOpen(false)}
+            imageUrl={inspectData?.url || null}
+            title={inspectData?.title}
+            prompt={inspectData?.prompt}
+            styleName={inspectData?.styleName}
+            onUseForCraft={(url) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => {
+                applyImageAndProcess(img, url, '');
+              };
+              img.src = url;
+            }}
+          />
+        )}
 
-      {/* Image Crop & Cut Modal */}
-      <ImageCropModal
-        isOpen={isCropModalOpen}
-        onClose={() => setIsCropModalOpen(false)}
-        imageUrl={cropImageUrl || sourceImageDataUrl || sourceImage?.src || ''}
-        onApplyCrop={handleApplyCrop}
-        gridAspectRatio={config.width / Math.max(1, config.height)}
-      />
+        {/* Image Crop & Cut Modal */}
+        {isCropModalOpen && (
+          <ImageCropModal
+            isOpen={isCropModalOpen}
+            onClose={() => setIsCropModalOpen(false)}
+            imageUrl={cropImageUrl || sourceImageDataUrl || sourceImage?.src || ''}
+            onApplyCrop={handleApplyCrop}
+            gridAspectRatio={config.width / Math.max(1, config.height)}
+          />
+        )}
 
-      {/* Smart Background Remover & Subject Cutout Modal */}
-      <BackgroundRemoverModal
-        isOpen={isBgRemoverOpen}
-        onClose={() => setIsBgRemoverOpen(false)}
-        imageUrl={sourceImageDataUrl || sourceImage?.src || ''}
-        gridWidth={config.width}
-        gridHeight={config.height}
-        onApplyCutout={handleApplyBgCutout}
-      />
+        {/* Smart Background Remover & Subject Cutout Modal */}
+        {isBgRemoverOpen && (
+          <BackgroundRemoverModal
+            isOpen={isBgRemoverOpen}
+            onClose={() => setIsBgRemoverOpen(false)}
+            imageUrl={sourceImageDataUrl || sourceImage?.src || ''}
+            gridWidth={config.width}
+            gridHeight={config.height}
+            onApplyCutout={handleApplyBgCutout}
+          />
+        )}
 
-      {/* Uploaded & AI Picture History Gallery Modal */}
-      <ImageHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
-        uploadHistory={uploadHistory}
-        aiHistory={aiHistory}
-        onSelectUploadItem={handleSelectUploadItem}
-        onSelectAiItem={handleSelectHistoryImage}
-        onDeleteUploadItem={handleDeleteUploadItem}
-        onDeleteAiItem={handleDeleteHistoryItem}
-        onClearAllUploadHistory={handleClearAllUploadHistory}
-        onOpenCropForImage={handleOpenCropForImage}
-      />
+        {/* Uploaded & AI Picture History Gallery Modal */}
+        {isHistoryModalOpen && (
+          <ImageHistoryModal
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
+            uploadHistory={uploadHistory}
+            aiHistory={aiHistory}
+            onSelectUploadItem={handleSelectUploadItem}
+            onSelectAiItem={handleSelectHistoryImage}
+            onDeleteUploadItem={handleDeleteUploadItem}
+            onDeleteAiItem={handleDeleteHistoryItem}
+            onClearAllUploadHistory={handleClearAllUploadHistory}
+            onOpenCropForImage={handleOpenCropForImage}
+          />
+        )}
 
-      {/* Help & Guide Modal */}
-      <HelpModal
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-      />
+        {/* Help & Guide Modal */}
+        {isHelpOpen && (
+          <HelpModal
+            isOpen={isHelpOpen}
+            onClose={() => setIsHelpOpen(false)}
+          />
+        )}
 
-      {/* New Pixel Canvas Modal */}
-      <NewCanvasModal
-        isOpen={isNewCanvasModalOpen}
-        onClose={() => setIsNewCanvasModalOpen(false)}
-        currentPalette={palette}
-        currentCraftType={config.craftType}
-        onCreateCanvas={handleCreateBlankCanvas}
-      />
+        {/* New Pixel Canvas Modal */}
+        {isNewCanvasModalOpen && (
+          <NewCanvasModal
+            isOpen={isNewCanvasModalOpen}
+            onClose={() => setIsNewCanvasModalOpen(false)}
+            currentPalette={palette}
+            currentCraftType={config.craftType}
+            onCreateCanvas={handleCreateBlankCanvas}
+          />
+        )}
 
-      {/* Aesthetic Social Card Generator Modal */}
-      <SocialCardModal
-        isOpen={isSocialCardOpen}
-        onClose={() => setIsSocialCardOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        config={config}
-        defaultTitle={lastAiPrompt || 'My Pixel Craft Pattern'}
-      />
+        {/* Aesthetic Social Card Generator Modal */}
+        {isSocialCardOpen && (
+          <SocialCardModal
+            isOpen={isSocialCardOpen}
+            onClose={() => setIsSocialCardOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            config={config}
+            defaultTitle={lastAiPrompt || 'My Pixel Craft Pattern'}
+          />
+        )}
 
-      {/* Finished Size & Framing Calculator Modal */}
-      <SizeAndFrameModal
-        isOpen={isSizeAndFrameOpen}
-        onClose={() => setIsSizeAndFrameOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        craftType={config.craftType}
-        unitSystem={config.unitSystem}
-        onToggleUnitSystem={(u) => handleUpdateConfig({ unitSystem: u })}
-        showPegboardLines={showPegboardLines}
-        onTogglePegboardLines={() => setShowPegboardLines((prev) => !prev)}
-      />
+        {/* Finished Size & Framing Calculator Modal */}
+        {isSizeAndFrameOpen && (
+          <SizeAndFrameModal
+            isOpen={isSizeAndFrameOpen}
+            onClose={() => setIsSizeAndFrameOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            craftType={config.craftType}
+            unitSystem={config.unitSystem}
+            onToggleUnitSystem={(u) => handleUpdateConfig({ unitSystem: u })}
+            showPegboardLines={showPegboardLines}
+            onTogglePegboardLines={() => setShowPegboardLines((prev) => !prev)}
+          />
+        )}
 
-      {/* Social Media Animated Timelapse Video Generator */}
-      <TimelapseModal
-        isOpen={isTimelapseOpen}
-        onClose={() => setIsTimelapseOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        craftType={config.craftType}
-        defaultTitle={lastAiPrompt || 'Pixel Craft Pattern'}
-      />
+        {/* Social Media Animated Timelapse Video Generator */}
+        {isTimelapseOpen && (
+          <TimelapseModal
+            isOpen={isTimelapseOpen}
+            onClose={() => setIsTimelapseOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            craftType={config.craftType}
+            defaultTitle={lastAiPrompt || 'Pixel Craft Pattern'}
+          />
+        )}
 
-      {/* Pixel Text, Name & Monogram Tool */}
-      <PixelTextModal
-        isOpen={isPixelTextOpen}
-        onClose={() => setIsPixelTextOpen(false)}
-        palette={palette}
-        craftType={config.craftType}
-        canvasWidth={config.width}
-        canvasHeight={config.height}
-        onStampToCanvas={handleStampText}
-        onCreateNewFromText={handleCreateNewFromText}
-      />
+        {/* Pixel Text, Name & Monogram Tool */}
+        {isPixelTextOpen && (
+          <PixelTextModal
+            isOpen={isPixelTextOpen}
+            onClose={() => setIsPixelTextOpen(false)}
+            palette={palette}
+            craftType={config.craftType}
+            canvasWidth={config.width}
+            canvasHeight={config.height}
+            onStampToCanvas={handleStampText}
+            onCreateNewFromText={handleCreateNewFromText}
+          />
+        )}
 
-      {/* Physical Craft Floss & Bead Stash Inventory */}
-      <MyStashModal
-        isOpen={isMyStashOpen}
-        onClose={() => {
-          setIsMyStashOpen(false);
-          if (useMyStashOnly && sourceImageRef.current) {
-            reprocessCurrentImage();
-          }
-        }}
-        onStashUpdated={() => {
-          if (useMyStashOnly && sourceImageRef.current) {
-            reprocessCurrentImage();
-          }
-          if (cloudUser && isSupabaseConfigured) {
-            pushPreferencesToCloud(cloudUser.id, {});
-          }
-        }}
-      />
+        {/* Physical Craft Floss & Bead Stash Inventory */}
+        {isMyStashOpen && (
+          <MyStashModal
+            isOpen={isMyStashOpen}
+            onClose={() => {
+              setIsMyStashOpen(false);
+              if (useMyStashOnly && sourceImageRef.current) {
+                reprocessCurrentImage();
+              }
+            }}
+            onStashUpdated={() => {
+              if (useMyStashOnly && sourceImageRef.current) {
+                reprocessCurrentImage();
+              }
+              if (cloudUser && isSupabaseConfigured) {
+                pushPreferencesToCloud(cloudUser.id, {});
+              }
+            }}
+          />
+        )}
 
-      {/* Stitch Companion Hands-Free Focus Mode */}
-      <StitchCompanionModal
-        isOpen={isStitchCompanionOpen}
-        onClose={() => setIsStitchCompanionOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        completedCells={completedCells}
-        craftType={config.craftType}
-        onBatchSetCellsCompleted={handleBatchSetCellsCompleted}
-      />
+        {/* Stitch Companion Hands-Free Focus Mode */}
+        {isStitchCompanionOpen && (
+          <StitchCompanionModal
+            isOpen={isStitchCompanionOpen}
+            onClose={() => setIsStitchCompanionOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            completedCells={completedCells}
+            craftType={config.craftType}
+            onBatchSetCellsCompleted={handleBatchSetCellsCompleted}
+          />
+        )}
 
-      {/* In-Store Shopping Trip Checklist Modal */}
-      <ShoppingTripModal
-        isOpen={isShoppingTripOpen}
-        onClose={() => setIsShoppingTripOpen(false)}
-        palette={palette}
-        gridData={gridData}
-        craftType={config.craftType}
-        onStashUpdated={() => {
-          if (useMyStashOnly && sourceImageRef.current) {
-            reprocessCurrentImage();
-          }
-          if (cloudUser && isSupabaseConfigured) {
-            pushPreferencesToCloud(cloudUser.id, {});
-          }
-        }}
-        onOpenMaterialKit={() => {
-          setIsShoppingTripOpen(false);
-          setIsMaterialKitOpen(true);
-        }}
-      />
+        {/* In-Store Shopping Trip Checklist Modal */}
+        {isShoppingTripOpen && (
+          <ShoppingTripModal
+            isOpen={isShoppingTripOpen}
+            onClose={() => setIsShoppingTripOpen(false)}
+            palette={palette}
+            gridData={gridData}
+            craftType={config.craftType}
+            onStashUpdated={() => {
+              if (useMyStashOnly && sourceImageRef.current) {
+                reprocessCurrentImage();
+              }
+              if (cloudUser && isSupabaseConfigured) {
+                pushPreferencesToCloud(cloudUser.id, {});
+              }
+            }}
+            onOpenMaterialKit={() => {
+              setIsShoppingTripOpen(false);
+              setIsMaterialKitOpen(true);
+            }}
+          />
+        )}
 
-      {/* Smart Craft Supply Kit & Materials Checkout Modal */}
-      <MaterialKitModal
-        isOpen={isMaterialKitOpen}
-        onClose={() => setIsMaterialKitOpen(false)}
-        config={config}
-        palette={palette}
-        gridData={gridData}
-        completedCells={completedCells}
-        onOpenShoppingTrip={() => {
-          setIsMaterialKitOpen(false);
-          setIsShoppingTripOpen(true);
-        }}
-      />
+        {/* Smart Craft Supply Kit & Materials Checkout Modal */}
+        {isMaterialKitOpen && (
+          <MaterialKitModal
+            isOpen={isMaterialKitOpen}
+            onClose={() => setIsMaterialKitOpen(false)}
+            config={config}
+            palette={palette}
+            gridData={gridData}
+            completedCells={completedCells}
+            onOpenShoppingTrip={() => {
+              setIsMaterialKitOpen(false);
+              setIsShoppingTripOpen(true);
+            }}
+          />
+        )}
 
-      {/* Standalone Craft Calculators Suite */}
-      <CraftCalculatorsModal
-        isOpen={isCalculatorsOpen}
-        onClose={() => {
-          setIsCalculatorsOpen(false);
-          if (location.pathname.startsWith('/calculators')) {
-            navigate(getPathForCraft(config.craftType));
-          }
-        }}
-        currentGridWidth={config.width}
-        currentGridHeight={config.height}
-        unitSystem={config.unitSystem}
-        initialTab={calculatorInitialTab}
-        onApplyGridSize={(w, h) => {
-          handleUpdateConfig({ width: w, height: h, lockAspectRatio: false });
-          showToast(`📏 Applied blanket grid dimensions (${w} × ${h})!`);
-        }}
-      />
+        {/* Standalone Craft Calculators Suite */}
+        {isCalculatorsOpen && (
+          <CraftCalculatorsModal
+            isOpen={isCalculatorsOpen}
+            onClose={() => {
+              setIsCalculatorsOpen(false);
+              if (location.pathname.startsWith('/calculators')) {
+                navigate(getPathForCraft(config.craftType));
+              }
+            }}
+            currentGridWidth={config.width}
+            currentGridHeight={config.height}
+            unitSystem={config.unitSystem}
+            initialTab={calculatorInitialTab}
+            onApplyGridSize={(w, h) => {
+              handleUpdateConfig({ width: w, height: h, lockAspectRatio: false });
+              showToast(`📏 Applied blanket grid dimensions (${w} × ${h})!`);
+            }}
+          />
+        )}
 
-      {/* Multi-Project Local Vault Drawer & Manager */}
-      <ProjectVaultModal
-        isOpen={isProjectVaultOpen}
-        onClose={() => setIsProjectVaultOpen(false)}
-        currentConfig={config}
-        currentGridData={gridData}
-        currentPalette={palette}
-        currentCompletedCells={completedCells}
-        currentBackstitches={backstitches}
-        currentSourceImageDataUrl={sourceImageDataUrl}
-        onLoadProject={handleLoadVaultProject}
-        onProjectsChanged={refreshVaultCount}
-        cloudUser={cloudUser}
-        isCloudSyncing={isCloudSyncing}
-        lastCloudSyncedAt={lastCloudSyncedAt}
-        onTriggerCloudSync={() => handleSyncCloudAll(cloudUser, false)}
-        onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
-      />
+        {/* Multi-Project Local Vault Drawer & Manager */}
+        {isProjectVaultOpen && (
+          <ProjectVaultModal
+            isOpen={isProjectVaultOpen}
+            onClose={() => setIsProjectVaultOpen(false)}
+            currentConfig={config}
+            currentGridData={gridData}
+            currentPalette={palette}
+            currentCompletedCells={completedCells}
+            currentBackstitches={backstitches}
+            currentSourceImageDataUrl={sourceImageDataUrl}
+            onLoadProject={handleLoadVaultProject}
+            onProjectsChanged={refreshVaultCount}
+            cloudUser={cloudUser}
+            isCloudSyncing={isCloudSyncing}
+            lastCloudSyncedAt={lastCloudSyncedAt}
+            onTriggerCloudSync={() => handleSyncCloudAll(cloudUser, false)}
+            onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
+          />
+        )}
 
-      {/* Etsy & Seller Commercial Kit Modal */}
-      <EtsySellerKitModal
-        isOpen={isEtsyKitOpen}
-        onClose={() => setIsEtsyKitOpen(false)}
-        config={config}
-        gridData={gridData}
-        palette={palette}
-        backstitches={backstitches}
-      />
+        {/* Etsy & Seller Commercial Kit Modal */}
+        {isEtsyKitOpen && (
+          <EtsySellerKitModal
+            isOpen={isEtsyKitOpen}
+            onClose={() => setIsEtsyKitOpen(false)}
+            config={config}
+            gridData={gridData}
+            palette={palette}
+            backstitches={backstitches}
+          />
+        )}
 
-      {/* Photo & Inspiration Palette Extractor Modal */}
-      <PhotoPaletteModal
-        isOpen={isPhotoPaletteOpen}
-        onClose={() => setIsPhotoPaletteOpen(false)}
-        onApplyPaletteToGrid={handleApplyPhotoPaletteToGrid}
-        onSetActivePaletteOnly={handleSetPhotoPaletteOnly}
-      />
+        {/* Photo & Inspiration Palette Extractor Modal */}
+        {isPhotoPaletteOpen && (
+          <PhotoPaletteModal
+            isOpen={isPhotoPaletteOpen}
+            onClose={() => setIsPhotoPaletteOpen(false)}
+            onApplyPaletteToGrid={handleApplyPhotoPaletteToGrid}
+            onSetActivePaletteOnly={handleSetPhotoPaletteOnly}
+          />
+        )}
 
-      {/* Interactive Thread & Bead Color Chart + CIELAB Hex Matcher */}
-      <ColorChartModal
-        isOpen={isColorChartOpen}
-        onClose={() => {
-          setIsColorChartOpen(false);
-          if (location.pathname.startsWith('/color-chart')) {
-            navigate(getPathForCraft(config.craftType));
-          }
-        }}
-        initialTab={colorChartInitialTab}
-        onTabChange={(tab) => {
-          const tabPathMap: Record<ColorChartTab, string> = {
-            'hex-matcher': '/color-chart',
-            'dmc-anchor': '/color-chart/dmc-to-anchor',
-            perler: '/color-chart/perler-bead-colors',
-            miyuki: '/color-chart/miyuki-delica',
-          };
-          if (location.pathname.startsWith('/color-chart')) {
-            navigate(tabPathMap[tab], { replace: true });
-          }
-        }}
-        onAddColorToPalette={(hex, label) => {
-          handleAddCustomColor(hex);
-          if (label) {
-            showToast(`✨ Added ${label} (${hex}) to Studio palette!`);
-          }
-        }}
-        onStashUpdated={() => {
-          if (useMyStashOnly && sourceImageRef.current) {
-            reprocessCurrentImage();
-          }
-          if (cloudUser && isSupabaseConfigured) {
-            pushPreferencesToCloud(cloudUser.id, {});
-          }
-        }}
-      />
+        {/* Interactive Thread & Bead Color Chart + CIELAB Hex Matcher */}
+        {isColorChartOpen && (
+          <ColorChartModal
+            isOpen={isColorChartOpen}
+            onClose={() => {
+              setIsColorChartOpen(false);
+              if (location.pathname.startsWith('/color-chart')) {
+                navigate(getPathForCraft(config.craftType));
+              }
+            }}
+            initialTab={colorChartInitialTab}
+            onTabChange={(tab) => {
+              const tabPathMap: Record<ColorChartTab, string> = {
+                'hex-matcher': '/color-chart',
+                'dmc-anchor': '/color-chart/dmc-to-anchor',
+                perler: '/color-chart/perler-bead-colors',
+                miyuki: '/color-chart/miyuki-delica',
+              };
+              if (location.pathname.startsWith('/color-chart')) {
+                navigate(tabPathMap[tab], { replace: true });
+              }
+            }}
+            onAddColorToPalette={(hex, label) => {
+              handleAddCustomColor(hex);
+              if (label) {
+                showToast(`✨ Added ${label} (${hex}) to Studio palette!`);
+              }
+            }}
+            onStashUpdated={() => {
+              if (useMyStashOnly && sourceImageRef.current) {
+                reprocessCurrentImage();
+              }
+              if (cloudUser && isSupabaseConfigured) {
+                pushPreferencesToCloud(cloudUser.id, {});
+              }
+            }}
+          />
+        )}
 
-      {/* Dedicated Pattern Detail Landing Page Modal (/patterns/:slug) */}
-      <PatternDetailModal
-        pattern={activePatternSlug ? getPatternBySlug(activePatternSlug) : null}
-        onClose={() => {
-          setActivePatternSlug(null);
-          navigate(getPathForCraft(config.craftType));
-        }}
-        onBackToGallery={() => {
-          setActivePatternSlug(null);
-          navigate('/gallery');
-        }}
-        onOpenInStudio={(pattern) => {
-          handleSelectSample(
-            pattern,
-            pattern.recommendedCraft,
-            pattern.recommendedGridSize,
-            pattern.recommendedColors
-          );
-          setActivePatternSlug(null);
-          navigate(getPathForCraft(pattern.recommendedCraft));
-          showToast(`✨ Loaded "${pattern.name}" into Studio!`);
-        }}
-        unitSystem={config.unitSystem}
-      />
+        {/* Dedicated Pattern Detail Landing Page Modal (/patterns/:slug) */}
+        {activePatternSlug !== null && (
+          <PatternDetailModal
+            pattern={getPatternBySlug(activePatternSlug)}
+            onClose={() => {
+              setActivePatternSlug(null);
+              navigate(getPathForCraft(config.craftType));
+            }}
+            onBackToGallery={() => {
+              setActivePatternSlug(null);
+              navigate('/gallery');
+            }}
+            onOpenInStudio={(pattern) => {
+              handleSelectSample(
+                pattern,
+                pattern.recommendedCraft,
+                pattern.recommendedGridSize,
+                pattern.recommendedColors
+              );
+              setActivePatternSlug(null);
+              navigate(getPathForCraft(pattern.recommendedCraft));
+              showToast(`✨ Loaded "${pattern.name}" into Studio!`);
+            }}
+            unitSystem={config.unitSystem}
+          />
+        )}
 
-      {/* Decorative Border, Frame & Sampler Builder Modal */}
-      <BorderBuilderModal
-        isOpen={isBorderModalOpen}
-        onClose={() => setIsBorderModalOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        onApplyFramedGrid={handleApplyFramedGrid}
-      />
+        {/* Decorative Border, Frame & Sampler Builder Modal */}
+        {isBorderModalOpen && (
+          <BorderBuilderModal
+            isOpen={isBorderModalOpen}
+            onClose={() => setIsBorderModalOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            onApplyFramedGrid={handleApplyFramedGrid}
+          />
+        )}
 
-      {/* WIP Time Tracker, Stitch Speed & Social PNG Stats Card Modal */}
-      <WipTrackerModal
-        isOpen={isWipTrackerOpen}
-        onClose={() => setIsWipTrackerOpen(false)}
-        gridData={gridData}
-        palette={palette}
-        config={config}
-        completedCells={completedCells}
-        isTimerRunning={isWipTimerRunning}
-        activeSessionSeconds={wipSessionSeconds}
-        activeSessionStartStitches={wipSessionStartStitches}
-        onStartTimer={handleStartWipTimer}
-        onPauseTimer={handlePauseWipTimer}
-        onSaveAndResetTimer={handleSaveAndResetWipTimer}
-        wipStats={wipStats}
-        onUpdateWipStats={handleUpdateWipStats}
-      />
+        {/* WIP Time Tracker, Stitch Speed & Social PNG Stats Card Modal */}
+        {isWipTrackerOpen && (
+          <WipTrackerModal
+            isOpen={isWipTrackerOpen}
+            onClose={() => setIsWipTrackerOpen(false)}
+            gridData={gridData}
+            palette={palette}
+            config={config}
+            completedCells={completedCells}
+            isTimerRunning={isWipTimerRunning}
+            activeSessionSeconds={wipSessionSeconds}
+            activeSessionStartStitches={wipSessionStartStitches}
+            onStartTimer={handleStartWipTimer}
+            onPauseTimer={handlePauseWipTimer}
+            onSaveAndResetTimer={handleSaveAndResetWipTimer}
+            wipStats={wipStats}
+            onUpdateWipStats={handleUpdateWipStats}
+          />
+        )}
 
-      {/* Searchable Command Palette (Ctrl+K / Cmd+K) */}
-      <CommandPaletteModal
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        items={commandPaletteItems}
-      />
+        {/* Searchable Command Palette (Ctrl+K / Cmd+K) */}
+        {isCommandPaletteOpen && (
+          <CommandPaletteModal
+            isOpen={isCommandPaletteOpen}
+            onClose={() => setIsCommandPaletteOpen(false)}
+            items={commandPaletteItems}
+          />
+        )}
 
-      {/* Cloud Auth, Multi-Device Vault, Stash & WIP Sync Modal */}
-      <CloudAuthModal
-        isOpen={isCloudAuthOpen}
-        onClose={() => setIsCloudAuthOpen(false)}
-        user={cloudUser}
-        displayName={cloudDisplayName}
-        onUpdateDisplayName={handleUpdateCloudDisplayName}
-        isSyncing={isCloudSyncing}
-        lastSyncedAt={lastCloudSyncedAt}
-        lastSyncSummary={lastCloudSyncSummary}
-        onSyncNow={() => handleSyncCloudAll(cloudUser, false)}
-        onSignOut={handleCloudSignOut}
-        localVaultCount={vaultProjectsCount}
-        wipSessionsCount={wipStats.sessions.length}
-      />
+        {/* Cloud Auth, Multi-Device Vault, Stash & WIP Sync Modal */}
+        {isCloudAuthOpen && (
+          <CloudAuthModal
+            isOpen={isCloudAuthOpen}
+            onClose={() => setIsCloudAuthOpen(false)}
+            user={cloudUser}
+            displayName={cloudDisplayName}
+            onUpdateDisplayName={handleUpdateCloudDisplayName}
+            isSyncing={isCloudSyncing}
+            lastSyncedAt={lastCloudSyncedAt}
+            lastSyncSummary={lastCloudSyncSummary}
+            onSyncNow={() => handleSyncCloudAll(cloudUser, false)}
+            onSignOut={handleCloudSignOut}
+            localVaultCount={vaultProjectsCount}
+            wipSessionsCount={wipStats.sessions.length}
+          />
+        )}
 
-      {/* Publish to Community Showcase & Short Link (/p/:id) Modal */}
-      <PublishPatternModal
-        isOpen={isPublishModalOpen}
-        onClose={() => setIsPublishModalOpen(false)}
-        config={config}
-        gridData={gridData}
-        palette={palette}
-        backstitches={backstitches}
-        user={cloudUser}
-        defaultAuthorName={cloudDisplayName}
-        onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
-        onPublished={(shortId, patternTitle) => {
-          showToast(`🚀 Published "${patternTitle}" at /p/${shortId}!`);
-        }}
-      />
+        {/* Publish to Community Showcase & Short Link (/p/:id) Modal */}
+        {isPublishModalOpen && (
+          <PublishPatternModal
+            isOpen={isPublishModalOpen}
+            onClose={() => setIsPublishModalOpen(false)}
+            config={config}
+            gridData={gridData}
+            palette={palette}
+            backstitches={backstitches}
+            user={cloudUser}
+            defaultAuthorName={cloudDisplayName}
+            remixedFrom={remixedFrom}
+            onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
+            onPublished={(shortId, patternTitle) => {
+              showToast(`🚀 Published "${patternTitle}" at /p/${shortId}!`);
+            }}
+          />
+        )}
 
-      {/* Shared Pattern Detail View (/p/:id Short Share Links) */}
-      <SharedPatternModal
-        shortId={activeSharedPatternId}
-        onClose={() => {
-          setActiveSharedPatternId(null);
-          navigate(getPathForCraft(config.craftType));
-        }}
-        user={cloudUser}
-        likedPatternIds={likedPatternIds}
-        onToggleLike={handleToggleCommunityLike}
-        onOpenCloudAuth={() => {
-          setActiveSharedPatternId(null);
-          setIsCloudAuthOpen(true);
-        }}
-        onOpenInStudio={handleOpenPublishedPatternInStudio}
-        onSaveToVault={handleSavePublishedToVault}
-        onDeleted={() => {
-          showToast('Deleted published pattern.');
-        }}
-      />
+        {/* Shared Pattern Detail View (/p/:id Short Share Links) */}
+        {activeSharedPatternId !== null && (
+          <SharedPatternModal
+            shortId={activeSharedPatternId}
+            onClose={() => {
+              setActiveSharedPatternId(null);
+              navigate(getPathForCraft(config.craftType));
+            }}
+            user={cloudUser}
+            displayName={cloudDisplayName}
+            likedPatternIds={likedPatternIds}
+            onToggleLike={handleToggleCommunityLike}
+            onOpenCloudAuth={() => {
+              setActiveSharedPatternId(null);
+              setIsCloudAuthOpen(true);
+            }}
+            onOpenInStudio={handleOpenPublishedPatternInStudio}
+            onSaveToVault={handleSavePublishedToVault}
+            onSelectCreator={(author) => {
+              setActiveSharedPatternId(null);
+              setGalleryAuthorFilter(author);
+              setGalleryInitialTab('community');
+              setIsStarterGalleryOpen(true);
+              navigate('/gallery');
+            }}
+            onDeleted={() => {
+              showToast('Deleted published pattern.');
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import type { User } from '@supabase/supabase-js';
 import {
   X,
@@ -12,11 +13,19 @@ import {
   Maximize2,
   Palette,
   CloudOff,
+  GitFork,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
 import { isSupabaseConfigured } from '../utils/supabaseClient';
+import { buildSharedPatternMeta, updateDocumentMeta } from '../utils/craftRoutes';
 import {
+  deletePatternComment,
   deletePublishedPattern,
+  fetchPatternComments,
   fetchPublishedPatternByShortId,
+  postPatternComment,
+  type PatternComment,
   type PublishedPatternRecord,
 } from '../utils/cloudSync';
 
@@ -24,11 +33,13 @@ interface SharedPatternModalProps {
   shortId: string | null;
   onClose: () => void;
   user: User | null;
+  displayName?: string;
   likedPatternIds: Set<string>;
   onToggleLike: (patternId: string) => void;
   onOpenCloudAuth: () => void;
   onOpenInStudio: (record: PublishedPatternRecord, gridData: number[][]) => void;
   onSaveToVault: (record: PublishedPatternRecord, gridData: number[][]) => Promise<void>;
+  onSelectCreator?: (authorName: string) => void;
   onDeleted?: () => void;
 }
 
@@ -36,11 +47,13 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
   shortId,
   onClose,
   user,
+  displayName = '',
   likedPatternIds,
   onToggleLike,
   onOpenCloudAuth,
   onOpenInStudio,
   onSaveToVault,
+  onSelectCreator,
   onDeleted,
 }) => {
   const [prevShortId, setPrevShortId] = useState<string | null>(null);
@@ -53,6 +66,14 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
   const [savedToVault, setSavedToVault] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Community Build Tips / Comments state
+  const [comments, setComments] = useState<PatternComment[]>([]);
+  const [commentsLoadedFor, setCommentsLoadedFor] = useState<string | null>(null);
+  const [commentsTableReady, setCommentsTableReady] = useState<boolean>(true);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
+
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   if (shortId !== prevShortId) {
@@ -63,6 +84,10 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
     setLikeDelta(0);
     setCopiedLink(false);
     setSavedToVault(false);
+    setComments([]);
+    setCommentsLoadedFor(null);
+    setCommentDraft('');
+    setCommentError(null);
   }
 
   useEffect(() => {
@@ -76,6 +101,16 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
         } else {
           setRecord(res.record);
           setDecodedGrid(res.gridData);
+          updateDocumentMeta(
+            buildSharedPatternMeta(
+              res.record.short_id,
+              res.record.title,
+              res.record.craft_type,
+              res.record.width,
+              res.record.height
+            ),
+            null
+          );
         }
         setLoadedId(shortId);
       })
@@ -88,6 +123,26 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
       cancelled = true;
     };
   }, [shortId]);
+
+  // Fetch Build Tips / Comments once pattern UUID loads
+  useEffect(() => {
+    if (!record?.id || !isSupabaseConfigured) return;
+    let cancelled = false;
+    fetchPatternComments(record.id)
+      .then((res) => {
+        if (cancelled) return;
+        setComments(res.comments);
+        setCommentsTableReady(res.tableReady);
+        setCommentsLoadedFor(record.id);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCommentsLoadedFor(record.id);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [record?.id]);
 
   useEffect(() => {
     if (!shortId) return;
@@ -189,6 +244,45 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
     }
   };
 
+  const handlePostComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!record || !user) {
+      onOpenCloudAuth();
+      return;
+    }
+    const clean = commentDraft.trim();
+    if (clean.length < 2) return;
+
+    setIsPostingComment(true);
+    setCommentError(null);
+    try {
+      const created = await postPatternComment({
+        patternId: record.id,
+        userId: user.id,
+        authorName: displayName || user.email?.split('@')[0] || 'Studio Crafter',
+        body: clean,
+      });
+      setComments((prev) => [created, ...prev]);
+      setCommentDraft('');
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : 'Could not post tip');
+    } finally {
+      setIsPostingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!user) return;
+    try {
+      await deletePatternComment(commentId, user.id);
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+    } catch (err) {
+      setCommentError(err instanceof Error ? err.message : 'Could not delete tip');
+    }
+  };
+
+  const commentsLoading = !!record && commentsTableReady && commentsLoadedFor !== record.id;
+
   return (
     <div
       onClick={(e) => {
@@ -285,10 +379,24 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
 
               {/* Metadata & Actions */}
               <div className="md:col-span-6 space-y-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <UserIcon className="w-4 h-4 text-indigo-400" />
-                    <span className="font-semibold">{record.author_name}</span>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 text-slate-300 flex-wrap">
+                    <UserIcon className="w-4 h-4 text-indigo-400 shrink-0" />
+                    {onSelectCreator ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onSelectCreator(record.author_name);
+                        }}
+                        className="font-semibold hover:text-indigo-300 underline decoration-indigo-500/40 underline-offset-2 transition"
+                        title={`View all public patterns by ${record.author_name}`}
+                      >
+                        {record.author_name}
+                      </button>
+                    ) : (
+                      <span className="font-semibold">{record.author_name}</span>
+                    )}
                     <span className="text-slate-500">•</span>
                     <span className="text-slate-400">{record.category}</span>
                   </div>
@@ -306,6 +414,30 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
                     <span>{Math.max(0, record.likes_count + likeDelta)}</span>
                   </button>
                 </div>
+
+                {/* Remix Lineage Attribution & Remix Count */}
+                {(record.remixed_from_short_id || (record.remixes_count || 0) > 0) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {record.remixed_from_short_id && (
+                      <Link
+                        to={`/p/${record.remixed_from_short_id}`}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-[11px] font-semibold text-teal-300 transition"
+                      >
+                        <GitFork className="w-3 h-3" />
+                        <span>
+                          Remixed from /p/{record.remixed_from_short_id}
+                          {record.remixed_from_title ? ` (${record.remixed_from_title})` : ''}
+                        </span>
+                      </Link>
+                    )}
+                    {(record.remixes_count || 0) > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[10px] font-bold text-slate-300">
+                        <GitFork className="w-3 h-3 text-indigo-400" />
+                        {record.remixes_count} {record.remixes_count === 1 ? 'Remix' : 'Remixes'}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {record.description && (
                   <p className="text-slate-300 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800">
@@ -359,7 +491,7 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
                     }}
                     className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold shadow-lg flex items-center justify-center gap-2 transition"
                   >
-                    <span>Open & Edit in Studio</span>
+                    <span>Open &amp; Remix in Studio</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -394,6 +526,91 @@ export const SharedPatternModal: React.FC<SharedPatternModalProps> = ({
                     </button>
                   )}
                 </div>
+
+                {/* Community Build Tips & Comments */}
+                {commentsTableReady && (
+                  <div className="pt-3 border-t border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-300 flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Build Tips &amp; Notes ({comments.length})</span>
+                      </span>
+                    </div>
+
+                    {user ? (
+                      <form onSubmit={handlePostComment} className="flex gap-1.5">
+                        <input
+                          type="text"
+                          value={commentDraft}
+                          onChange={(e) => setCommentDraft(e.target.value)}
+                          placeholder="Share a fabric count, bead finish, or yarn substitution tip..."
+                          maxLength={400}
+                          className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-[11px] text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isPostingComment || commentDraft.trim().length < 2}
+                          className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-[11px] font-bold flex items-center gap-1 transition"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>Post</span>
+                        </button>
+                      </form>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={onOpenCloudAuth}
+                        className="w-full py-1.5 px-3 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-slate-800 text-[11px] text-slate-400 hover:text-indigo-300 transition text-center"
+                      >
+                        Sign in to leave a stitching or colorway tip
+                      </button>
+                    )}
+
+                    {commentError && (
+                      <p className="text-[10px] text-rose-300">{commentError}</p>
+                    )}
+
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto [scrollbar-width:thin]">
+                      {commentsLoading ? (
+                        <p className="text-[10px] text-slate-500">Loading build tips...</p>
+                      ) : comments.length === 0 ? (
+                        <p className="text-[10px] text-slate-500 italic">
+                          No build tips yet — be the first to share thread or fabric notes!
+                        </p>
+                      ) : (
+                        comments.map((cm) => (
+                          <div
+                            key={cm.id}
+                            className="p-2 rounded-lg bg-slate-950/75 border border-slate-800/80 flex items-start justify-between gap-2"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 text-[10px]">
+                                <span className="font-bold text-indigo-300">{cm.author_name}</span>
+                                <span className="text-slate-500">•</span>
+                                <span className="text-slate-500">
+                                  {new Date(cm.created_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-200 mt-0.5 break-words">
+                                {cm.body}
+                              </p>
+                            </div>
+                            {user && user.id === cm.author_id && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteComment(cm.id)}
+                                className="p-1 rounded text-slate-500 hover:text-rose-400 transition shrink-0"
+                                title="Delete my tip"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

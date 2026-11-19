@@ -77,6 +77,18 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('jspdf')) return 'vendor-jspdf';
           if (id.includes('html2canvas')) return 'vendor-html2canvas';
+          if (id.includes('jszip')) return 'vendor-jszip';
+          if (id.includes('@supabase')) return 'vendor-supabase';
+          if (
+            id.includes('/node_modules/react/') ||
+            id.includes('\\node_modules\\react\\') ||
+            id.includes('/node_modules/react-dom/') ||
+            id.includes('\\node_modules\\react-dom\\') ||
+            id.includes('/node_modules/react-router-dom/') ||
+            id.includes('\\node_modules\\react-router-dom\\')
+          ) {
+            return 'vendor-react';
+          }
         },
       },
     },

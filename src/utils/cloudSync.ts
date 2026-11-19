@@ -41,8 +41,20 @@ export interface PublishedPatternRecord {
   thumbnail_data_url: string;
   is_public: boolean;
   likes_count: number;
+  remixed_from_short_id?: string | null;
+  remixed_from_title?: string;
+  remixes_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface PatternComment {
+  id: string;
+  pattern_id: string;
+  author_id: string;
+  author_name: string;
+  body: string;
+  created_at: string;
 }
 
 export interface CloudSyncSummary {
@@ -174,6 +186,8 @@ export async function publishPatternToCloud(params: {
   palette: PaletteColor[];
   backstitches?: BackstitchLine[];
   userId?: string | null;
+  remixedFromShortId?: string | null;
+  remixedFromTitle?: string;
 }): Promise<{ shortId: string; shareUrl: string; record: PublishedPatternRecord }> {
   const client = getClient();
   const height = params.gridData.length;
@@ -192,7 +206,7 @@ export async function publishPatternToCloud(params: {
     .filter(Boolean)
     .slice(0, 12);
 
-  const basePayload = {
+  const basePayload: Record<string, unknown> = {
     author_id: params.userId || null,
     author_name: (params.authorName || 'Anonymous Crafter').trim().slice(0, 40) || 'Anonymous Crafter',
     title: params.title.trim().slice(0, 80) || 'Untitled Pattern',
@@ -211,14 +225,33 @@ export async function publishPatternToCloud(params: {
     is_public: params.isPublic !== false,
   };
 
+  if (params.remixedFromShortId) {
+    basePayload.remixed_from_short_id = params.remixedFromShortId.trim().toLowerCase();
+    basePayload.remixed_from_title = (params.remixedFromTitle || '').trim().slice(0, 80);
+  }
+
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const shortId = generateShortId(10);
-    const { data, error } = await client
+    let { data, error } = await client
       .from('published_patterns')
       .insert({ ...basePayload, short_id: shortId })
       .select()
       .single();
+
+    // Graceful fallback if Wave 5 migration columns are not applied yet
+    if (error && (error.code === '42703' || error.code === 'PGRST204') && basePayload.remixed_from_short_id) {
+      const legacyPayload = { ...basePayload };
+      delete legacyPayload.remixed_from_short_id;
+      delete legacyPayload.remixed_from_title;
+      const retry = await client
+        .from('published_patterns')
+        .insert({ ...legacyPayload, short_id: shortId })
+        .select()
+        .single();
+      data = retry.data;
+      error = retry.error;
+    }
 
     if (!error && data) {
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.pixel-craft-studio.com';
@@ -266,6 +299,7 @@ export async function fetchPublishedPatternByShortId(
 export async function fetchCommunityFeed(options: {
   craftType?: CraftType | 'all';
   category?: string;
+  authorName?: string | null;
   search?: string;
   sort?: 'recent' | 'popular';
   limit?: number;
@@ -282,6 +316,9 @@ export async function fetchCommunityFeed(options: {
   }
   if (options.category && options.category !== 'All') {
     query = query.eq('category', options.category);
+  }
+  if (options.authorName && options.authorName.trim()) {
+    query = query.eq('author_name', options.authorName.trim());
   }
 
   const safeSearch = (options.search || '').trim().replace(/[%(),]/g, ' ').trim();
@@ -306,6 +343,77 @@ export async function fetchCommunityFeed(options: {
     throw new Error(error.message);
   }
   return (data || []) as PublishedPatternRecord[];
+}
+
+export async function fetchPatternComments(
+  patternId: string
+): Promise<{ comments: PatternComment[]; tableReady: boolean }> {
+  if (!isSupabaseConfigured || !supabase || !patternId) {
+    return { comments: [], tableReady: false };
+  }
+  const { data, error } = await supabase
+    .from('pattern_comments')
+    .select('*')
+    .eq('pattern_id', patternId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    if (error.code === '42P01' || error.code === 'PGRST205') {
+      return { comments: [], tableReady: false };
+    }
+    throw new Error(error.message);
+  }
+
+  return {
+    comments: (data || []) as PatternComment[],
+    tableReady: true,
+  };
+}
+
+export async function postPatternComment(params: {
+  patternId: string;
+  userId: string;
+  authorName: string;
+  body: string;
+}): Promise<PatternComment> {
+  const client = getClient();
+  const cleanBody = params.body.trim().slice(0, 400);
+  if (cleanBody.length < 2) {
+    throw new Error('Tip must be at least 2 characters.');
+  }
+
+  const { data, error } = await client
+    .from('pattern_comments')
+    .insert({
+      pattern_id: params.patternId,
+      author_id: params.userId,
+      author_name: (params.authorName || 'Studio Crafter').trim().slice(0, 40) || 'Studio Crafter',
+      body: cleanBody,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return data as PatternComment;
+}
+
+export async function deletePatternComment(
+  commentId: string,
+  userId: string
+): Promise<void> {
+  const client = getClient();
+  const { error } = await client
+    .from('pattern_comments')
+    .delete()
+    .eq('id', commentId)
+    .eq('author_id', userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 export async function fetchUserLikedPatternIds(userId: string): Promise<Set<string>> {

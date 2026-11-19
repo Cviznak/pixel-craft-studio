@@ -31,7 +31,8 @@ import {
   Globe,
   User as UserIcon,
   TrendingUp,
-  Cloud
+  Cloud,
+  GitFork
 } from 'lucide-react';
 
 interface StarterGalleryModalProps {
@@ -46,6 +47,7 @@ interface StarterGalleryModalProps {
   onOpenAiGenerator: () => void;
   onOpenSocialCard?: () => void;
   initialTab?: 'curated' | 'community';
+  initialAuthorFilter?: string | null;
   onOpenPublishModal?: () => void;
   onOpenCloudAuth?: () => void;
   onOpenCommunityPattern?: (record: PublishedPatternRecord, gridData: number[][]) => void;
@@ -61,6 +63,7 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
   onOpenAiGenerator,
   onOpenSocialCard,
   initialTab = 'curated',
+  initialAuthorFilter = null,
   onOpenPublishModal,
   onOpenCloudAuth,
   onOpenCommunityPattern,
@@ -79,6 +82,7 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
 
   // Community Live Feed states
   const [communitySort, setCommunitySort] = useState<'recent' | 'popular'>('recent');
+  const [selectedAuthorFilter, setSelectedAuthorFilter] = useState<string | null>(initialAuthorFilter);
   const [communityItems, setCommunityItems] = useState<PublishedPatternRecord[]>([]);
   const [communityError, setCommunityError] = useState<string | null>(null);
   const [communityFetchTick, setCommunityFetchTick] = useState<number>(0);
@@ -86,11 +90,12 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
   const [localLikeOffsets, setLocalLikeOffsets] = useState<Record<string, number>>({});
 
   const [prevOpenInit, setPrevOpenInit] = useState<string>('');
-  const openInitKey = `${isOpen}:${initialTab}`;
+  const openInitKey = `${isOpen}:${initialTab}:${initialAuthorFilter || ''}`;
   if (openInitKey !== prevOpenInit) {
     setPrevOpenInit(openInitKey);
     if (isOpen) {
       setActiveTab(initialTab);
+      setSelectedAuthorFilter(initialAuthorFilter);
       setLocalLikeOffsets({});
     }
   }
@@ -167,7 +172,7 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
     });
   }, [selectedCraft, selectedCategory, selectedDifficulty, searchQuery, favorites, onlyFavorites]);
 
-  const communityRequestKey = `${activeTab}:${selectedCraft}:${selectedCategory}:${searchQuery}:${communitySort}:${communityFetchTick}`;
+  const communityRequestKey = `${activeTab}:${selectedCraft}:${selectedCategory}:${selectedAuthorFilter || ''}:${searchQuery}:${communitySort}:${communityFetchTick}`;
 
   // Fetch live community feed when Community tab is open
   useEffect(() => {
@@ -176,6 +181,7 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
     fetchCommunityFeed({
       craftType: selectedCraft,
       category: selectedCategory,
+      authorName: selectedAuthorFilter,
       search: searchQuery,
       sort: communitySort,
       limit: 48,
@@ -194,7 +200,7 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, activeTab, selectedCraft, selectedCategory, searchQuery, communitySort, communityFetchTick, communityRequestKey]);
+  }, [isOpen, activeTab, selectedCraft, selectedCategory, selectedAuthorFilter, searchQuery, communitySort, communityFetchTick, communityRequestKey]);
 
   const isCommunityLoading =
     isSupabaseConfigured &&
@@ -477,115 +483,165 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
                 )}
               </div>
             ) : (
-              communityItems.map((item) => {
-                const isLiked = likedPatternIds?.has(item.id) || false;
-                const displayLikes = Math.max(0, item.likes_count + (localLikeOffsets[item.id] || 0));
-
-                return (
-                  <div
-                    key={item.id}
-                    className="group bg-slate-950/80 border border-slate-800 hover:border-pink-500/60 rounded-2xl overflow-hidden transition-all duration-200 flex flex-col justify-between shrink-0"
-                  >
-                    <div className="relative aspect-square w-full bg-slate-950 flex items-center justify-center p-4 overflow-hidden border-b border-slate-800/80">
-                      <Link
-                        to={`/p/${item.short_id}`}
-                        className="w-full h-full flex items-center justify-center"
-                        title={`View ${item.title} (/p/${item.short_id})`}
-                      >
-                        {item.thumbnail_data_url ? (
-                          <img
-                            src={item.thumbnail_data_url}
-                            alt={item.title}
-                            className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
-                            style={{ imageRendering: 'pixelated' }}
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="text-xs font-mono text-slate-500">{item.width}×{item.height}</div>
-                        )}
-                      </Link>
-
-                      <span className="absolute top-2.5 left-2.5 text-[9px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider text-indigo-300 bg-indigo-500/15 border-indigo-500/30">
-                        {item.craft_type}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!user) {
-                            onClose();
-                            onOpenCloudAuth?.();
-                            return;
-                          }
-                          setLocalLikeOffsets((prev) => ({
-                            ...prev,
-                            [item.id]: (prev[item.id] || 0) + (isLiked ? -1 : 1),
-                          }));
-                          onToggleCommunityLike?.(item.id);
-                        }}
-                        className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 flex items-center gap-1 text-[10px] font-bold transition shadow"
-                        title={user ? 'Toggle like' : 'Sign in to like'}
-                      >
-                        <Heart className={`w-3 h-3 ${isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
-                        <span>{displayLikes}</span>
-                      </button>
-                    </div>
-
-                    <div className="p-3 sm:p-3.5 flex-1 flex flex-col justify-between bg-slate-900/30">
+              <>
+                {selectedAuthorFilter && (
+                  <div className="col-span-full p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950/80 via-slate-900 to-pink-950/50 border border-indigo-500/40 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-600/25 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold text-base">
+                        <UserIcon className="w-5 h-5" />
+                      </div>
                       <div>
-                        <div className="flex items-center justify-between gap-1 text-[10px] text-slate-400">
-                          <span className="flex items-center gap-1 truncate font-semibold text-slate-300">
-                            <UserIcon className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
-                            {item.author_name}
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>@{selectedAuthorFilter}</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            Creator Showcase
                           </span>
-                          <span className="font-mono text-cyan-400 shrink-0">/p/{item.short_id}</span>
-                        </div>
+                        </h3>
+                        <p className="text-[11px] text-slate-300">
+                          {communityItems.length} public {communityItems.length === 1 ? 'pattern' : 'patterns'} •{' '}
+                          {communityItems.reduce(
+                            (sum, p) => sum + Math.max(0, p.likes_count + (localLikeOffsets[p.id] || 0)),
+                            0
+                          )}{' '}
+                          total likes
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAuthorFilter(null)}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition"
+                    >
+                      View All Creators
+                    </button>
+                  </div>
+                )}
 
+                {communityItems.map((item) => {
+                  const isLiked = likedPatternIds?.has(item.id) || false;
+                  const displayLikes = Math.max(0, item.likes_count + (localLikeOffsets[item.id] || 0));
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="group bg-slate-950/80 border border-slate-800 hover:border-pink-500/60 rounded-2xl overflow-hidden transition-all duration-200 flex flex-col justify-between shrink-0"
+                    >
+                      <div className="relative aspect-square w-full bg-slate-950 flex items-center justify-center p-4 overflow-hidden border-b border-slate-800/80">
                         <Link
                           to={`/p/${item.short_id}`}
-                          className="block font-bold text-xs sm:text-sm text-white group-hover:text-pink-300 transition mt-1 truncate"
+                          className="w-full h-full flex items-center justify-center"
+                          title={`View ${item.title} (/p/${item.short_id})`}
                         >
-                          {item.title}
+                          {item.thumbnail_data_url ? (
+                            <img
+                              src={item.thumbnail_data_url}
+                              alt={item.title}
+                              className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                              style={{ imageRendering: 'pixelated' }}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="text-xs font-mono text-slate-500">{item.width}×{item.height}</div>
+                          )}
                         </Link>
-                        {item.description && (
-                          <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1 line-clamp-2">
-                            {item.description}
-                          </p>
+
+                        <span className="absolute top-2.5 left-2.5 text-[9px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider text-indigo-300 bg-indigo-500/15 border-indigo-500/30">
+                          {item.craft_type}
+                        </span>
+
+                        {(item.remixed_from_short_id || (item.remixes_count || 0) > 0) && (
+                          <span
+                            className="absolute bottom-2.5 left-2.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-teal-500/40 bg-teal-950/90 text-teal-300 flex items-center gap-1"
+                            title={item.remixed_from_short_id ? `Remixed from /p/${item.remixed_from_short_id}` : `${item.remixes_count} remixes`}
+                          >
+                            <GitFork className="w-2.5 h-2.5" />
+                            <span>{item.remixed_from_short_id ? 'Remix' : `${item.remixes_count}`}</span>
+                          </span>
                         )}
 
-                        <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                          <span>{item.width}×{item.height}</span>
-                          <span>{item.color_count} colors</span>
-                          <span>{item.category}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => {
-                            if (onOpenCommunityPattern) {
-                              const decoded = decompressGridRLE(item.grid_rle, item.width, item.height);
-                              onOpenCommunityPattern(item, decoded);
+                            if (!user) {
                               onClose();
+                              onOpenCloudAuth?.();
+                              return;
                             }
+                            setLocalLikeOffsets((prev) => ({
+                              ...prev,
+                              [item.id]: (prev[item.id] || 0) + (isLiked ? -1 : 1),
+                            }));
+                            onToggleCommunityLike?.(item.id);
                           }}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition active:scale-95"
+                          className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 flex items-center gap-1 text-[10px] font-bold transition shadow"
+                          title={user ? 'Toggle like' : 'Sign in to like'}
                         >
-                          <span>Open in Studio</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <Heart className={`w-3 h-3 ${isLiked ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+                          <span>{displayLikes}</span>
                         </button>
-                        <Link
-                          to={`/p/${item.short_id}`}
-                          className="py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition shrink-0"
-                        >
-                          View
-                        </Link>
+                      </div>
+
+                      <div className="p-3 sm:p-3.5 flex-1 flex flex-col justify-between bg-slate-900/30">
+                        <div>
+                          <div className="flex items-center justify-between gap-1 text-[10px] text-slate-400">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedAuthorFilter(item.author_name)}
+                              className="flex items-center gap-1 truncate font-semibold text-slate-300 hover:text-indigo-300 transition text-left"
+                              title={`Filter showcase by ${item.author_name}`}
+                            >
+                              <UserIcon className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+                              <span className="truncate">{item.author_name}</span>
+                            </button>
+                            <span className="font-mono text-cyan-400 shrink-0">/p/{item.short_id}</span>
+                          </div>
+
+                          <Link
+                            to={`/p/${item.short_id}`}
+                            className="block font-bold text-xs sm:text-sm text-white group-hover:text-pink-300 transition mt-1 truncate"
+                          >
+                            {item.title}
+                          </Link>
+                          {item.description && (
+                            <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1 line-clamp-2">
+                              {item.description}
+                            </p>
+                          )}
+
+                          <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 font-mono">
+                            <span>{item.width}×{item.height}</span>
+                            <span>{item.color_count} colors</span>
+                            <span>{item.category}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onOpenCommunityPattern) {
+                                const decoded = decompressGridRLE(item.grid_rle, item.width, item.height);
+                                onOpenCommunityPattern(item, decoded);
+                                onClose();
+                              }
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md transition active:scale-95"
+                          >
+                            <span>Open in Studio</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                          <Link
+                            to={`/p/${item.short_id}`}
+                            className="py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition shrink-0"
+                          >
+                            View
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </>
             )
           ) : filteredPatterns.length === 0 ? (
             <div className="col-span-full py-16 text-center text-slate-400">

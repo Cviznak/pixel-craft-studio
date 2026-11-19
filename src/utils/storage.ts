@@ -7,6 +7,7 @@ import type {
   BackstitchLine,
   SavedProject 
 } from '../types/craft';
+import { parseOXSFile } from './oxsFormat';
 
 export interface SavedAppState {
   version: number;
@@ -356,6 +357,25 @@ export async function importVaultProjectFromFile(file: File): Promise<SavedProje
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
+        // Handle Open Cross-Stitch (.oxs) XML files
+        if (file.name.toLowerCase().endsWith('.oxs') || text.trimStart().startsWith('<')) {
+          const oxsProject = parseOXSFile(text);
+          const oxsSaved = await saveProjectToVault({
+            name: oxsProject.name || file.name.replace(/\.[^/.]+$/, '') || 'Imported OXS',
+            craftType: oxsProject.gridConfig.craftType,
+            gridConfig: oxsProject.gridConfig,
+            gridData: oxsProject.gridData,
+            palette: oxsProject.palette,
+            completedCells: oxsProject.completedCells || {},
+            backstitches: oxsProject.backstitches || [],
+            width: oxsProject.gridConfig.width,
+            height: oxsProject.gridConfig.height,
+            colorCount: oxsProject.palette.length,
+          });
+          resolve(oxsSaved);
+          return;
+        }
+
         const parsed = JSON.parse(text);
 
         // Check if file is v2 payload or legacy CraftProject

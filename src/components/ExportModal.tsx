@@ -8,6 +8,7 @@ import {
   saveProjectJSON,
   exportBobbinLabelsPDF
 } from '../utils/exportUtils';
+import { exportPatternToOXS, exportPatternToSVG } from '../utils/oxsFormat';
 import { buildShareablePatternUrl } from '../utils/shareUtils';
 import { buildAmazonSuppliesUrl } from '../utils/amazonUtils';
 import { getCraftDimensionsSummary } from '../utils/craftCalculator';
@@ -135,6 +136,34 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const handleSaveJSON = () => {
     saveProjectJSON(projectName, config, gridData, palette, completedCells, backstitches);
+  };
+
+  const handleExportOXS = () => {
+    exportPatternToOXS(
+      gridData,
+      palette,
+      config,
+      `${projectName.toLowerCase().replace(/\s+/g, '-')}.oxs`,
+      {
+        title: projectName,
+        author: designerName,
+        backstitches,
+      }
+    );
+  };
+
+  const handleExportSVG = () => {
+    exportPatternToSVG(
+      gridData,
+      palette,
+      config,
+      `${projectName.toLowerCase().replace(/\s+/g, '-')}-vector.svg`,
+      {
+        title: projectName,
+        includeGridLines: config.showGridLines,
+        backstitches,
+      }
+    );
   };
 
   const handleExportPatternKeeperPDF = () => {
@@ -706,6 +735,60 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               >
                 <Save className="w-3.5 h-3.5" />
                 Save JSON
+              </button>
+            </div>
+
+            {/* 4b. Open Cross-Stitch (.OXS) Universal Pro Format */}
+            <div className="p-3.5 rounded-xl border border-teal-500/30 bg-teal-950/15 hover:bg-teal-950/25 transition flex items-center justify-between gap-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-teal-500/20 text-teal-300 mt-0.5">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5 flex-wrap">
+                    <span>Open Cross-Stitch (.OXS)</span>
+                    <span className="px-1.5 py-0.5 bg-teal-500/20 text-teal-300 text-[9px] rounded-full font-bold">
+                      WinStitch • Pattern Keeper
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Industry XML format with DMC codes, symbols &amp; backstitches (re-importable anytime).
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleExportOXS}
+                className="px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                .OXS
+              </button>
+            </div>
+
+            {/* 4c. Layered Scalable Vector (.SVG) */}
+            <div className="p-3.5 rounded-xl border border-indigo-500/30 bg-indigo-950/15 hover:bg-indigo-950/25 transition flex items-center justify-between gap-2">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 mt-0.5">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5 flex-wrap">
+                    <span>Layered Vector Graphic (.SVG)</span>
+                    <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 text-[9px] rounded-full font-bold">
+                      Cricut • Posters
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Color-grouped &lt;g&gt; layers for vinyl cutters, laser craft &amp; crisp infinite scaling.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleExportSVG}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                .SVG
               </button>
             </div>
 

@@ -12,6 +12,7 @@ import {
   CloudOff,
   Sparkles,
   Lock,
+  GitFork,
 } from 'lucide-react';
 import type { BackstitchLine, GridConfig, PaletteColor } from '../types/craft';
 import { COMMUNITY_CATEGORIES } from '../utils/communityPatterns';
@@ -31,6 +32,7 @@ interface PublishPatternModalProps {
   backstitches?: BackstitchLine[];
   user: User | null;
   defaultAuthorName: string;
+  remixedFrom?: { shortId: string; title: string } | null;
   onOpenCloudAuth: () => void;
   onPublished?: (shortId: string, title: string) => void;
 }
@@ -44,6 +46,7 @@ export const PublishPatternModal: React.FC<PublishPatternModalProps> = ({
   backstitches = [],
   user,
   defaultAuthorName,
+  remixedFrom = null,
   onOpenCloudAuth,
   onPublished,
 }) => {
@@ -55,6 +58,7 @@ export const PublishPatternModal: React.FC<PublishPatternModalProps> = ({
   const [category, setCategory] = useState('Community');
   const [tagsText, setTagsText] = useState('');
   const [isPublic, setIsPublic] = useState(true);
+  const [includeRemixAttribution, setIncludeRemixAttribution] = useState(true);
   const [isPublishing, setIsPublishing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [publishedResult, setPublishedResult] = useState<{
@@ -69,13 +73,14 @@ export const PublishPatternModal: React.FC<PublishPatternModalProps> = ({
     setPrevOpen(isOpen);
     if (isOpen) {
       const dims = `${gridData[0]?.length || config.width}×${gridData.length || config.height}`;
-      setTitle(`My ${config.craftType} Pattern (${dims})`);
+      setTitle(remixedFrom ? `${remixedFrom.title} (Remix)` : `My ${config.craftType} Pattern (${dims})`);
       const savedGuest = typeof window !== 'undefined' ? localStorage.getItem(GUEST_AUTHOR_KEY) || '' : '';
       setAuthorName(defaultAuthorName || savedGuest || 'Studio Crafter');
       setDescription('');
       setCategory('Community');
       setTagsText(config.craftType);
       setIsPublic(true);
+      setIncludeRemixAttribution(!!remixedFrom);
       setErrorMsg(null);
       setPublishedResult(null);
       setCopiedShortUrl(false);
@@ -134,6 +139,8 @@ export const PublishPatternModal: React.FC<PublishPatternModalProps> = ({
         palette,
         backstitches,
         userId: user?.id || null,
+        remixedFromShortId: includeRemixAttribution && remixedFrom ? remixedFrom.shortId : null,
+        remixedFromTitle: includeRemixAttribution && remixedFrom ? remixedFrom.title : undefined,
       });
 
       setPublishedResult({ shortId: res.shortId, shareUrl: res.shareUrl });
@@ -311,6 +318,28 @@ export const PublishPatternModal: React.FC<PublishPatternModalProps> = ({
 
               {/* Metadata Form */}
               <div className="sm:col-span-8 space-y-3">
+                {remixedFrom && (
+                  <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <GitFork className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                      <span className="text-[11px] text-teal-200 truncate">
+                        Remixing <strong className="text-white">/p/{remixedFrom.shortId}</strong> ({remixedFrom.title})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIncludeRemixAttribution((v) => !v)}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-md border transition shrink-0 ${
+                        includeRemixAttribution
+                          ? 'bg-teal-600 text-white border-teal-500'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      {includeRemixAttribution ? 'Credit ON' : 'Credit OFF'}
+                    </button>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-[11px] font-bold text-slate-300 mb-1">
                     Pattern Title *

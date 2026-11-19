@@ -35,6 +35,7 @@ import {
   Cloud
 } from 'lucide-react';
 import { formatDurationClock } from '../utils/wipTracker';
+import { parseOXSFile } from '../utils/oxsFormat';
 
 interface HeaderProps {
   config: GridConfig;
@@ -201,15 +202,27 @@ export const Header: React.FC<HeaderProps> = ({
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const parsed = JSON.parse(event.target?.result as string) as CraftProject;
-        if (parsed.gridData && parsed.palette) {
-          onLoadProjectJSON(parsed);
+        const rawText = String(event.target?.result || '');
+        if (file.name.toLowerCase().endsWith('.oxs') || rawText.trimStart().startsWith('<')) {
+          const parsedOxs = parseOXSFile(rawText);
+          onLoadProjectJSON(parsedOxs);
+          setIsProjectMenuOpen(false);
+          return;
+        }
+
+        const parsed = JSON.parse(rawText);
+        const candidate: CraftProject | undefined =
+          parsed?.type === 'pixel-craft-studio-project' && parsed.project
+            ? parsed.project
+            : parsed;
+        if (candidate && candidate.gridData && candidate.palette) {
+          onLoadProjectJSON(candidate);
           setIsProjectMenuOpen(false);
         } else {
-          alert('Invalid project JSON file');
+          alert('Invalid project file. Expected .oxs, .json, or .pixelcraft format.');
         }
-      } catch (err) {
-        alert('Could not parse project JSON file');
+      } catch {
+        alert('Could not parse project file (JSON or .OXS)');
       }
     };
     reader.readAsText(file);
@@ -334,11 +347,11 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Actions & Utilities (Clean, decluttered, high breathing room) */}
       <div className="flex items-center gap-1 sm:gap-1.5 xl:gap-2">
-        {/* Hidden Project JSON Input */}
+        {/* Hidden Project JSON / .OXS Input */}
         <input
           ref={fileInputRef}
           type="file"
-          accept=".json"
+          accept=".json,.pixelcraft,.oxs"
           onChange={handleJsonUpload}
           className="hidden"
         />
@@ -644,7 +657,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 transition text-left"
               >
                 <FolderOpen className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Load Project JSON</span>
+                <span>Import Project (JSON / .OXS)</span>
               </button>
 
               {/* Etsy & Seller Commercial Kit */}

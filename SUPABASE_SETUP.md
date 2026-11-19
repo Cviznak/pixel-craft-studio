@@ -1,22 +1,22 @@
-# Supabase Cloud Setup — Pixel Craft Studio (Wave 4)
+# Supabase Cloud Setup — Pixel Craft Studio (Wave 4 & Wave 5)
 
 Pixel Craft Studio works 100% offline in the browser by default. Connecting a dedicated **Supabase** project activates:
 
-- **Live Community Feed & Short Share Links (`/p/:id`)** (both authenticated crafters and guest publishers)
+- **Live Community Feed, Creator Profiles, Remix Lineage, Build Tips & Short Share Links (`/p/:id`)**
 - **Cloud Projects Vault Sync** across desktop, tablet, and phone
 - **Cloud Stash, Favorites & WIP Timer Journal Sync**
 
-Follow these **3 steps** to activate Wave 4 on your own Supabase project:
+Follow these **3 steps** to activate Cloud & Community features on your own Supabase project:
 
 ---
 
-## Step 1: Create a Supabase Project & Run the Migration
+## Step 1: Create a Supabase Project & Run the Migrations
 
 1. Open the [Supabase Dashboard](https://supabase.com/dashboard) and click **New Project**.
 2. Wait ~1 minute for Postgres to initialize, then open **SQL Editor** in the left sidebar.
-3. Paste the entire contents of [`supabase/migrations/20261119_wave4_community_and_cloud_sync.sql`](supabase/migrations/20261119_wave4_community_and_cloud_sync.sql) and click **Run**.
+3. Run [`20261119_wave4_community_and_cloud_sync.sql`](supabase/migrations/20261119_wave4_community_and_cloud_sync.sql) first, then run [`20261119_wave5_community_depth.sql`](supabase/migrations/20261119_wave5_community_depth.sql).
 
-This creates 4 Row-Level-Security–protected tables (`published_patterns`, `pattern_likes`, `cloud_projects`, `user_cloud_preferences`) and explicit `anon` / `authenticated` API grants.
+This creates 5 Row-Level-Security–protected tables (`published_patterns`, `pattern_likes`, `pattern_comments`, `cloud_projects`, `user_cloud_preferences`), remix lineage tracking, and explicit `anon` / `authenticated` API grants.
 
 ---
 
@@ -44,6 +44,6 @@ This creates 4 Row-Level-Security–protected tables (`published_patterns`, `pat
    VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key_here
    ```
 
-3. For **production (Vercel)**, open **Project Settings → Environment Variables** in Vercel (`pixel-craft-studio`), add both `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`, and trigger a redeploy.
+3. For **production (Vercel)**, open **Project Settings → Environment Variables** in Vercel (`pixel-craft-studio`), add both public keys (Vercel's Marketplace integration also sets `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, both supported automatically by Vite), and trigger a redeploy.
 
-Once those two `VITE_*` variables are present, **Community Feed**, **`/p/:id` Short Share Links**, **Pattern Publishing**, **Cloud Vault Sync**, and **Cloud Stash / WIP Sync** activate automatically with zero extra code changes!
+Once connected, **Community Feed**, **`/p/:id` Short Share Links with dynamic OG image previews**, **Creator Profiles**, **Build Tips**, **Cloud Vault Sync**, and **Cloud Stash / WIP Sync** activate automatically!

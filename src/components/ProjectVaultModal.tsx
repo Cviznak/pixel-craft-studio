@@ -331,7 +331,7 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 active:scale-95 transition"
-              title="Import .pixelcraft or .json pattern backup"
+              title="Import .pixelcraft, .json, or .oxs Open Cross-Stitch file"
             >
               <Upload className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Import</span>
@@ -339,7 +339,7 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pixelcraft,.json"
+              accept=".pixelcraft,.json,.oxs"
               className="hidden"
               onChange={handleFileChange}
             />
