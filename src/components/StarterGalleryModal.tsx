@@ -262,6 +262,16 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {activeTab === 'community' && (
+              <Link
+                to="/community"
+                onClick={onClose}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-indigo-300 border border-slate-700 text-xs font-semibold transition"
+                title="Open full-screen Community Showcase directory"
+              >
+                <span>Full Page ↗</span>
+              </Link>
+            )}
             {onOpenPublishModal && (
               <button
                 type="button"

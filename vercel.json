@@ -39,6 +39,83 @@
       "destination": "/api/share-meta?type=pattern&slug=:slug"
     },
     {
+      "source": "/u/:handle",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=creator&handle=:handle"
+    },
+    {
+      "source": "/oxs-viewer",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=page&slug=oxs-viewer"
+    },
+    {
+      "source": "/tools/color-substitutor",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=page&slug=color-substitutor"
+    },
+    {
+      "source": "/community",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=page&slug=community"
+    },
+    {
+      "source": "/about",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=page&slug=about"
+    },
+    {
+      "source": "/license",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=page&slug=license"
+    },
+    {
+      "source": "/privacy",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+        }
+      ],
+      "destination": "/api/share-meta?type=page&slug=privacy"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

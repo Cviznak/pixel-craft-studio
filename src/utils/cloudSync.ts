@@ -301,44 +301,60 @@ export async function fetchCommunityFeed(options: {
   category?: string;
   authorName?: string | null;
   search?: string;
-  sort?: 'recent' | 'popular';
+  sort?: 'recent' | 'popular' | 'remixes';
   limit?: number;
 } = {}): Promise<PublishedPatternRecord[]> {
   if (!isSupabaseConfigured || !supabase) return [];
 
-  let query = supabase
-    .from('published_patterns')
-    .select('*')
-    .eq('is_public', true);
+  const buildQuery = (sortMode: 'recent' | 'popular' | 'remixes') => {
+    let query = supabase!
+      .from('published_patterns')
+      .select('*')
+      .eq('is_public', true);
 
-  if (options.craftType && options.craftType !== 'all') {
-    query = query.eq('craft_type', options.craftType);
-  }
-  if (options.category && options.category !== 'All') {
-    query = query.eq('category', options.category);
-  }
-  if (options.authorName && options.authorName.trim()) {
-    query = query.eq('author_name', options.authorName.trim());
+    if (options.craftType && options.craftType !== 'all') {
+      query = query.eq('craft_type', options.craftType);
+    }
+    if (options.category && options.category !== 'All') {
+      query = query.eq('category', options.category);
+    }
+    if (options.authorName && options.authorName.trim()) {
+      query = query.eq('author_name', options.authorName.trim());
+    }
+
+    const safeSearch = (options.search || '').trim().replace(/[%(),]/g, ' ').trim();
+    if (safeSearch) {
+      query = query.or(
+        `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%,author_name.ilike.%${safeSearch}%`
+      );
+    }
+
+    if (sortMode === 'remixes') {
+      query = query
+        .order('remixes_count', { ascending: false })
+        .order('likes_count', { ascending: false })
+        .order('created_at', { ascending: false });
+    } else if (sortMode === 'popular') {
+      query = query
+        .order('likes_count', { ascending: false })
+        .order('created_at', { ascending: false });
+    } else {
+      query = query.order('created_at', { ascending: false });
+    }
+
+    return query.limit(options.limit ?? 48);
+  };
+
+  const requestedSort = options.sort || 'recent';
+  let { data, error } = await buildQuery(requestedSort);
+
+  // Graceful fallback if Wave 5 migration remixes_count column is not applied yet
+  if (error && (error.code === '42703' || error.code === 'PGRST204') && requestedSort === 'remixes') {
+    const fallback = await buildQuery('popular');
+    data = fallback.data;
+    error = fallback.error;
   }
 
-  const safeSearch = (options.search || '').trim().replace(/[%(),]/g, ' ').trim();
-  if (safeSearch) {
-    query = query.or(
-      `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%,author_name.ilike.%${safeSearch}%`
-    );
-  }
-
-  if (options.sort === 'popular') {
-    query = query
-      .order('likes_count', { ascending: false })
-      .order('created_at', { ascending: false });
-  } else {
-    query = query.order('created_at', { ascending: false });
-  }
-
-  query = query.limit(options.limit ?? 48);
-
-  const { data, error } = await query;
   if (error) {
     throw new Error(error.message);
   }

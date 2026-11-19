@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { CraftType, GridConfig, CraftProject } from '../types/craft';
 import { 
   Download, 
@@ -32,7 +33,11 @@ import {
   Command,
   Frame,
   Timer,
-  Cloud
+  Cloud,
+  FileCode2,
+  RefreshCw,
+  Globe,
+  ShieldCheck
 } from 'lucide-react';
 import { formatDurationClock } from '../utils/wipTracker';
 import { parseOXSFile } from '../utils/oxsFormat';
@@ -122,6 +127,7 @@ export const Header: React.FC<HeaderProps> = ({
   isRightPanelOpen = true,
   onToggleRightPanel,
 }) => {
+  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -860,6 +866,55 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Color Chart & Hex Matcher</span>
                 </button>
               )}
+
+              <div className="my-1 border-t border-slate-800/80" />
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Standalone Pages
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsProjectMenuOpen(false);
+                  navigate('/oxs-viewer');
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
+              >
+                <FileCode2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>.OXS Pattern Viewer</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsProjectMenuOpen(false);
+                  navigate('/tools/color-substitutor');
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Color Substitutor &amp; Blends</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsProjectMenuOpen(false);
+                  navigate('/community');
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left"
+              >
+                <Globe className="w-3.5 h-3.5 text-pink-400" />
+                <span>Community Showcase Hub</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsProjectMenuOpen(false);
+                  navigate('/about');
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition text-left"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+                <span>About, License &amp; Privacy</span>
+              </button>
 
               <div className="my-1 border-t border-slate-800/80" />
 

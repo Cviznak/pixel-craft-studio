@@ -95,6 +95,7 @@ import {
 } from './utils/craftRoutes';
 import { getPatternBySlug } from './utils/communityPatterns';
 import { decodePatternFromHash } from './utils/shareUtils';
+import { consumePendingStudioProject } from './utils/studioHandoff';
 import {
   SlidersHorizontal,
   Sparkles,
@@ -535,6 +536,24 @@ export default function App() {
             setIsInitialLoaded(true);
             return;
           }
+        }
+
+        const pendingProject = consumePendingStudioProject();
+        if (pendingProject) {
+          setConfig(pendingProject.gridConfig);
+          latestConfigRef.current = pendingProject.gridConfig;
+          setGridData(pendingProject.gridData);
+          setPalette(pendingProject.palette);
+          paletteRef.current = pendingProject.palette;
+          setCompletedCells(pendingProject.completedCells || {});
+          setBackstitches(pendingProject.backstitches || []);
+          setGridHistory([]);
+          setGridFuture([]);
+          setRemixedFrom(null);
+          setToastMessage(`📂 Opened "${pendingProject.name}" in Studio!`);
+          setTimeout(() => setToastMessage(null), 3500);
+          setIsInitialLoaded(true);
+          return;
         }
 
         const saved = await loadAppState();
@@ -2183,6 +2202,51 @@ export default function App() {
         icon: <FolderArchive className="w-4 h-4 text-indigo-400" />,
         onExecute: () => setIsProjectVaultOpen(true),
       },
+      {
+        id: 'page-oxs-viewer',
+        label: '.OXS Pattern Viewer & Converter',
+        description: 'Open external .oxs charts, calculate Aida & skeins, or export PDF/SVG',
+        category: 'Tools',
+        keywords: ['oxs', 'viewer', 'converter', 'winstitch', 'flosscross', 'page'],
+        icon: <FileText className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => navigate('/oxs-viewer'),
+      },
+      {
+        id: 'page-color-substitutor',
+        label: 'Batch Color Substitutor & 2-Strand Blend Finder',
+        description: 'Convert thread/bead shopping lists and compute optical 2-strand blends',
+        category: 'Tools',
+        keywords: ['substitutor', 'substitute', 'anchor', 'blend', 'tweeding', 'batch'],
+        icon: <RefreshCw className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => navigate('/tools/color-substitutor'),
+      },
+      {
+        id: 'page-community-hub',
+        label: 'Community Pattern Showcase Hub',
+        description: 'Explore public community patterns, creator portfolios & trending remixes',
+        category: 'Tools',
+        keywords: ['community', 'hub', 'showcase', 'explore', 'remix'],
+        icon: <Globe className="w-4 h-4 text-pink-400" />,
+        onExecute: () => navigate('/community'),
+      },
+      {
+        id: 'page-license',
+        label: 'Commercial & Etsy Seller License',
+        description: 'Read creator commercial rights and seller kit usage terms',
+        category: 'Tools',
+        keywords: ['license', 'commercial', 'etsy', 'rights', 'terms'],
+        icon: <Sparkles className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => navigate('/license'),
+      },
+      {
+        id: 'page-about-privacy',
+        label: 'About Studio & Privacy Architecture',
+        description: 'View multi-craft capabilities and local-first privacy details',
+        category: 'Tools',
+        keywords: ['about', 'privacy', 'storage', 'info'],
+        icon: <Package className="w-4 h-4 text-cyan-400" />,
+        onExecute: () => navigate('/about'),
+      },
       ...craftEntries.map((c) => ({
         id: `craft-${c.id}`,
         label: c.label,
@@ -3274,10 +3338,7 @@ export default function App() {
             onSaveToVault={handleSavePublishedToVault}
             onSelectCreator={(author) => {
               setActiveSharedPatternId(null);
-              setGalleryAuthorFilter(author);
-              setGalleryInitialTab('community');
-              setIsStarterGalleryOpen(true);
-              navigate('/gallery');
+              navigate(`/u/${encodeURIComponent(author)}`);
             }}
             onDeleted={() => {
               showToast('Deleted published pattern.');

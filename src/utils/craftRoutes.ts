@@ -195,6 +195,61 @@ export const GALLERY_ROUTE: StaticRouteConfig = {
   canonicalUrl: 'https://www.pixel-craft-studio.com/gallery',
 };
 
+export const STANDALONE_PAGE_ROUTES: Record<string, StaticRouteConfig> = {
+  '/oxs-viewer': {
+    path: '/oxs-viewer',
+    metaTitle: 'Free .OXS Cross-Stitch Pattern Viewer & Converter (PDF, SVG, DMC List) | Pixel Craft Studio',
+    metaDescription: 'Open and inspect any .OXS cross-stitch chart online for free. View symbols and backstitches, calculate Aida fabric size and DMC skeins, export PDF or layered SVG, or remix in Studio.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/oxs-viewer',
+  },
+  '/tools/color-substitutor': {
+    path: '/tools/color-substitutor',
+    metaTitle: 'Batch DMC, Anchor, Perler & Miyuki Color Substitutor + 2-Strand Blend Finder | Pixel Craft Studio',
+    metaDescription: 'Batch-convert DMC floss shopping lists to Anchor, Perler, Artkal, Hama, Miyuki Delica, or your personal stash using CIELAB matching, plus a 2-strand tweeding blend finder.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/tools/color-substitutor',
+  },
+  '/community': {
+    path: '/community',
+    metaTitle: 'Community Craft Pattern Showcase — Remix & Share Free Charts | Pixel Craft Studio',
+    metaDescription: 'Explore community-published Cross-Stitch, Tapestry Crochet, Knitting, Perler Bead, and Bead Loom patterns. Like, bookmark build tips, or open any design in Studio to remix.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/community',
+  },
+  '/about': {
+    path: '/about',
+    metaTitle: 'About Pixel Craft Studio — Free Multi-Craft Pattern & Stitch Engine',
+    metaDescription: 'Learn how Pixel Craft Studio helps stitchers, crocheters, knitters, and bead artists turn photos and pixel art into calibrated charts with CIELAB matching and zero paywalls.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/about',
+  },
+  '/license': {
+    path: '/license',
+    metaTitle: 'Commercial & Etsy Seller Pattern License | Pixel Craft Studio',
+    metaDescription: 'Commercial usage rights for patterns created in Pixel Craft Studio. Use your generated PDF, OXS, SVG, and listing kits freely on Etsy or personal shops.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/license',
+  },
+  '/privacy': {
+    path: '/privacy',
+    metaTitle: 'Privacy Policy & Local-First Storage Architecture | Pixel Craft Studio',
+    metaDescription: 'How Pixel Craft Studio handles browser-local auto-saves, optional Supabase cloud sync accounts, AI image generation requests, and anonymous analytics.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/privacy',
+  },
+};
+
+export function getStandalonePageRoute(pathname: string): StaticRouteConfig | null {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  return STANDALONE_PAGE_ROUTES[clean] || null;
+}
+
+export function buildCreatorProfileMeta(handle: string): StaticRouteConfig {
+  const cleanHandle = handle.trim() || 'Creator';
+  const encoded = encodeURIComponent(cleanHandle);
+  return {
+    path: `/u/${encoded}`,
+    metaTitle: `@${cleanHandle} — Creator Portfolio & Craft Patterns | Pixel Craft Studio`,
+    metaDescription: `Browse free public patterns published by @${cleanHandle} on Pixel Craft Studio. Open any pattern in Studio to stitch, inspect DMC/bead legends, or remix.`,
+    canonicalUrl: `https://www.pixel-craft-studio.com/u/${encoded}`,
+  };
+}
+
 export function getColorChartRoute(pathname: string): StaticRouteConfig | null {
   const clean = pathname.replace(/\/+$/, '') || '/';
   return COLOR_CHART_ROUTES[clean] || null;

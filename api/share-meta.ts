@@ -18,10 +18,53 @@ function formatSlugTitle(slug: string): string {
     .join(' ');
 }
 
+const STATIC_PAGE_META: Record<
+  string,
+  { path: string; title: string; description: string }
+> = {
+  'oxs-viewer': {
+    path: '/oxs-viewer',
+    title: 'Free .OXS Cross-Stitch Pattern Viewer & Converter | Pixel Craft Studio',
+    description:
+      'Open and inspect any .OXS cross-stitch chart online for free. Calculate Aida sizes & DMC skeins, export PDF or layered SVG, or edit in Studio.',
+  },
+  'color-substitutor': {
+    path: '/tools/color-substitutor',
+    title: 'Batch DMC, Anchor, Perler & Miyuki Color Substitutor + Blend Finder | Pixel Craft Studio',
+    description:
+      'Batch-convert DMC lists to Anchor, Perler, Artkal, Hama, Miyuki Delica, or your personal stash using CIELAB matching, plus a 2-strand tweeding blend finder.',
+  },
+  community: {
+    path: '/community',
+    title: 'Community Craft Pattern Showcase — Remix & Share Free Charts | Pixel Craft Studio',
+    description:
+      'Explore community-published Cross-Stitch, Crochet, Knitting, Perler Bead, and Bead Loom patterns. Like, read build tips, and remix in Studio.',
+  },
+  about: {
+    path: '/about',
+    title: 'About Pixel Craft Studio — Free Multi-Craft Pattern Engine',
+    description:
+      'Learn how Pixel Craft Studio helps stitchers, crocheters, knitters, and bead artists turn photos into calibrated charts with zero paywalls.',
+  },
+  license: {
+    path: '/license',
+    title: 'Commercial & Etsy Seller Pattern License | Pixel Craft Studio',
+    description:
+      'Commercial usage rights for patterns created in Pixel Craft Studio. Use your generated PDF, OXS, SVG, and listing kits freely on Etsy or personal shops.',
+  },
+  privacy: {
+    path: '/privacy',
+    title: 'Privacy Policy & Local-First Data Architecture | Pixel Craft Studio',
+    description:
+      'How Pixel Craft Studio handles browser-local auto-saves, optional Supabase cloud sync accounts, AI generation requests, and analytics.',
+  },
+};
+
 export async function buildShareMetaHtml(params: {
   type?: string;
   id?: string;
   slug?: string;
+  handle?: string;
   supabaseUrl?: string;
   supabaseKey?: string;
 }): Promise<string> {
@@ -34,7 +77,28 @@ export async function buildShareMetaHtml(params: {
   let imageUrl = `${ORIGIN}/og-image.png`;
   let authorLine = '';
 
-  if (type === 'pattern' && params.slug) {
+  if (type === 'creator' && params.handle) {
+    let decodedHandle = params.handle;
+    try {
+      decodedHandle = decodeURIComponent(params.handle);
+    } catch {
+      decodedHandle = params.handle;
+    }
+    const cleanHandle = decodedHandle.replace(/[<>]/g, '').trim().slice(0, 60) || 'Creator';
+    title = `@${cleanHandle} — Creator Portfolio & Craft Patterns | Pixel Craft Studio`;
+    description = `Browse free public craft patterns published by @${cleanHandle} on Pixel Craft Studio. Open any pattern in Studio to stitch, inspect legends, or remix.`;
+    canonicalUrl = `${ORIGIN}/u/${encodeURIComponent(cleanHandle)}`;
+    imageUrl = `${ORIGIN}/og-image.png`;
+  } else if (type === 'page' && params.slug) {
+    const cleanSlug = params.slug.replace(/[^a-z0-9-]/gi, '').toLowerCase();
+    const pageMeta = STATIC_PAGE_META[cleanSlug];
+    if (pageMeta) {
+      title = pageMeta.title;
+      description = pageMeta.description;
+      canonicalUrl = `${ORIGIN}${pageMeta.path}`;
+      imageUrl = `${ORIGIN}/og-image.png`;
+    }
+  } else if (type === 'pattern' && params.slug) {
     const cleanSlug = params.slug.replace(/[^a-z0-9-]/gi, '').toLowerCase();
     const prettyName = formatSlugTitle(cleanSlug) || 'Craft Pattern';
     title = `${prettyName} — Free Printable Craft Pattern | Pixel Craft Studio`;
@@ -137,6 +201,7 @@ export default async function handler(req: any, res: any) {
     const type = String(req.query?.type || 'p');
     const id = req.query?.id ? String(req.query.id) : undefined;
     const slug = req.query?.slug ? String(req.query.slug) : undefined;
+    const handle = req.query?.handle ? String(req.query.handle) : undefined;
 
     const supabaseUrl =
       process.env.SUPABASE_URL ||
@@ -155,6 +220,7 @@ export default async function handler(req: any, res: any) {
       type,
       id,
       slug,
+      handle,
       supabaseUrl,
       supabaseKey,
     });
