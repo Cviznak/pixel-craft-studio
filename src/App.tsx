@@ -44,6 +44,8 @@ import { ProjectVaultModal } from './components/ProjectVaultModal';
 import { EtsySellerKitModal } from './components/EtsySellerKitModal';
 import { PhotoPaletteModal } from './components/PhotoPaletteModal';
 import { MaterialKitModal } from './components/MaterialKitModal';
+import { ColorChartModal, type ColorChartTab } from './components/ColorChartModal';
+import { PatternDetailModal } from './components/PatternDetailModal';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb, rgbToLab, deltaE } from './utils/colorUtils';
@@ -54,7 +56,16 @@ import {
 } from './utils/pixelStudioPalettes';
 import { getCraftSymbol } from './utils/symbols';
 import { cleanConfettiColors } from './utils/paletteOperations';
-import { getRouteByPath, getPathForCraft, updateDocumentMeta, getCalculatorRoute } from './utils/craftRoutes';
+import { 
+  GALLERY_ROUTE,
+  getRouteByPath, 
+  getPathForCraft, 
+  updateDocumentMeta, 
+  getCalculatorRoute,
+  getColorChartRoute,
+  getPatternRouteInfo
+} from './utils/craftRoutes';
+import { getPatternBySlug } from './utils/communityPatterns';
 import { decodePatternFromHash } from './utils/shareUtils';
 import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText, Smartphone, FolderArchive } from 'lucide-react';
 
@@ -135,6 +146,9 @@ export default function App() {
   const [isEtsyKitOpen, setIsEtsyKitOpen] = useState<boolean>(false);
   const [isPhotoPaletteOpen, setIsPhotoPaletteOpen] = useState<boolean>(false);
   const [isMaterialKitOpen, setIsMaterialKitOpen] = useState<boolean>(false);
+  const [isColorChartOpen, setIsColorChartOpen] = useState<boolean>(false);
+  const [colorChartInitialTab, setColorChartInitialTab] = useState<ColorChartTab>('hex-matcher');
+  const [activePatternSlug, setActivePatternSlug] = useState<string | null>(null);
   const [vaultProjectsCount, setVaultProjectsCount] = useState<number>(0);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
@@ -513,8 +527,11 @@ export default function App() {
 
   // Synchronize browser URL route with active craft and dynamic SEO metadata
   useEffect(() => {
-    const route = getRouteByPath(location.pathname);
-    const calcRoute = getCalculatorRoute(location.pathname);
+    const cleanPath = location.pathname.replace(/\/+$/, '') || '/';
+    const route = getRouteByPath(cleanPath);
+    const calcRoute = getCalculatorRoute(cleanPath);
+    const colorChartRoute = getColorChartRoute(cleanPath);
+    const patternRouteInfo = getPatternRouteInfo(cleanPath);
 
     if (route) {
       if (latestConfigRef.current.craftType !== route.craftType) {
@@ -522,24 +539,91 @@ export default function App() {
         latestConfigRef.current = next;
         setConfig(next);
       }
-      updateDocumentMeta(route);
+      setActivePatternSlug(null);
+      setIsColorChartOpen(false);
+      setIsStarterGalleryOpen(false);
+      setIsCalculatorsOpen(false);
+      updateDocumentMeta(route, null);
     } else if (calcRoute) {
       setIsCalculatorsOpen(true);
-      if (location.pathname === '/calculators/floss-estimator') {
+      setActivePatternSlug(null);
+      setIsColorChartOpen(false);
+      setIsStarterGalleryOpen(false);
+      if (cleanPath === '/calculators/floss-estimator') {
         setCalculatorInitialTab('floss');
-      } else if (location.pathname === '/calculators/bead-converter') {
+      } else if (cleanPath === '/calculators/bead-converter') {
         setCalculatorInitialTab('beads');
-      } else if (location.pathname === '/calculators/c2c-blanket-size') {
+      } else if (cleanPath === '/calculators/c2c-blanket-size') {
         setCalculatorInitialTab('c2c');
       }
-      updateDocumentMeta(calcRoute);
-    } else if (location.pathname === '/gallery') {
+      updateDocumentMeta(calcRoute, null);
+    } else if (colorChartRoute) {
+      if (cleanPath === '/color-chart/dmc-to-anchor') {
+        setColorChartInitialTab('dmc-anchor');
+      } else if (cleanPath === '/color-chart/perler-bead-colors') {
+        setColorChartInitialTab('perler');
+      } else if (cleanPath === '/color-chart/miyuki-delica') {
+        setColorChartInitialTab('miyuki');
+      } else {
+        setColorChartInitialTab('hex-matcher');
+      }
+      setIsColorChartOpen(true);
+      setIsStarterGalleryOpen(false);
+      setActivePatternSlug(null);
+      setIsCalculatorsOpen(false);
+      updateDocumentMeta(colorChartRoute, {
+        '@context': 'https://schema.org',
+        '@type': 'WebApplication',
+        name: colorChartRoute.metaTitle,
+        description: colorChartRoute.metaDescription,
+        url: colorChartRoute.canonicalUrl,
+        applicationCategory: 'DesignApplication',
+        operatingSystem: 'All',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      });
+    } else if (patternRouteInfo) {
+      const { pattern, meta } = patternRouteInfo;
+      setActivePatternSlug(pattern.slug);
+      setIsStarterGalleryOpen(false);
+      setIsColorChartOpen(false);
+      setIsCalculatorsOpen(false);
+      updateDocumentMeta(meta, {
+        '@context': 'https://schema.org',
+        '@graph': [
+          {
+            '@type': 'CreativeWork',
+            name: pattern.name,
+            description: meta.metaDescription,
+            url: meta.canonicalUrl,
+            keywords: pattern.tags.join(', '),
+            genre: pattern.category,
+            isAccessibleForFree: true,
+          },
+          {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://www.pixel-craft-studio.com/' },
+              { '@type': 'ListItem', position: 2, name: 'Pattern Showcase', item: 'https://www.pixel-craft-studio.com/gallery' },
+              { '@type': 'ListItem', position: 3, name: pattern.name, item: meta.canonicalUrl },
+            ],
+          },
+        ],
+      });
+    } else if (cleanPath.startsWith('/patterns/')) {
+      navigate('/gallery', { replace: true });
+    } else if (cleanPath === '/gallery') {
       setIsStarterGalleryOpen(true);
-      updateDocumentMeta(null);
+      setActivePatternSlug(null);
+      setIsColorChartOpen(false);
+      setIsCalculatorsOpen(false);
+      updateDocumentMeta(GALLERY_ROUTE, null);
     } else {
-      updateDocumentMeta(null);
+      setActivePatternSlug(null);
+      setIsColorChartOpen(false);
+      setIsCalculatorsOpen(false);
+      updateDocumentMeta(null, null);
     }
-  }, [location.pathname]);
+  }, [location.pathname, navigate]);
 
   // Save state continuously (debounced auto-save)
   useEffect(() => {
@@ -1553,6 +1637,7 @@ export default function App() {
         onOpenProjectVaultModal={() => setIsProjectVaultOpen(true)}
         onOpenEtsyKitModal={() => setIsEtsyKitOpen(true)}
         onOpenMaterialKitModal={() => setIsMaterialKitOpen(true)}
+        onOpenColorChartModal={() => navigate('/color-chart')}
         savedProjectsCount={vaultProjectsCount}
         isAutoSaving={isAutoSaving}
         isZenMode={isZenMode}
@@ -1719,6 +1804,10 @@ export default function App() {
               onApplyPaletteMood={handleApplyPaletteMood}
               onCrossConvertCraft={handleCrossConvertCraft}
               onOpenPhotoPalette={() => setIsPhotoPaletteOpen(true)}
+              onOpenColorChart={() => {
+                setIsMobilePaletteOpen(false);
+                navigate('/color-chart');
+              }}
               onOpenMaterialKit={() => {
                 setIsMobilePaletteOpen(false);
                 setIsMaterialKitOpen(true);
@@ -2128,6 +2217,65 @@ export default function App() {
         onClose={() => setIsPhotoPaletteOpen(false)}
         onApplyPaletteToGrid={handleApplyPhotoPaletteToGrid}
         onSetActivePaletteOnly={handleSetPhotoPaletteOnly}
+      />
+
+      {/* Interactive Thread & Bead Color Chart + CIELAB Hex Matcher */}
+      <ColorChartModal
+        isOpen={isColorChartOpen}
+        onClose={() => {
+          setIsColorChartOpen(false);
+          if (location.pathname.startsWith('/color-chart')) {
+            navigate(getPathForCraft(config.craftType));
+          }
+        }}
+        initialTab={colorChartInitialTab}
+        onTabChange={(tab) => {
+          const tabPathMap: Record<ColorChartTab, string> = {
+            'hex-matcher': '/color-chart',
+            'dmc-anchor': '/color-chart/dmc-to-anchor',
+            perler: '/color-chart/perler-bead-colors',
+            miyuki: '/color-chart/miyuki-delica',
+          };
+          if (location.pathname.startsWith('/color-chart')) {
+            navigate(tabPathMap[tab], { replace: true });
+          }
+        }}
+        onAddColorToPalette={(hex, label) => {
+          handleAddCustomColor(hex);
+          if (label) {
+            showToast(`✨ Added ${label} (${hex}) to Studio palette!`);
+          }
+        }}
+        onStashUpdated={() => {
+          if (useMyStashOnly && sourceImageRef.current) {
+            reprocessCurrentImage();
+          }
+        }}
+      />
+
+      {/* Dedicated Pattern Detail Landing Page Modal (/patterns/:slug) */}
+      <PatternDetailModal
+        pattern={activePatternSlug ? getPatternBySlug(activePatternSlug) : null}
+        onClose={() => {
+          setActivePatternSlug(null);
+          navigate(getPathForCraft(config.craftType));
+        }}
+        onBackToGallery={() => {
+          setActivePatternSlug(null);
+          navigate('/gallery');
+        }}
+        onOpenInStudio={(pattern) => {
+          handleSelectSample(
+            pattern,
+            pattern.recommendedCraft,
+            pattern.recommendedGridSize,
+            pattern.recommendedColors
+          );
+          setActivePatternSlug(null);
+          navigate(getPathForCraft(pattern.recommendedCraft));
+          showToast(`✨ Loaded "${pattern.name}" into Studio!`);
+        }}
+        unitSystem={config.unitSystem}
       />
     </div>
   );

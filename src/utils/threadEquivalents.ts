@@ -193,32 +193,35 @@ export const PERLER_TO_EQUIVALENTS_MAP: Record<
   { artkal: string; hama: string; name: string }
 > = {
   'P01': { artkal: 'S01', hama: '01', name: 'White' },
-  'P02': { artkal: 'S03', hama: '03', name: 'Yellow' },
-  'P03': { artkal: 'S04', hama: '04', name: 'Orange' },
+  'P02': { artkal: 'S20', hama: '02', name: 'Cream' },
+  'P03': { artkal: 'S03', hama: '03', name: 'Yellow' },
+  'P04': { artkal: 'S04', hama: '04', name: 'Orange' },
   'P05': { artkal: 'S02', hama: '05', name: 'Red' },
   'P06': { artkal: 'S11', hama: '07', name: 'Purple' },
   'P07': { artkal: 'S08', hama: '08', name: 'Dark Blue' },
-  'P08': { artkal: 'S07', hama: '09', name: 'Light Blue' },
-  'P09': { artkal: 'S13', hama: '10', name: 'Dark Green' },
-  'P10': { artkal: 'S12', hama: '11', name: 'Green' },
+  'P08': { artkal: 'S07', hama: '09', name: 'Blue' },
+  'P09': { artkal: 'S28', hama: '46', name: 'Light Blue' },
+  'P10': { artkal: 'S12', hama: '10', name: 'Green' },
   'P11': { artkal: 'S14', hama: '11', name: 'Light Green' },
   'P12': { artkal: 'S16', hama: '12', name: 'Brown' },
-  'P13': { artkal: 'S15', hama: '17', name: 'Grey' },
+  'P17': { artkal: 'S15', hama: '17', name: 'Grey' },
   'P18': { artkal: 'S17', hama: '18', name: 'Black' },
   'P19': { artkal: 'S18', hama: '19', name: 'Clear' },
   'P20': { artkal: 'S19', hama: '20', name: 'Rust' },
-  'P21': { artkal: 'S20', hama: '21', name: 'Light Brown' },
-  'P22': { artkal: 'S21', hama: '26', name: 'Peach' },
-  'P24': { artkal: 'S24', hama: '42', name: 'Magenta' },
-  'P25': { artkal: 'S05', hama: '38', name: 'Cheddar' },
-  'P26': { artkal: 'S26', hama: '02', name: 'Pastel Yellow' },
-  'P27': { artkal: 'S27', hama: '47', name: 'Pastel Green' },
-  'P28': { artkal: 'S28', hama: '46', name: 'Pastel Blue' },
-  'P29': { artkal: 'S29', hama: '45', name: 'Pastel Lavender' },
-  'P30': { artkal: 'S30', hama: '06', name: 'Bubblegum Pink' },
-  'P31': { artkal: 'S31', hama: '27', name: 'Butterscotch' },
-  'P32': { artkal: 'S32', hama: '49', name: 'Plum' },
-  'P33': { artkal: 'S33', hama: '48', name: 'Periwinkle' },
+  'P21': { artkal: 'S21', hama: '21', name: 'Light Brown' },
+  'P22': { artkal: 'S22', hama: '26', name: 'Peach' },
+  'P23': { artkal: 'S24', hama: '42', name: 'Magenta' },
+  'P24': { artkal: 'S29', hama: '45', name: 'Pastel Lavender' },
+  'P25': { artkal: 'S26', hama: '43', name: 'Pastel Yellow' },
+  'P26': { artkal: 'S05', hama: '38', name: 'Cheddar' },
+  'P27': { artkal: 'S27', hama: '47', name: 'Toothpaste' },
+  'P28': { artkal: 'S28', hama: '48', name: 'Hot Coral' },
+  'P29': { artkal: 'S32', hama: '49', name: 'Plum' },
+  'P30': { artkal: 'S14', hama: '47', name: 'Kiwi Lime' },
+  'P31': { artkal: 'S39', hama: '31', name: 'Turquoise' },
+  'P32': { artkal: 'S30', hama: '26', name: 'Blush' },
+  'P33': { artkal: 'S23', hama: '06', name: 'Pink' },
+  'P34': { artkal: 'S31', hama: '27', name: 'Butterscotch' },
   'P35': { artkal: 'S35', hama: '28', name: 'Dark Green' },
   'P36': { artkal: 'S36', hama: '71', name: 'Dark Grey' },
   'P37': { artkal: 'S37', hama: '70', name: 'Charcoal' },
@@ -226,6 +229,24 @@ export const PERLER_TO_EQUIVALENTS_MAP: Record<
   'P39': { artkal: 'S39', hama: '49', name: 'Robin Egg' },
   'P40': { artkal: 'S40', hama: '22', name: 'Salmon' },
 };
+
+/**
+ * Finds all DMC code keys in DMC_TO_ANCHOR_MAP matching an Anchor shade query.
+ */
+export function findDmcByAnchorCode(anchorQuery: string): string[] {
+  const clean = anchorQuery.trim().toLowerCase().replace(/^anc(hor)?\s*/i, '');
+  if (!clean) return [];
+  const matches: string[] = [];
+  for (const [dmcCode, anchor] of Object.entries(DMC_TO_ANCHOR_MAP)) {
+    if (
+      anchor.code.toLowerCase().includes(clean) ||
+      anchor.name.toLowerCase().includes(clean)
+    ) {
+      matches.push(dmcCode);
+    }
+  }
+  return matches;
+}
 
 /**
  * Normalizes a color code string (e.g. "DMC 310", "310", "~DMC 666") and extracts the clean number

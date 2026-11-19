@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   COMMUNITY_PATTERNS, 
   COMMUNITY_CATEGORIES, 
@@ -293,6 +294,7 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
               const craftColor = 
                 pattern.recommendedCraft === 'cross-stitch' ? 'text-pink-400 bg-pink-500/10 border-pink-500/20' :
                 pattern.recommendedCraft === 'crochet' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
+                pattern.recommendedCraft === 'knitting' ? 'text-teal-400 bg-teal-500/10 border-teal-500/20' :
                 pattern.recommendedCraft === 'perler' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
                 pattern.recommendedCraft === 'loom' ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' :
                 pattern.recommendedCraft === 'alpha' ? 'text-orange-400 bg-orange-500/10 border-orange-500/20' :
@@ -306,12 +308,18 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
                 >
                   {/* Image Preview */}
                   <div className="relative aspect-square w-full bg-slate-950 flex items-center justify-center p-4 overflow-hidden border-b border-slate-800/80">
-                    <img
-                      src={pattern.url}
-                      alt={pattern.name}
-                      className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
+                    <Link
+                      to={`/patterns/${pattern.slug}`}
+                      className="w-full h-full flex items-center justify-center"
+                      title={`View ${pattern.name} pattern specs & sizing`}
+                    >
+                      <img
+                        src={pattern.url}
+                        alt={pattern.name}
+                        className="w-full h-full object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                    </Link>
 
                     {/* Craft Badge Top-Left */}
                     <span className={`absolute top-2.5 left-2.5 text-[9px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${craftColor}`}>
@@ -345,9 +353,12 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
                         </span>
                       </div>
 
-                      <h3 className="font-bold text-xs sm:text-sm text-white group-hover:text-indigo-300 transition mt-1 truncate">
+                      <Link
+                        to={`/patterns/${pattern.slug}`}
+                        className="block font-bold text-xs sm:text-sm text-white group-hover:text-indigo-300 transition mt-1 truncate"
+                      >
                         {pattern.name}
-                      </h3>
+                      </Link>
                       <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1 line-clamp-2">
                         {pattern.description}
                       </p>
@@ -369,23 +380,32 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Load Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectStarter(
-                          pattern, 
-                          pattern.recommendedCraft, 
-                          pattern.recommendedGridSize, 
-                          pattern.recommendedColors
-                        );
-                        onClose();
-                      }}
-                      className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition active:scale-95"
-                    >
-                      <span>Open in Studio</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Load & Detail Actions */}
+                    <div className="mt-3 flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectStarter(
+                            pattern, 
+                            pattern.recommendedCraft, 
+                            pattern.recommendedGridSize, 
+                            pattern.recommendedColors
+                          );
+                          onClose();
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition active:scale-95"
+                      >
+                        <span>Open in Studio</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                      <Link
+                        to={`/patterns/${pattern.slug}`}
+                        className="py-1.5 px-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition shrink-0"
+                        title={`View ${pattern.name} pattern details & physical sizing`}
+                      >
+                        Details
+                      </Link>
+                    </div>
                   </div>
                 </div>
               );
@@ -395,7 +415,7 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
 
         {/* 4. Footer Actions (Pinned) */}
         <div className="shrink-0 p-3 sm:p-3.5 bg-slate-950 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2.5 text-xs">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={handleCopyGalleryLink}
@@ -405,6 +425,14 @@ export const StarterGalleryModal: React.FC<StarterGalleryModalProps> = ({
               {copiedShare ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-indigo-400" />}
               <span>{copiedShare ? 'Gallery Link Copied!' : 'Share Showcase'}</span>
             </button>
+
+            <Link
+              to="/color-chart"
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-indigo-500/30 text-indigo-300 font-semibold flex items-center gap-1.5 transition"
+            >
+              <Palette className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Color Chart</span>
+            </Link>
 
             {onOpenSocialCard && (
               <button

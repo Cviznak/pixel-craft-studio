@@ -533,3 +533,18 @@ export const SAMPLE_IMAGES: SampleImage[] = [
     description: 'Primary reds, vivid blues, and lush forest greens'
   }
 ];
+
+export {
+  flowerSvg,
+  catSvg,
+  sunsetSvg,
+  parrotSvg,
+  mushroomSvg,
+  pokeballSvg,
+  heartSvg,
+  foxSvg,
+  coffeeSvg,
+  sunflowerSvg,
+  rainbowSvg,
+  swordSvg,
+};

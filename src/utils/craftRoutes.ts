@@ -1,4 +1,5 @@
 import type { CraftType } from '../types/craft';
+import { getPatternBySlug, type CommunityPattern } from './communityPatterns';
 
 export interface CraftRouteConfig {
   path: string;
@@ -160,6 +161,69 @@ export function getCalculatorRoute(pathname: string): StaticRouteConfig | null {
   return CALCULATOR_ROUTES[clean] || null;
 }
 
+export const COLOR_CHART_ROUTES: Record<string, StaticRouteConfig> = {
+  '/color-chart': {
+    path: '/color-chart',
+    metaTitle: 'Hex to DMC, Perler & Miyuki Color Matcher — CIELAB Color Chart | Pixel Craft Studio',
+    metaDescription: 'Free interactive hex-to-thread and bead color matcher. Enter any hex code to find the closest DMC floss, Anchor cotton, Perler, Artkal, Hama, and Miyuki Delica shades.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/color-chart',
+  },
+  '/color-chart/dmc-to-anchor': {
+    path: '/color-chart/dmc-to-anchor',
+    metaTitle: 'DMC to Anchor Floss Conversion Chart (175+ Shades) | Pixel Craft Studio',
+    metaDescription: 'Searchable DMC embroidery floss to Anchor stranded cotton conversion chart with hex codes, lightness sorting, personal stash toggles, and close shade matching.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/color-chart/dmc-to-anchor',
+  },
+  '/color-chart/perler-bead-colors': {
+    path: '/color-chart/perler-bead-colors',
+    metaTitle: 'Perler to Artkal & Hama Bead Color Conversion Chart | Pixel Craft Studio',
+    metaDescription: 'Complete Perler fuse bead color chart with Artkal S-series and Hama Midi equivalents, hex previews, color family filters, and pegboard stash checklists.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/color-chart/perler-bead-colors',
+  },
+  '/color-chart/miyuki-delica': {
+    path: '/color-chart/miyuki-delica',
+    metaTitle: 'Miyuki Delica 11/0 Seed Bead Color Chart & Finish Guide | Pixel Craft Studio',
+    metaDescription: 'Browse calibrated Miyuki Delica 11/0 (DB) seed bead shades across Opaque, Matte, Metallic, Duracoat, Ceylon, and Silver-Lined finishes with DMC matches.',
+    canonicalUrl: 'https://www.pixel-craft-studio.com/color-chart/miyuki-delica',
+  },
+};
+
+export const GALLERY_ROUTE: StaticRouteConfig = {
+  path: '/gallery',
+  metaTitle: 'Free Craft Pattern Gallery — 32+ Cross-Stitch, Crochet, Perler & Bead Patterns | Pixel Craft Studio',
+  metaDescription: 'Browse 32+ free, stitch-calibrated patterns across Cross-Stitch, Perler Beads, Tapestry Crochet, Knitting, Bead Loom, Alpha Bracelets, and Diamond Painting.',
+  canonicalUrl: 'https://www.pixel-craft-studio.com/gallery',
+};
+
+export function getColorChartRoute(pathname: string): StaticRouteConfig | null {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  return COLOR_CHART_ROUTES[clean] || null;
+}
+
+export function getPatternRouteInfo(
+  pathname: string
+): { pattern: CommunityPattern; meta: StaticRouteConfig } | null {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  if (!clean.startsWith('/patterns/')) return null;
+  const slug = clean.slice('/patterns/'.length);
+  if (!slug || slug.includes('/')) return null;
+  const pattern = getPatternBySlug(slug);
+  if (!pattern) return null;
+
+  const craftTitle = CRAFT_ROUTES[pattern.recommendedCraft]?.title || pattern.recommendedCraft;
+  const { width, height } = pattern.recommendedGridSize;
+
+  return {
+    pattern,
+    meta: {
+      path: `/patterns/${pattern.slug}`,
+      metaTitle: `${pattern.name} — Free ${craftTitle} Pattern (${width}×${height}) | Pixel Craft Studio`,
+      metaDescription: `Free ${width}×${height} ${craftTitle.toLowerCase()} pattern (${pattern.recommendedColors} colors, ${pattern.difficulty}). ${pattern.description} Includes physical sizing, material estimates, and 1-click studio editing.`,
+      canonicalUrl: `https://www.pixel-craft-studio.com/patterns/${pattern.slug}`,
+    },
+  };
+}
+
 /**
  * Returns the route configuration for a given URL path, or null if root / unknown.
  */
@@ -180,10 +244,16 @@ export function getPathForCraft(craftType: CraftType): string {
   return CRAFT_ROUTES[craftType]?.path || '/';
 }
 
+const DYNAMIC_JSONLD_ID = 'dynamic-route-jsonld';
+
 /**
- * Dynamically updates the browser tab title, meta description, and canonical link.
+ * Dynamically updates the browser tab title, meta description, canonical link,
+ * social tags, and optional route-specific JSON-LD structured data.
  */
-export function updateDocumentMeta(routeConfig: CraftRouteConfig | StaticRouteConfig | null): void {
+export function updateDocumentMeta(
+  routeConfig: CraftRouteConfig | StaticRouteConfig | null,
+  jsonLd?: Record<string, unknown> | null
+): void {
   if (typeof document === 'undefined') return;
 
   const title = routeConfig 
@@ -204,13 +274,13 @@ export function updateDocumentMeta(routeConfig: CraftRouteConfig | StaticRouteCo
   document.title = title;
 
   // Meta description
-  let descMeta = document.querySelector('meta[name="description"]');
+  const descMeta = document.querySelector('meta[name="description"]');
   if (descMeta) {
     descMeta.setAttribute('content', description);
   }
 
   // Canonical link
-  let canonicalLink = document.querySelector('link[rel="canonical"]');
+  const canonicalLink = document.querySelector('link[rel="canonical"]');
   if (canonicalLink) {
     canonicalLink.setAttribute('href', canonicalUrl);
   }
@@ -224,4 +294,28 @@ export function updateDocumentMeta(routeConfig: CraftRouteConfig | StaticRouteCo
 
   const ogUrl = document.querySelector('meta[property="og:url"]');
   if (ogUrl) ogUrl.setAttribute('content', canonicalUrl);
+
+  // Twitter / X
+  const twTitle = document.querySelector('meta[name="twitter:title"]');
+  if (twTitle) twTitle.setAttribute('content', title);
+
+  const twDesc = document.querySelector('meta[name="twitter:description"]');
+  if (twDesc) twDesc.setAttribute('content', description);
+
+  const twUrl = document.querySelector('meta[name="twitter:url"]');
+  if (twUrl) twUrl.setAttribute('content', canonicalUrl);
+
+  // Dynamic route-specific JSON-LD
+  const existingScript = document.getElementById(DYNAMIC_JSONLD_ID);
+  if (jsonLd) {
+    const script = existingScript || document.createElement('script');
+    script.id = DYNAMIC_JSONLD_ID;
+    script.setAttribute('type', 'application/ld+json');
+    script.textContent = JSON.stringify(jsonLd);
+    if (!existingScript) {
+      document.head.appendChild(script);
+    }
+  } else if (existingScript) {
+    existingScript.remove();
+  }
 }

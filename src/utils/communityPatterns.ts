@@ -1,6 +1,16 @@
 import type { CraftType, SampleImage } from '../types/craft';
+import {
+  flowerSvg,
+  sunsetSvg,
+  heartSvg,
+  foxSvg,
+  coffeeSvg,
+  sunflowerSvg,
+  swordSvg,
+} from './sampleImages';
 
 export interface CommunityPattern extends SampleImage {
+  slug: string;
   recommendedCraft: CraftType;
   difficulty: 'Beginner' | 'Intermediate' | 'Master';
   recommendedGridSize: { width: number; height: number };
@@ -361,14 +371,67 @@ const bobaTeaSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/s
   <circle cx="190" cy="172" r="6" fill="%23f472b6" opacity="0.6"/>
 </svg>`;
 
+// 16. Nordic Fair Isle 8-Point Snowflake (Knitting)
+const nordicSnowflakeSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <rect width="320" height="320" fill="%230f172a"/>
+  <!-- Top & Bottom Fair Isle Border -->
+  <rect x="0" y="20" width="320" height="12" fill="%2338bdf8"/>
+  <rect x="0" y="288" width="320" height="12" fill="%2338bdf8"/>
+  <!-- Main Axes (Cream White) -->
+  <line x1="160" y1="52" x2="160" y2="268" stroke="%23f8fafc" stroke-width="18" stroke-linecap="square"/>
+  <line x1="52" y1="160" x2="268" y2="160" stroke="%23f8fafc" stroke-width="18" stroke-linecap="square"/>
+  <line x1="84" y1="84" x2="236" y2="236" stroke="%2338bdf8" stroke-width="16" stroke-linecap="square"/>
+  <line x1="236" y1="84" x2="84" y2="236" stroke="%2338bdf8" stroke-width="16" stroke-linecap="square"/>
+  <!-- Branching V-Tips -->
+  <polyline points="130,82 160,112 190,82" stroke="%23f8fafc" stroke-width="12" fill="none"/>
+  <polyline points="130,238 160,208 190,238" stroke="%23f8fafc" stroke-width="12" fill="none"/>
+  <polyline points="82,130 112,160 82,190" stroke="%23f8fafc" stroke-width="12" fill="none"/>
+  <polyline points="238,130 208,160 238,190" stroke="%23f8fafc" stroke-width="12" fill="none"/>
+  <!-- Center Fair Isle Star -->
+  <polygon points="160,126 194,160 160,194 126,160" fill="%2338bdf8"/>
+  <polygon points="160,142 178,160 160,178 142,160" fill="%23f8fafc"/>
+  <!-- Corner Diamond Stipples -->
+  <polygon points="48,48 64,64 48,80 32,64" fill="%23f8fafc"/>
+  <polygon points="272,48 288,64 272,80 256,64" fill="%23f8fafc"/>
+  <polygon points="48,240 64,256 48,272 32,256" fill="%23f8fafc"/>
+  <polygon points="272,240 288,256 272,272 256,256" fill="%23f8fafc"/>
+</svg>`;
+
+// 17. Cozy Alpine Cabin & Pines (Knitting)
+const alpineCabinSvg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <rect width="320" height="320" fill="%231e293b"/>
+  <!-- Snowy Mountain Peaks -->
+  <polygon points="0,230 90,95 180,230" fill="%23475569"/>
+  <polygon points="120,230 230,75 320,230" fill="%23334155"/>
+  <polygon points="90,95 62,140 118,140" fill="%23e2e8f0"/>
+  <polygon points="230,75 196,125 264,125" fill="%23e2e8f0"/>
+  <!-- Snow Ground -->
+  <rect x="0" y="220" width="320" height="100" fill="%23f8fafc"/>
+  <!-- Fair Isle Pine Trees -->
+  <polygon points="55,220 25,220 40,165" fill="%2315803d"/>
+  <polygon points="62,235 18,235 40,190" fill="%23166534"/>
+  <polygon points="285,220 255,220 270,165" fill="%2315803d"/>
+  <polygon points="292,235 248,235 270,190" fill="%23166534"/>
+  <!-- Cozy Red Cabin -->
+  <rect x="115" y="185" width="90" height="65" fill="%23dc2626"/>
+  <polygon points="100,190 160,138 220,190" fill="%23991b1b" stroke="%23f8fafc" stroke-width="6"/>
+  <!-- Warm Glowing Window & Door -->
+  <rect x="130" y="205" width="24" height="24" fill="%23fbbf24"/>
+  <rect x="170" y="208" width="22" height="42" fill="%2378350f"/>
+  <!-- Fair Isle Sweater Zigzag Bottom -->
+  <rect x="0" y="280" width="320" height="40" fill="%23dc2626"/>
+  <polygon points="0,280 20,305 40,280 60,305 80,280 100,305 120,280 140,305 160,280 180,305 200,280 220,305 240,280 260,305 280,280 300,305 320,280 320,295 0,295" fill="%23f8fafc"/>
+</svg>`;
+
 // ---------------------------------------------------------------------------
-// Full Curated Community Showcase Catalog (34 Diverse Patterns)
+// Full Curated Community Showcase Catalog (32 Diverse Patterns Across All 8 Crafts)
 // ---------------------------------------------------------------------------
 
 export const COMMUNITY_PATTERNS: CommunityPattern[] = [
-  // 1-8: Pixel Gaming Sprites
+  // Pixel Gaming Sprites
   {
     id: 'comm-pokeball',
+    slug: 'pokeball-perler-beads',
     name: 'Classic Pokéball Sphere',
     category: 'Pixel Gaming',
     recommendedCraft: 'perler',
@@ -383,13 +446,14 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-heart-container',
+    slug: 'zelda-heart-cross-stitch',
     name: '8-Bit Zelda Heart Container',
     category: 'Pixel Gaming',
     recommendedCraft: 'cross-stitch',
     difficulty: 'Beginner',
     recommendedGridSize: { width: 20, height: 20 },
     recommendedColors: 4,
-    url: '/starter_crafts/cute_strawberry.png',
+    url: heartSvg,
     description: 'Retro arcade life container with ruby pixel shine and deep outline border.',
     tags: ['zelda', 'retro', 'heart', 'arcade', 'nintendo'],
     likesCount: 429,
@@ -397,6 +461,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-super-shroom',
+    slug: 'retro-mushroom-perler-beads',
     name: 'Retro 8-Bit Super Shroom',
     category: 'Pixel Gaming',
     recommendedCraft: 'perler',
@@ -411,6 +476,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-arcade-ghost',
+    slug: 'arcade-blinky-ghost-perler-beads',
     name: 'Arcade Blinky Ghost',
     category: 'Pixel Gaming',
     recommendedCraft: 'perler',
@@ -424,7 +490,23 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
     estimatedHours: 1.2
   },
   {
+    id: 'comm-hero-sword',
+    slug: 'hero-pixel-sword-perler-beads',
+    name: 'Hero Pixel Master Sword',
+    category: 'Pixel Gaming',
+    recommendedCraft: 'perler',
+    difficulty: 'Beginner',
+    recommendedGridSize: { width: 24, height: 24 },
+    recommendedColors: 7,
+    url: swordSvg,
+    description: 'Diagonal 8-bit steel blade with golden crossguard and ruby pommel gem.',
+    tags: ['sword', 'rpg', 'zelda', 'perler', 'gaming'],
+    likesCount: 295,
+    estimatedHours: 2.0
+  },
+  {
     id: 'comm-mana-potion',
+    slug: 'mana-potion-diamond-painting',
     name: 'Glowing Mana Potion Flask',
     category: 'Pixel Gaming',
     recommendedCraft: 'diamond',
@@ -439,6 +521,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-retro-cassette',
+    slug: 'synthwave-cassette-pixel-art',
     name: '80s Synthwave Cassette Tape',
     category: 'Pixel Gaming',
     recommendedCraft: 'pixel',
@@ -453,6 +536,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-gameboy-console',
+    slug: 'retro-gameboy-perler-beads',
     name: 'Retro Pixel Handheld Gameboy',
     category: 'Pixel Gaming',
     recommendedCraft: 'perler',
@@ -466,9 +550,10 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
     estimatedHours: 4.5
   },
 
-  // 9-14: Cottagecore, Flowers & Botanicals
+  // Cottagecore, Flowers & Botanicals
   {
     id: 'comm-poppy-bloom',
+    slug: 'poppy-bloom-cross-stitch',
     name: 'Poppy Botanical Bloom',
     category: 'Nature & Botanical',
     recommendedCraft: 'cross-stitch',
@@ -483,6 +568,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-cottage-mushroom',
+    slug: 'amanita-mushroom-cross-stitch',
     name: 'Amanita Mushroom & Wild Ferns',
     category: 'Nature & Botanical',
     recommendedCraft: 'cross-stitch',
@@ -497,6 +583,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-sakura-branch',
+    slug: 'sakura-branch-cross-stitch',
     name: 'Japanese Sakura Cherry Blossoms',
     category: 'Nature & Botanical',
     recommendedCraft: 'cross-stitch',
@@ -511,6 +598,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-lavender-sprig',
+    slug: 'lavender-eucalyptus-cross-stitch',
     name: 'Lavender & Eucalyptus Sprig',
     category: 'Nature & Botanical',
     recommendedCraft: 'cross-stitch',
@@ -523,10 +611,41 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
     likesCount: 290,
     estimatedHours: 3.5
   },
+  {
+    id: 'comm-golden-sunflower',
+    slug: 'golden-sunflower-diamond-painting',
+    name: 'Golden Summer Sunflower',
+    category: 'Nature & Botanical',
+    recommendedCraft: 'diamond',
+    difficulty: 'Intermediate',
+    recommendedGridSize: { width: 36, height: 36 },
+    recommendedColors: 9,
+    url: sunflowerSvg,
+    description: 'Radiant golden petals with rich cocoa seed center against crisp cerulean sky.',
+    tags: ['sunflower', 'floral', 'summer', 'yellow', 'diamond'],
+    likesCount: 404,
+    estimatedHours: 5.5
+  },
+  {
+    id: 'comm-vibrant-hibiscus',
+    slug: 'vibrant-hibiscus-cross-stitch',
+    name: 'Tropical Hibiscus Blossom',
+    category: 'Nature & Botanical',
+    recommendedCraft: 'cross-stitch',
+    difficulty: 'Intermediate',
+    recommendedGridSize: { width: 36, height: 36 },
+    recommendedColors: 10,
+    url: flowerSvg,
+    description: 'Lush magenta and sunset-orange tropical bloom framed by deep emerald foliage.',
+    tags: ['hibiscus', 'tropical', 'floral', 'dmc', 'hoop'],
+    likesCount: 378,
+    estimatedHours: 6.0
+  },
 
-  // 15-20: Cute Animals & Kawaii
+  // Cute Animals & Cozy Kawaii
   {
     id: 'comm-ginger-kitty',
+    slug: 'ginger-kitty-cross-stitch',
     name: 'Cozy Ginger Kitty',
     category: 'Animals & Pets',
     recommendedCraft: 'cross-stitch',
@@ -541,6 +660,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-chubby-duckling',
+    slug: 'chubby-duckling-crochet',
     name: 'Chubby Baby Duckling',
     category: 'Animals & Pets',
     recommendedCraft: 'crochet',
@@ -554,7 +674,23 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
     estimatedHours: 2.0
   },
   {
+    id: 'comm-autumn-fox',
+    slug: 'autumn-forest-fox-cross-stitch',
+    name: 'Autumn Forest Red Fox',
+    category: 'Animals & Pets',
+    recommendedCraft: 'cross-stitch',
+    difficulty: 'Intermediate',
+    recommendedGridSize: { width: 32, height: 32 },
+    recommendedColors: 8,
+    url: foxSvg,
+    description: 'Charming geometric forest fox with cream cheeks against deep pine green.',
+    tags: ['fox', 'autumn', 'woodland', 'animal', 'cross-stitch'],
+    likesCount: 492,
+    estimatedHours: 4.8
+  },
+  {
     id: 'comm-boba-tea',
+    slug: 'boba-tea-perler-beads',
     name: 'Kawaii Brown Sugar Boba Tea',
     category: 'Cozy & Kawaii',
     recommendedCraft: 'perler',
@@ -567,10 +703,56 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
     likesCount: 350,
     estimatedHours: 2.2
   },
+  {
+    id: 'comm-sweet-strawberry',
+    slug: 'kawaii-strawberry-cross-stitch',
+    name: 'Kawaii Sweet Strawberry',
+    category: 'Cozy & Kawaii',
+    recommendedCraft: 'cross-stitch',
+    difficulty: 'Beginner',
+    recommendedGridSize: { width: 16, height: 16 },
+    recommendedColors: 5,
+    url: '/starter_crafts/cute_strawberry.png',
+    description: 'Quick 16x16 berry motif with blush cheeks — ideal for beginner needlework.',
+    tags: ['strawberry', 'fruit', 'kawaii', 'beginner', 'mini'],
+    likesCount: 445,
+    estimatedHours: 1.5
+  },
+  {
+    id: 'comm-spooky-ghost',
+    slug: 'cute-spooky-ghost-cross-stitch',
+    name: 'Friendly Pocket Ghost',
+    category: 'Cozy & Kawaii',
+    recommendedCraft: 'cross-stitch',
+    difficulty: 'Beginner',
+    recommendedGridSize: { width: 18, height: 18 },
+    recommendedColors: 5,
+    url: '/starter_crafts/cute_ghost.png',
+    description: 'Whimsical little spooky ghost ready for autumn hoops, patches, or pins.',
+    tags: ['ghost', 'spooky', 'halloween', 'cute', 'kawaii'],
+    likesCount: 398,
+    estimatedHours: 1.8
+  },
+  {
+    id: 'comm-cozy-coffee',
+    slug: 'cozy-latte-coffee-crochet',
+    name: 'Morning Latte Heart Mug',
+    category: 'Cozy & Kawaii',
+    recommendedCraft: 'crochet',
+    difficulty: 'Intermediate',
+    recommendedGridSize: { width: 28, height: 28 },
+    recommendedColors: 7,
+    url: coffeeSvg,
+    description: 'Steaming espresso mug with latte heart art for kitchen wall hangings or coasters.',
+    tags: ['coffee', 'latte', 'cozy', 'crochet', 'kitchen'],
+    likesCount: 334,
+    estimatedHours: 3.5
+  },
 
-  // 21-25: Bead Loom & Alpha Friendship Bracelets
+  // Bead Loom & Alpha Friendship Bracelets
   {
     id: 'comm-aztec-diamond',
+    slug: 'aztec-diamond-bead-loom',
     name: 'Aztec Tribal Geometric Diamond',
     category: 'Bracelets & Loom',
     recommendedCraft: 'loom',
@@ -585,6 +767,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-chevron-strap',
+    slug: 'bohemian-chevron-alpha-bracelet',
     name: 'Bohemian V-Arrow Chevron',
     category: 'Bracelets & Loom',
     recommendedCraft: 'alpha',
@@ -599,6 +782,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-sunset-ombre',
+    slug: 'sunset-ombre-bead-loom',
     name: 'Synth Sunset Ombre Ribbon',
     category: 'Bracelets & Loom',
     recommendedCraft: 'loom',
@@ -613,6 +797,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-daisy-chain',
+    slug: 'daisy-chain-alpha-bracelet',
     name: 'Daisy Flower Chain Ribbon',
     category: 'Bracelets & Loom',
     recommendedCraft: 'alpha',
@@ -626,9 +811,10 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
     estimatedHours: 2.8
   },
 
-  // 26-29: Crochet & C2C Blanket Tiles
+  // Crochet & C2C Blanket Tiles
   {
     id: 'comm-checkerboard-tile',
+    slug: 'checkerboard-coaster-crochet',
     name: 'Retro Checkerboard Coaster',
     category: 'Crochet & C2C',
     recommendedCraft: 'crochet',
@@ -643,6 +829,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-sunburst-granny',
+    slug: 'sunburst-granny-square-crochet',
     name: 'Sunburst Granny Square Tile',
     category: 'Crochet & C2C',
     recommendedCraft: 'crochet',
@@ -657,6 +844,7 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
   },
   {
     id: 'comm-sleeping-moon',
+    slug: 'sleeping-moon-nursery-crochet',
     name: 'Sleeping Moon & Nursery Clouds',
     category: 'Crochet & C2C',
     recommendedCraft: 'crochet',
@@ -670,9 +858,57 @@ export const COMMUNITY_PATTERNS: CommunityPattern[] = [
     estimatedHours: 5.5
   },
 
-  // 30-34: Vibrant, Celestial & Diamond Painting
+  // Knitting (Intarsia & Fair Isle Colorwork)
+  {
+    id: 'comm-nordic-snowflake',
+    slug: 'nordic-fair-isle-snowflake-knitting',
+    name: 'Nordic Fair Isle Snowflake',
+    category: 'Vibrant & Celestial',
+    recommendedCraft: 'knitting',
+    difficulty: 'Intermediate',
+    recommendedGridSize: { width: 28, height: 28 },
+    recommendedColors: 4,
+    url: nordicSnowflakeSvg,
+    description: 'Classic 8-point Scandinavian snowflake graph calibrated for Fair Isle sweaters and mittens.',
+    tags: ['knitting', 'fairisle', 'snowflake', 'nordic', 'winter'],
+    likesCount: 365,
+    estimatedHours: 4.0
+  },
+  {
+    id: 'comm-alpine-cabin',
+    slug: 'cozy-alpine-cabin-knitting',
+    name: 'Cozy Alpine Cabin & Pines',
+    category: 'Nature & Botanical',
+    recommendedCraft: 'knitting',
+    difficulty: 'Intermediate',
+    recommendedGridSize: { width: 32, height: 26 },
+    recommendedColors: 7,
+    url: alpineCabinSvg,
+    description: 'Winter mountain cabin nestled between evergreen pines — built for intarsia jumpers.',
+    tags: ['knitting', 'intarsia', 'cabin', 'mountain', 'sweater'],
+    likesCount: 288,
+    estimatedHours: 5.0
+  },
+
+  // Vibrant, Celestial & Diamond Painting / Pixel Art
+  {
+    id: 'comm-synthwave-horizon',
+    slug: 'synthwave-horizon-pixel-art',
+    name: 'Outrun Synthwave Horizon',
+    category: 'Vibrant & Celestial',
+    recommendedCraft: 'pixel',
+    difficulty: 'Master',
+    recommendedGridSize: { width: 40, height: 40 },
+    recommendedColors: 10,
+    url: sunsetSvg,
+    description: 'Neon magenta sunset slicing over dark mountain silhouettes and palm outlines.',
+    tags: ['synthwave', 'outrun', 'sunset', 'neon', 'pixelart'],
+    likesCount: 410,
+    estimatedHours: 6.5
+  },
   {
     id: 'comm-northern-lights',
+    slug: 'northern-lights-diamond-painting',
     name: 'Aurora Borealis Northern Lights',
     category: 'Vibrant & Celestial',
     recommendedCraft: 'diamond',
@@ -703,6 +939,7 @@ export const CRAFT_FILTER_TABS: { id: 'all' | CraftType; label: string }[] = [
   { id: 'cross-stitch', label: 'Cross-Stitch' },
   { id: 'perler', label: 'Perler Beads' },
   { id: 'crochet', label: 'Crochet / C2C' },
+  { id: 'knitting', label: 'Knitting' },
   { id: 'loom', label: 'Bead Loom' },
   { id: 'alpha', label: 'Alpha Knot' },
   { id: 'diamond', label: 'Diamond' },
@@ -735,4 +972,35 @@ export function toggleFavoritePatternId(id: string): Set<string> {
     // Ignore storage errors
   }
   return current;
+}
+
+/**
+ * Looks up a community pattern by its SEO slug or ID.
+ */
+export function getPatternBySlug(slug: string): CommunityPattern | null {
+  const clean = slug.trim().toLowerCase().replace(/^\/+|\/+$/g, '');
+  if (!clean) return null;
+  return (
+    COMMUNITY_PATTERNS.find(
+      (p) => p.slug.toLowerCase() === clean || p.id.toLowerCase() === clean
+    ) || null
+  );
+}
+
+/**
+ * Returns related curated patterns prioritizing same craft type first, then same category.
+ */
+export function getRelatedPatterns(pattern: CommunityPattern, limit = 4): CommunityPattern[] {
+  const candidates = COMMUNITY_PATTERNS.filter((p) => p.id !== pattern.id);
+  return candidates
+    .map((candidate) => {
+      let score = 0;
+      if (candidate.recommendedCraft === pattern.recommendedCraft) score += 3;
+      if (candidate.category === pattern.category) score += 2;
+      if (candidate.difficulty === pattern.difficulty) score += 1;
+      return { candidate, score };
+    })
+    .sort((a, b) => b.score - a.score || b.candidate.likesCount - a.candidate.likesCount)
+    .slice(0, limit)
+    .map((item) => item.candidate);
 }

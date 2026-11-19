@@ -8,7 +8,8 @@ export interface CraftStandardColor {
   g: number;
   b: number;
   lab: LAB;
-  brand: 'DMC' | 'Perler';
+  brand: 'DMC' | 'Perler' | 'Miyuki';
+  finish?: string;
 }
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
@@ -325,6 +326,58 @@ const rawPerler = [
   { code: 'P40', name: 'Salmon', hex: '#FF8A80' }
 ];
 
+// Core Miyuki Delica 11/0 Seed Bead Shades (48 calibrated shades across finishes)
+const rawMiyuki: Array<{ code: string; name: string; hex: string; finish: string }> = [
+  { code: 'DB0010', name: 'Black', hex: '#141416', finish: 'Opaque' },
+  { code: 'DB0200', name: 'Opaque White', hex: '#F9F9FB', finish: 'Opaque' },
+  { code: 'DB0202', name: 'White Pearl', hex: '#F4F1EA', finish: 'Ceylon / Pearl' },
+  { code: 'DB0310', name: 'Matte Black', hex: '#232428', finish: 'Matte' },
+  { code: 'DB0351', name: 'Matte White', hex: '#F2F3F0', finish: 'Matte' },
+  { code: 'DB0352', name: 'Matte Cream', hex: '#EFE5C8', finish: 'Matte' },
+  { code: 'DB0031', name: '24k Gold Plated', hex: '#D9A726', finish: 'Metallic' },
+  { code: 'DB0035', name: 'Silver Galvanized', hex: '#C6CBD2', finish: 'Metallic' },
+  { code: 'DB1832', name: 'Duracoat Galvanized Gold', hex: '#CFA134', finish: 'Duracoat Metallic' },
+  { code: 'DB1831', name: 'Duracoat Galvanized Silver', hex: '#B9C0C7', finish: 'Duracoat Metallic' },
+  { code: 'DB1834', name: 'Duracoat Champagne', hex: '#DFC79C', finish: 'Duracoat Metallic' },
+  { code: 'DB1845', name: 'Duracoat Blush', hex: '#DFB0A7', finish: 'Duracoat Metallic' },
+  { code: 'DB0021', name: 'Metallic Dark Bronze', hex: '#4A392B', finish: 'Metallic' },
+  { code: 'DB0022', name: 'Metallic Light Bronze', hex: '#9A784C', finish: 'Metallic' },
+  { code: 'DB0001', name: 'Gunmetal', hex: '#474B52', finish: 'Metallic' },
+  { code: 'DB0723', name: 'Opaque Red', hex: '#C62028', finish: 'Opaque' },
+  { code: 'DB0753', name: 'Matte Opaque Red', hex: '#B92D32', finish: 'Matte' },
+  { code: 'DB0722', name: 'Opaque Orange', hex: '#EC6320', finish: 'Opaque' },
+  { code: 'DB0721', name: 'Opaque Yellow', hex: '#F7CE22', finish: 'Opaque' },
+  { code: 'DB1132', name: 'Opaque Canary', hex: '#F5DF4D', finish: 'Opaque' },
+  { code: 'DB1133', name: 'Opaque Mustard', hex: '#C79221', finish: 'Opaque' },
+  { code: 'DB0724', name: 'Opaque Green', hex: '#1B6F46', finish: 'Opaque' },
+  { code: 'DB0725', name: 'Opaque Peacock Green', hex: '#167B7B', finish: 'Opaque' },
+  { code: 'DB0763', name: 'Matte Forest Green', hex: '#284C35', finish: 'Matte' },
+  { code: 'DB0726', name: 'Opaque Cobalt Blue', hex: '#1C489E', finish: 'Opaque' },
+  { code: 'DB0762', name: 'Matte Cobalt', hex: '#295197', finish: 'Matte' },
+  { code: 'DB0354', name: 'Matte Navy', hex: '#1D2948', finish: 'Matte' },
+  { code: 'DB0651', name: 'Opaque Turquoise', hex: '#209DB8', finish: 'Opaque' },
+  { code: 'DB0761', name: 'Matte Turquoise', hex: '#2FA1B0', finish: 'Matte' },
+  { code: 'DB0377', name: 'Matte Teal', hex: '#25676E', finish: 'Matte' },
+  { code: 'DB0727', name: 'Opaque Violet', hex: '#5D3587', finish: 'Opaque' },
+  { code: 'DB0791', name: 'Matte Terra Cotta', hex: '#B3533C', finish: 'Matte' },
+  { code: 'DB0733', name: 'Opaque Salmon', hex: '#EA7562', finish: 'Opaque' },
+  { code: 'DB0731', name: 'Opaque Dark Brown', hex: '#4B2E1E', finish: 'Opaque' },
+  { code: 'DB0661', name: 'Dyed Rose Pink', hex: '#D84E7B', finish: 'Opaque' },
+  { code: 'DB0158', name: 'Dusty Rose', hex: '#B57B84', finish: 'Ceylon / Pearl' },
+  { code: 'DB0205', name: 'Light Caramel Ceylon', hex: '#DFB68D', finish: 'Ceylon / Pearl' },
+  { code: 'DB0214', name: 'Pastel Coral', hex: '#F6AA99', finish: 'Ceylon / Pearl' },
+  { code: 'DB0212', name: 'Mint Cream Ceylon', hex: '#BEE3CE', finish: 'Ceylon / Pearl' },
+  { code: 'DB0216', name: 'Sky Blue Ceylon', hex: '#A9CBE6', finish: 'Ceylon / Pearl' },
+  { code: 'DB0275', name: 'Silver Lined Aqua', hex: '#45BED1', finish: 'Silver-Lined' },
+  { code: 'DB0226', name: 'Silver Lined Ruby', hex: '#B01E3A', finish: 'Silver-Lined' },
+  { code: 'DB0042', name: 'Silver Lined Gold', hex: '#E1B547', finish: 'Silver-Lined' },
+  { code: 'DB2102', name: 'Duracoat Opaque Lemon', hex: '#F9E767', finish: 'Duracoat Opaque' },
+  { code: 'DB2115', name: 'Duracoat Opaque Coral', hex: '#EC685B', finish: 'Duracoat Opaque' },
+  { code: 'DB2129', name: 'Duracoat Opaque Seafoam', hex: '#7DC3B1', finish: 'Duracoat Opaque' },
+  { code: 'DB2135', name: 'Duracoat Opaque Moody Blue', hex: '#54739A', finish: 'Duracoat Opaque' },
+  { code: 'DB2140', name: 'Duracoat Opaque Lavender', hex: '#9E85BE', finish: 'Duracoat Opaque' }
+];
+
 export const DMC_COLORS: CraftStandardColor[] = rawDMC.map(c => {
   const rgb = hexToRgb(c.hex);
   return {
@@ -345,6 +398,100 @@ export const PERLER_COLORS: CraftStandardColor[] = rawPerler.map(c => {
   };
 });
 
+export const MIYUKI_DELICA_COLORS: CraftStandardColor[] = rawMiyuki.map(c => {
+  const rgb = hexToRgb(c.hex);
+  return {
+    ...c,
+    ...rgb,
+    lab: rgbToLab(rgb.r, rgb.g, rgb.b),
+    brand: 'Miyuki' as const,
+  };
+});
+
+export type ColorFamily =
+  | 'Whites & Creams'
+  | 'Yellows & Golds'
+  | 'Oranges & Corals'
+  | 'Reds & Pinks'
+  | 'Purples & Violets'
+  | 'Blues & Teals'
+  | 'Greens & Olives'
+  | 'Browns & Skin'
+  | 'Grays & Blacks';
+
+export const COLOR_FAMILIES: ColorFamily[] = [
+  'Whites & Creams',
+  'Yellows & Golds',
+  'Oranges & Corals',
+  'Reds & Pinks',
+  'Purples & Violets',
+  'Blues & Teals',
+  'Greens & Olives',
+  'Browns & Skin',
+  'Grays & Blacks',
+];
+
+/**
+ * Classifies an RGB color into a human-friendly craft color family using HSL coordinates.
+ */
+export function getColorFamily(r: number, g: number, b: number): ColorFamily {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const l = (max + min) / 2;
+  const d = max - min;
+
+  let h = 0;
+  let s = 0;
+  if (d !== 0) {
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case rn:
+        h = (gn - bn) / d + (gn < bn ? 6 : 0);
+        break;
+      case gn:
+        h = (bn - rn) / d + 2;
+        break;
+      default:
+        h = (rn - gn) / d + 4;
+        break;
+    }
+    h *= 60;
+  }
+
+  // Neutral / near-neutral shades
+  if (s < 0.14 || d < 0.08) {
+    if (l >= 0.87) return 'Whites & Creams';
+    return 'Grays & Blacks';
+  }
+  if (l >= 0.91 && h >= 25 && h <= 65) {
+    return 'Whites & Creams';
+  }
+  if (l <= 0.14 && s < 0.35) {
+    return 'Grays & Blacks';
+  }
+
+  // Warm muted / dark earth tones -> Browns & Skin
+  if (h >= 12 && h <= 46 && (l < 0.42 || (s < 0.48 && l < 0.84))) {
+    return 'Browns & Skin';
+  }
+
+  if (h < 16 || h >= 312) return 'Reds & Pinks';
+  if (h < 42) return 'Oranges & Corals';
+  if (h < 68) return 'Yellows & Golds';
+  if (h < 158) return 'Greens & Olives';
+  if (h < 252) return 'Blues & Teals';
+  return 'Purples & Violets';
+}
+
+function getCatalogByBrand(brand: 'DMC' | 'Perler' | 'Miyuki'): CraftStandardColor[] {
+  if (brand === 'DMC') return DMC_COLORS;
+  if (brand === 'Perler') return PERLER_COLORS;
+  return MIYUKI_DELICA_COLORS;
+}
+
 /**
  * Perceptual CIELAB Delta E match against standard craft floss/bead catalogs.
  * Matches human perception with high precision.
@@ -353,10 +500,10 @@ export function findClosestCraftColor(
   r: number,
   g: number,
   b: number,
-  brand: 'DMC' | 'Perler',
+  brand: 'DMC' | 'Perler' | 'Miyuki',
   allowedCodes?: Set<string>
 ): CraftStandardColor {
-  const fullList = brand === 'DMC' ? DMC_COLORS : PERLER_COLORS;
+  const fullList = getCatalogByBrand(brand);
   const list = (allowedCodes && allowedCodes.size > 0)
     ? fullList.filter(c => allowedCodes.has(c.code))
     : fullList;
@@ -374,4 +521,31 @@ export function findClosestCraftColor(
   }
 
   return best;
+}
+
+/**
+ * Returns the top N closest catalog colors sorted by CIELAB Delta E perceptual distance.
+ */
+export function findClosestCraftColors(
+  r: number,
+  g: number,
+  b: number,
+  brand: 'DMC' | 'Perler' | 'Miyuki',
+  limit = 5
+): Array<{ color: CraftStandardColor; deltaE: number; matchPercent: number }> {
+  const list = getCatalogByBrand(brand);
+  const targetLab = rgbToLab(r, g, b);
+
+  return list
+    .map((color) => {
+      const dist = deltaE(targetLab, color.lab);
+      const matchPercent = Math.max(0, Math.min(100, Math.round(100 - dist * 1.4)));
+      return {
+        color,
+        deltaE: Math.round(dist * 10) / 10,
+        matchPercent,
+      };
+    })
+    .sort((a, bItem) => a.deltaE - bItem.deltaE)
+    .slice(0, limit);
 }

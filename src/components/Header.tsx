@@ -26,7 +26,8 @@ import {
   ShoppingCart,
   Calculator,
   FolderArchive,
-  ShoppingBag
+  ShoppingBag,
+  Palette
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -47,6 +48,7 @@ interface HeaderProps {
   onOpenProjectVaultModal?: () => void;
   onOpenEtsyKitModal?: () => void;
   onOpenMaterialKitModal?: () => void;
+  onOpenColorChartModal?: () => void;
   savedProjectsCount?: number;
   isAutoSaving?: boolean;
   isZenMode?: boolean;
@@ -79,6 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenProjectVaultModal,
   onOpenEtsyKitModal,
   onOpenMaterialKitModal,
+  onOpenColorChartModal,
   savedProjectsCount = 0,
   isAutoSaving = false,
   isZenMode = false,
@@ -370,7 +373,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onOpenStarterGallery}
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 hover:border-pink-500/50 shadow-sm transition active:scale-95"
-            title="Browse Community Pattern Showcase & Discovery (34+ curated designs)"
+            title="Browse Community Pattern Showcase & Discovery (32 curated designs across all 8 crafts)"
           >
             <Sparkles className="w-3.5 h-3.5 text-pink-400" />
             <span className="hidden xl:inline">Showcase</span>
@@ -680,6 +683,20 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Calculator className="w-3.5 h-3.5 text-amber-400" />
                   <span>Craft Calculators Suite</span>
+                </button>
+              )}
+
+              {/* Interactive Thread & Bead Color Chart */}
+              {onOpenColorChartModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenColorChartModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <Palette className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Color Chart & Hex Matcher</span>
                 </button>
               )}
 

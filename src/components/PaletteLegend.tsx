@@ -60,6 +60,7 @@ interface PaletteLegendProps {
   onOpenShoppingTrip?: () => void;
   onOpenPhotoPalette?: () => void;
   onOpenMaterialKit?: () => void;
+  onOpenColorChart?: () => void;
 }
 
 const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
@@ -85,6 +86,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onOpenShoppingTrip,
   onOpenPhotoPalette,
   onOpenMaterialKit,
+  onOpenColorChart,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'todo' | 'done'>('all');
@@ -818,6 +820,17 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
 
       {/* Supplies & Shopping Footer */}
       <div className="p-2.5 border-t border-slate-800 bg-slate-950/80 flex flex-col gap-1.5 text-xs">
+        {onOpenColorChart && (
+          <button
+            type="button"
+            onClick={onOpenColorChart}
+            className="w-full py-1.5 px-2.5 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 rounded-lg border border-indigo-500/40 flex items-center justify-center gap-1.5 font-semibold transition"
+            title="Open full DMC, Anchor, Perler, Artkal & Miyuki Delica color chart and CIELAB hex matcher"
+          >
+            <Palette className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Color Chart & Converter (DMC / Beads)</span>
+          </button>
+        )}
         {onOpenMaterialKit && (
           <button
             type="button"
