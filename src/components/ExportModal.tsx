@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { GridConfig, PaletteColor, CellProgress, BackstitchLine } from '../types/craft';
+import type { GridConfig, PaletteColor, CellProgress, BackstitchLine, CanvasLayer } from '../types/craft';
 import { 
   exportPixelArtPNG, 
   exportPrintableGridPNG, 
@@ -45,6 +45,8 @@ interface ExportModalProps {
   config: GridConfig;
   completedCells: CellProgress;
   backstitches?: BackstitchLine[];
+  layers?: CanvasLayer[];
+  activeLayerId?: string;
   onOpenWrittenInstructions?: () => void;
   onOpenSocialCard?: () => void;
   onOpenShoppingTrip?: () => void;
@@ -61,6 +63,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   config,
   completedCells,
   backstitches = [],
+  layers,
+  activeLayerId,
   onOpenWrittenInstructions,
   onOpenSocialCard,
   onOpenShoppingTrip,
@@ -135,7 +139,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleSaveJSON = () => {
-    saveProjectJSON(projectName, config, gridData, palette, completedCells, backstitches);
+    saveProjectJSON(projectName, config, gridData, palette, completedCells, backstitches, layers, activeLayerId);
   };
 
   const handleExportOXS = () => {

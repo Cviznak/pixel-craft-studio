@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import type { PaletteColor, CellProgress, CraftType, PaletteMoodId } from '../types/craft';
+import type { PaletteColor, CellProgress, CraftType, PaletteMoodId, CanvasLayer } from '../types/craft';
+import { LayersPanel } from './LayersPanel';
 import { getContrastingTextColor } from '../utils/colorUtils';
 import { 
   buildAmazonColorSearchUrl, 
@@ -34,7 +35,8 @@ import {
   ChevronDown,
   Check,
   Package,
-  Camera
+  Camera,
+  Layers
 } from 'lucide-react';
 
 interface PaletteLegendProps {
@@ -61,6 +63,23 @@ interface PaletteLegendProps {
   onOpenPhotoPalette?: () => void;
   onOpenMaterialKit?: () => void;
   onOpenColorChart?: () => void;
+  // Wave 9: Smart Layers Sidebar Tab
+  layers?: CanvasLayer[];
+  activeLayerId?: string;
+  rightSidebarTab?: 'palette' | 'layers';
+  onChangeRightSidebarTab?: (tab: 'palette' | 'layers') => void;
+  onSelectLayer?: (id: string) => void;
+  onAddLayer?: () => void;
+  onDeleteLayer?: (id: string) => void;
+  onDuplicateLayer?: (id: string) => void;
+  onRenameLayer?: (id: string, name: string) => void;
+  onToggleLayerVisible?: (id: string) => void;
+  onToggleLayerLock?: (id: string) => void;
+  onChangeLayerOpacity?: (id: string, opacity: number) => void;
+  onMoveLayer?: (id: string, direction: 'up' | 'down') => void;
+  onMergeLayerDown?: (id: string) => void;
+  onClearLayer?: (id: string) => void;
+  onFlattenLayers?: () => void;
 }
 
 const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
@@ -87,6 +106,22 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onOpenPhotoPalette,
   onOpenMaterialKit,
   onOpenColorChart,
+  layers,
+  activeLayerId,
+  rightSidebarTab = 'palette',
+  onChangeRightSidebarTab,
+  onSelectLayer,
+  onAddLayer,
+  onDeleteLayer,
+  onDuplicateLayer,
+  onRenameLayer,
+  onToggleLayerVisible,
+  onToggleLayerLock,
+  onChangeLayerOpacity,
+  onMoveLayer,
+  onMergeLayerDown,
+  onClearLayer,
+  onFlattenLayers,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'todo' | 'done'>('all');
@@ -208,8 +243,103 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
     });
   }, [filteredPalette, sortMode, palette, realCounts]);
 
+  const hasLayerTab =
+    Boolean(layers && layers.length > 0 && onChangeRightSidebarTab && onSelectLayer);
+  const isLayersTab = hasLayerTab && rightSidebarTab === 'layers';
+
   return (
     <aside className="w-80 max-w-[92vw] sm:w-72 xl:w-80 h-full bg-slate-900 border-l border-slate-800/90 flex flex-col z-10 shrink-0 shadow-2xl lg:shadow-none select-none overflow-hidden">
+      {/* Top 2-Tab Pill Switcher (Palette | Layers) */}
+      {hasLayerTab && onChangeRightSidebarTab && layers && (
+        <div className="px-3 py-2 border-b border-slate-800/90 bg-slate-950/75 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex-1 grid grid-cols-2 gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => onChangeRightSidebarTab('palette')}
+              className={`py-1 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition ${
+                !isLayersTab
+                  ? 'bg-pink-500/20 text-pink-200 border border-pink-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              <Palette className="w-3.5 h-3.5 text-pink-400" />
+              <span>Palette</span>
+              <span className="text-[10px] font-mono opacity-80">({palette.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onChangeRightSidebarTab('layers')}
+              className={`py-1 px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition ${
+                isLayersTab
+                  ? 'bg-indigo-500/25 text-indigo-200 border border-indigo-500/50 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Layers</span>
+              <span className="text-[10px] font-mono opacity-80">({layers.length})</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {onToggleCollapse && (
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+                title="Collapse sidebar"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden transition"
+                title="Close panel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isLayersTab &&
+      layers &&
+      onSelectLayer &&
+      onAddLayer &&
+      onDeleteLayer &&
+      onDuplicateLayer &&
+      onRenameLayer &&
+      onToggleLayerVisible &&
+      onToggleLayerLock &&
+      onChangeLayerOpacity &&
+      onMoveLayer &&
+      onMergeLayerDown &&
+      onClearLayer &&
+      onFlattenLayers ? (
+        <LayersPanel
+          layers={layers}
+          activeLayerId={activeLayerId || layers[layers.length - 1].id}
+          palette={palette}
+          onSelectLayer={onSelectLayer}
+          onAddLayer={onAddLayer}
+          onDeleteLayer={onDeleteLayer}
+          onDuplicateLayer={onDuplicateLayer}
+          onRenameLayer={onRenameLayer}
+          onToggleLayerVisible={onToggleLayerVisible}
+          onToggleLayerLock={onToggleLayerLock}
+          onChangeLayerOpacity={onChangeLayerOpacity}
+          onMoveLayer={onMoveLayer}
+          onMergeLayerDown={onMergeLayerDown}
+          onClearLayer={onClearLayer}
+          onFlattenLayers={onFlattenLayers}
+        />
+      ) : (
+        <>
       {/* Header */}
       <div className="p-3.5 border-b border-slate-800/90 bg-slate-950/40 space-y-2">
         <div className="flex items-center justify-between">
@@ -249,7 +379,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
                 <span>Clean</span>
               </button>
             )}
-            {onToggleCollapse && (
+            {!hasLayerTab && onToggleCollapse && (
               <button
                 type="button"
                 onClick={onToggleCollapse}
@@ -259,7 +389,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
                 <ChevronRight className="w-4 h-4" />
               </button>
             )}
-            {onClose && (
+            {!hasLayerTab && onClose && (
               <button
                 type="button"
                 onClick={onClose}
@@ -1044,6 +1174,8 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </aside>
   );

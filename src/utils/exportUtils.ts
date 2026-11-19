@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { GridConfig, PaletteColor, CraftProject, CellProgress, BackstitchLine } from '../types/craft';
+import type { GridConfig, PaletteColor, CraftProject, CellProgress, BackstitchLine, CanvasLayer } from '../types/craft';
 import { getContrastingTextColor } from './colorUtils';
 import { getCraftDimensionsSummary, estimateDmcSkeins } from './craftCalculator';
 import { generateCrochetInstructions } from './crochetInstructions';
@@ -1054,10 +1054,12 @@ export function saveProjectJSON(
   gridData: number[][],
   palette: PaletteColor[],
   completedCells: CellProgress,
-  backstitches?: BackstitchLine[]
+  backstitches?: BackstitchLine[],
+  layers?: CanvasLayer[],
+  activeLayerId?: string
 ) {
   const project: CraftProject = {
-    version: '1.0',
+    version: layers && layers.length > 0 ? '2.0' : '1.0',
     name,
     createdAt: new Date().toISOString(),
     gridConfig,
@@ -1065,6 +1067,8 @@ export function saveProjectJSON(
     palette,
     completedCells,
     backstitches: backstitches && backstitches.length > 0 ? backstitches : undefined,
+    layers: layers && layers.length > 0 ? layers : undefined,
+    activeLayerId: layers && layers.length > 0 ? activeLayerId : undefined,
   };
 
   const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' });

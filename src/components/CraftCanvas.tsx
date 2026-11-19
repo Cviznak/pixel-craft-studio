@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { GridConfig, PaletteColor, CellProgress, BackstitchLine } from '../types/craft';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import type { GridConfig, PaletteColor, CellProgress, BackstitchLine, CanvasLayer } from '../types/craft';
 import { getContrastingTextColor } from '../utils/colorUtils';
 import { 
   ZoomIn, 
@@ -40,7 +40,8 @@ import {
   Circle,
   Frame,
   SplitSquareHorizontal,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Layers
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -57,6 +58,9 @@ export type DisplayShader = 'craft' | 'crt' | 'gameboy' | 'aida' | 'glossy_bead'
 
 interface CraftCanvasProps {
   gridData: number[][];
+  layers?: CanvasLayer[];
+  activeLayerId?: string;
+  onOpenLayersTab?: () => void;
   palette: PaletteColor[];
   config: GridConfig;
   spotlightColorId: string | null;
@@ -78,7 +82,8 @@ interface CraftCanvasProps {
     newGrid: number[][],
     newCompletedCells?: CellProgress,
     newWidth?: number,
-    newHeight?: number
+    newHeight?: number,
+    meta?: { kind: 'rotate'; direction: 'cw' | 'ccw' } | { kind: 'same-size' }
   ) => void;
   onOpenPixelTextModal?: () => void;
   onToggleShapeMask?: () => void;
@@ -88,6 +93,272 @@ interface CraftCanvasProps {
   sourceImage?: HTMLImageElement | null;
   onOpenBorderModal?: () => void;
   splitCompareSignal?: number;
+}
+
+function drawEmptyCellBackground(
+  ctx: CanvasRenderingContext2D,
+  craftType: GridConfig['craftType'],
+  x: number,
+  y: number,
+  px: number,
+  py: number,
+  cellSize: number
+) {
+  if (craftType === 'perler') {
+    const radius = cellSize * 0.44;
+    const centerX = px + cellSize / 2;
+    const centerY = py + cellSize / 2;
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#94a3b8';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (craftType === 'cross-stitch') {
+    ctx.fillStyle = '#f1ece1';
+    ctx.fillRect(px, py, cellSize, cellSize);
+    ctx.fillStyle = '#d5cebf';
+    ctx.fillRect(px + cellSize * 0.46, py + cellSize * 0.46, cellSize * 0.08, cellSize * 0.08);
+  } else {
+    const isEven = (x + y) % 2 === 0;
+    ctx.fillStyle = isEven ? '#1e293b' : '#0f172a';
+    ctx.fillRect(px, py, cellSize, cellSize);
+  }
+}
+
+function drawCraftCell(
+  ctx: CanvasRenderingContext2D,
+  craftType: GridConfig['craftType'],
+  px: number,
+  py: number,
+  cellSize: number,
+  effectiveHex: string,
+  zoom: number
+) {
+  if (craftType === 'perler') {
+    const radius = cellSize * 0.44;
+    const centerX = px + cellSize / 2;
+    const centerY = py + cellSize / 2;
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.38, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = effectiveHex;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    const grad = ctx.createRadialGradient(
+      centerX - radius * 0.3,
+      centerY - radius * 0.3,
+      radius * 0.1,
+      centerX,
+      centerY,
+      radius
+    );
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+    grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.05)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (craftType === 'cross-stitch') {
+    ctx.fillStyle = '#f1ece1';
+    ctx.fillRect(px, py, cellSize, cellSize);
+
+    const pad = cellSize * 0.1;
+    ctx.strokeStyle = effectiveHex;
+    ctx.lineWidth = Math.max(2, cellSize * 0.22);
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(px + pad, py + cellSize - pad);
+    ctx.lineTo(px + cellSize - pad, py + pad);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(px + pad, py + pad);
+    ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = Math.max(1, cellSize * 0.07);
+    ctx.beginPath();
+    ctx.moveTo(px + pad + 1, py + pad);
+    ctx.lineTo(px + cellSize - pad, py + cellSize - pad - 1);
+    ctx.stroke();
+  } else if (craftType === 'crochet') {
+    ctx.fillStyle = effectiveHex;
+    ctx.fillRect(px, py, cellSize, cellSize);
+
+    const yarnWidth = Math.max(1.5, cellSize * 0.18);
+    ctx.lineWidth = yarnWidth;
+    ctx.lineCap = 'round';
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.beginPath();
+    ctx.moveTo(px + cellSize * 0.22, py + cellSize * 0.2);
+    ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.88);
+    ctx.lineTo(px + cellSize * 0.78, py + cellSize * 0.2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+    ctx.beginPath();
+    ctx.moveTo(px + cellSize * 0.25, py + cellSize * 0.16);
+    ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.84);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
+    ctx.beginPath();
+    ctx.arc(px + cellSize * 0.5, py + cellSize * 0.18, cellSize * 0.28, Math.PI, 0);
+    ctx.stroke();
+  } else if (craftType === 'alpha') {
+    const padY = cellSize * 0.08;
+    const padX = cellSize * 0.04;
+    const knotW = cellSize - padX * 2;
+    const knotH = cellSize - padY * 2;
+    const radius = Math.min(knotW, knotH) * 0.35;
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = Math.max(1, cellSize * 0.1);
+    ctx.beginPath();
+    ctx.moveTo(px + cellSize / 2, py);
+    ctx.lineTo(px + cellSize / 2, py + cellSize);
+    ctx.stroke();
+
+    ctx.fillStyle = effectiveHex;
+    ctx.beginPath();
+    ctx.roundRect(px + padX, py + padY, knotW, knotH, radius);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.lineWidth = Math.max(1, cellSize * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(px + padX + 2, py + cellSize * 0.52);
+    ctx.lineTo(px + cellSize - padX - 2, py + cellSize * 0.52);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = Math.max(0.8, cellSize * 0.1);
+    ctx.beginPath();
+    ctx.moveTo(px + padX + 3, py + padY + 2);
+    ctx.lineTo(px + cellSize - padX - 3, py + padY + 2);
+    ctx.stroke();
+  } else if (craftType === 'knitting') {
+    ctx.fillStyle = effectiveHex;
+    ctx.fillRect(px, py, cellSize, cellSize);
+
+    const legW = Math.max(1.2, cellSize * 0.18);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = legW;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(px + cellSize * 0.22, py + cellSize * 0.1);
+    ctx.quadraticCurveTo(px + cellSize * 0.35, py + cellSize * 0.55, px + cellSize * 0.5, py + cellSize * 0.88);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(px + cellSize * 0.78, py + cellSize * 0.1);
+    ctx.quadraticCurveTo(px + cellSize * 0.65, py + cellSize * 0.55, px + cellSize * 0.5, py + cellSize * 0.88);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.lineWidth = Math.max(1, cellSize * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(px + cellSize * 0.5, py + cellSize * 0.25);
+    ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.82);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.lineWidth = Math.max(0.8, cellSize * 0.1);
+    ctx.beginPath();
+    ctx.arc(px + cellSize * 0.5, py + cellSize * 0.12, cellSize * 0.26, Math.PI, 0);
+    ctx.stroke();
+  } else if (craftType === 'loom') {
+    const padX = cellSize * 0.05;
+    const padY = cellSize * 0.08;
+    const bw = cellSize - padX * 2;
+    const bh = cellSize - padY * 2;
+    const r = Math.min(3, bh * 0.25);
+
+    ctx.fillStyle = effectiveHex;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(px + padX, py + padY, bw, bh, r);
+    } else {
+      ctx.rect(px + padX, py + padY, bw, bh);
+    }
+    ctx.fill();
+
+    const grad = ctx.createLinearGradient(px, py + padY, px, py + padY + bh);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+    grad.addColorStop(0.25, 'rgba(255, 255, 255, 0.15)');
+    grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.05)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      ctx.roundRect(px + padX, py + padY, bw, bh, r);
+    } else {
+      ctx.rect(px + padX, py + padY, bw, bh);
+    }
+    ctx.fill();
+
+    if (cellSize * zoom >= 12) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      const holeH = Math.max(1.5, bh * 0.18);
+      const holeW = bw * 0.55;
+      ctx.beginPath();
+      ctx.ellipse(
+        px + cellSize / 2,
+        py + cellSize / 2,
+        holeW / 2,
+        holeH / 2,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.fillRect(px + cellSize / 2 - holeW * 0.35, py + cellSize / 2 - 0.5, holeW * 0.7, 1);
+    }
+
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = Math.max(0.6, cellSize * 0.05);
+    ctx.stroke();
+  } else if (craftType === 'diamond') {
+    const pad = cellSize * 0.06;
+    ctx.fillStyle = effectiveHex;
+    ctx.fillRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.beginPath();
+    ctx.moveTo(px + pad, py + pad);
+    ctx.lineTo(px + cellSize / 2, py + cellSize / 2);
+    ctx.lineTo(px + cellSize - pad, py + pad);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.beginPath();
+    ctx.moveTo(px + pad, py + cellSize - pad);
+    ctx.lineTo(px + cellSize / 2, py + cellSize / 2);
+    ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = effectiveHex;
+    ctx.fillRect(px, py, cellSize, cellSize);
+  }
 }
 
 export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eraser' | 'bucket' | 'eyedropper' | 'line' | 'rectangle' | 'wand' | 'backstitch';
@@ -159,6 +430,9 @@ function getRectCells(x0: number, y0: number, x1: number, y1: number, filled = f
 
 export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   gridData,
+  layers,
+  activeLayerId,
+  onOpenLayersTab,
   palette,
   config,
   spotlightColorId,
@@ -294,45 +568,52 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   const [previewCells, setPreviewCells] = useState<{ x: number; y: number }[] | null>(null);
   const dragShapeStartRef = useRef<{ x: number; y: number } | null>(null);
 
+  const activeLayer = useMemo(() => {
+    if (!layers || layers.length === 0) return null;
+    return layers.find((l) => l.id === activeLayerId) || layers[layers.length - 1];
+  }, [layers, activeLayerId]);
+
+  const editableGrid = activeLayer?.grid ?? gridData;
+
   // Transform actions with automatic undo snapshotting & sound feedback
   const handleAutoCenter = useCallback(() => {
     if (!onTransformGrid) return;
-    const { newGrid, newCompletedCells, moved } = autoCenterGrid(gridData, completedCells);
+    const { newGrid, newCompletedCells, moved } = autoCenterGrid(editableGrid, completedCells);
     if (!moved) return;
     onBeforePencilStroke?.();
-    onTransformGrid(newGrid, newCompletedCells);
+    onTransformGrid(newGrid, newCompletedCells, undefined, undefined, { kind: 'same-size' });
     audioFeedback.playCelebrationChime();
-  }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
+  }, [editableGrid, completedCells, onTransformGrid, onBeforePencilStroke]);
 
   const handleNudge = useCallback((dx: number, dy: number) => {
     if (!onTransformGrid) return;
-    const { newGrid, newCompletedCells } = shiftGrid(gridData, dx, dy, completedCells, wrapShift);
+    const { newGrid, newCompletedCells } = shiftGrid(editableGrid, dx, dy, completedCells, wrapShift);
     onBeforePencilStroke?.();
-    onTransformGrid(newGrid, newCompletedCells);
+    onTransformGrid(newGrid, newCompletedCells, undefined, undefined, { kind: 'same-size' });
     audioFeedback.playStitchSound(true);
-  }, [gridData, completedCells, wrapShift, onTransformGrid, onBeforePencilStroke]);
+  }, [editableGrid, completedCells, wrapShift, onTransformGrid, onBeforePencilStroke]);
 
   const handleFlipHorizontal = useCallback(() => {
     if (!onTransformGrid) return;
     onBeforePencilStroke?.();
-    const { newGrid, newCompletedCells } = flipGridHorizontal(gridData, completedCells);
-    onTransformGrid(newGrid, newCompletedCells);
+    const { newGrid, newCompletedCells } = flipGridHorizontal(editableGrid, completedCells);
+    onTransformGrid(newGrid, newCompletedCells, undefined, undefined, { kind: 'same-size' });
     audioFeedback.playStitchSound(true);
-  }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
+  }, [editableGrid, completedCells, onTransformGrid, onBeforePencilStroke]);
 
   const handleFlipVertical = useCallback(() => {
     if (!onTransformGrid) return;
     onBeforePencilStroke?.();
-    const { newGrid, newCompletedCells } = flipGridVertical(gridData, completedCells);
-    onTransformGrid(newGrid, newCompletedCells);
+    const { newGrid, newCompletedCells } = flipGridVertical(editableGrid, completedCells);
+    onTransformGrid(newGrid, newCompletedCells, undefined, undefined, { kind: 'same-size' });
     audioFeedback.playStitchSound(true);
-  }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
+  }, [editableGrid, completedCells, onTransformGrid, onBeforePencilStroke]);
 
   const handleRotate = useCallback((direction: 'cw' | 'ccw') => {
     if (!onTransformGrid) return;
     onBeforePencilStroke?.();
     const { newGrid, newCompletedCells, newWidth, newHeight } = rotateGrid(gridData, direction, completedCells);
-    onTransformGrid(newGrid, newCompletedCells, newWidth, newHeight);
+    onTransformGrid(newGrid, newCompletedCells, newWidth, newHeight, { kind: 'rotate', direction });
     audioFeedback.playCelebrationChime();
   }, [gridData, completedCells, onTransformGrid, onBeforePencilStroke]);
 
@@ -456,6 +737,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         spotlightIndex = palette.findIndex(c => c.id === spotlightColorId);
       }
 
+      // Check whether any visible layer uses partial opacity (< 100%)
+      const visibleLayers =
+        layers && layers.length > 0 ? layers.filter((l) => l.visible) : null;
+      const hasTranslucentLayers =
+        Boolean(visibleLayers && visibleLayers.some((l) => l.opacity < 0.999));
+
       // Viewport culling: only draw cells visible within viewport (+1 buffer margin)
       const minCol = Math.max(0, Math.floor(-pan.x / (cellSize * zoom)) - 1);
       const maxCol = Math.min(gridWidth - 1, Math.ceil((width - pan.x) / (cellSize * zoom)) + 1);
@@ -470,32 +757,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         const py = y * cellSize + getStaggerOffsetY(x, cellSize);
 
         if (colorIdx === -1) {
-          // Empty transparent cell (no stitch/bead placed)
-          if (config.craftType === 'perler') {
-            // Draw empty peg on the pegboard
-            const radius = cellSize * 0.44;
-            const centerX = px + cellSize / 2;
-            const centerY = py + cellSize / 2;
-            ctx.fillStyle = '#cbd5e1';
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius * 0.35, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#94a3b8';
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius * 0.16, 0, Math.PI * 2);
-            ctx.fill();
-          } else if (config.craftType === 'cross-stitch') {
-            // Empty Aida fabric weave
-            ctx.fillStyle = '#f1ece1';
-            ctx.fillRect(px, py, cellSize, cellSize);
-            ctx.fillStyle = '#d5cebf';
-            ctx.fillRect(px + cellSize * 0.46, py + cellSize * 0.46, cellSize * 0.08, cellSize * 0.08);
-          } else {
-            // Subtle transparent checkerboard
-            const isEven = (x + y) % 2 === 0;
-            ctx.fillStyle = isEven ? '#1e293b' : '#0f172a';
-            ctx.fillRect(px, py, cellSize, cellSize);
-          }
+          drawEmptyCellBackground(ctx, config.craftType, x, y, px, py, cellSize);
 
           if (config.showGridLines && cellSize * zoom >= 6) {
             ctx.strokeStyle = 'rgba(150, 150, 150, 0.15)';
@@ -508,276 +770,48 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         const color = palette[colorIdx];
         if (!color) continue;
 
-        const effectiveHex = isValueCheckActive
-          ? getGrayscaleHex(color.r, color.g, color.b)
-          : color.hex;
-
         const isDone = !!completedCells[`${x},${y}`];
         const isSpotlightMatch = spotlightIndex === null || spotlightIndex === colorIdx;
 
-        // Dim if spotlight is active and doesn't match
         ctx.save();
-        if (spotlightIndex !== null && !isSpotlightMatch) {
-          ctx.globalAlpha = 0.15;
-        }
-
-        // Render based on Craft Type
-        if (config.craftType === 'perler') {
-          // Circular Perler bead with 3D shine and center peg hole
-          const radius = cellSize * 0.44;
-          const centerX = px + cellSize / 2;
-          const centerY = py + cellSize / 2;
-
-          // Peg hole underneath
-          ctx.fillStyle = '#cbd5e1';
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius * 0.38, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Bead outer body
-          ctx.fillStyle = effectiveHex;
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Bead 3D highlight
-          const grad = ctx.createRadialGradient(
-            centerX - radius * 0.3,
-            centerY - radius * 0.3,
-            radius * 0.1,
-            centerX,
-            centerY,
-            radius
+        if (hasTranslucentLayers && visibleLayers) {
+          // Draw empty backing if no opaque visible layer completely covers this cell
+          const hasOpaqueLayerAtCell = visibleLayers.some(
+            (l) => l.opacity >= 0.999 && (l.grid[y]?.[x] ?? -1) >= 0
           );
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-          grad.addColorStop(0.6, 'rgba(255, 255, 255, 0.05)');
-          grad.addColorStop(1, 'rgba(0, 0, 0, 0.25)');
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Inner hole
-          ctx.fillStyle = '#475569';
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, radius * 0.32, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (config.craftType === 'cross-stitch') {
-          // Aida fabric weave background hole
-          ctx.fillStyle = '#f1ece1';
-          ctx.fillRect(px, py, cellSize, cellSize);
-
-          // Realistic stitched 'X'
-          const pad = cellSize * 0.1;
-          ctx.strokeStyle = effectiveHex;
-          ctx.lineWidth = Math.max(2, cellSize * 0.22);
-          ctx.lineCap = 'round';
-
-          // First diagonal /
-          ctx.beginPath();
-          ctx.moveTo(px + pad, py + cellSize - pad);
-          ctx.lineTo(px + cellSize - pad, py + pad);
-          ctx.stroke();
-
-          // Second diagonal \ on top with slight shadow
-          ctx.beginPath();
-          ctx.moveTo(px + pad, py + pad);
-          ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
-          ctx.stroke();
-
-          // Subtle thread sheen
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-          ctx.lineWidth = Math.max(1, cellSize * 0.07);
-          ctx.beginPath();
-          ctx.moveTo(px + pad + 1, py + pad);
-          ctx.lineTo(px + cellSize - pad, py + cellSize - pad - 1);
-          ctx.stroke();
-        } else if (config.craftType === 'crochet') {
-          // Authentic Tapestry Crochet Stitch Look
-          // Base yarn fill
-          ctx.fillStyle = effectiveHex;
-          ctx.fillRect(px, py, cellSize, cellSize);
-
-          // Crochet yarn V-stitch strands and loop texture
-          const yarnWidth = Math.max(1.5, cellSize * 0.18);
-          ctx.lineWidth = yarnWidth;
-          ctx.lineCap = 'round';
-
-          // Strand shadow
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.22)';
-          ctx.beginPath();
-          ctx.moveTo(px + cellSize * 0.22, py + cellSize * 0.2);
-          ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.88);
-          ctx.lineTo(px + cellSize * 0.78, py + cellSize * 0.2);
-          ctx.stroke();
-
-          // Strand yarn sheen / highlight
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-          ctx.beginPath();
-          ctx.moveTo(px + cellSize * 0.25, py + cellSize * 0.16);
-          ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.84);
-          ctx.stroke();
-
-          // Top stitch loop
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.18)';
-          ctx.beginPath();
-          ctx.arc(px + cellSize * 0.5, py + cellSize * 0.18, cellSize * 0.28, Math.PI, 0);
-          ctx.stroke();
-        } else if (config.craftType === 'alpha') {
-          // Authentic Alpha Friendship Bracelet Knot Texture (Horizontal Double Half-Hitch Knot)
-          const padY = cellSize * 0.08;
-          const padX = cellSize * 0.04;
-          const knotW = cellSize - padX * 2;
-          const knotH = cellSize - padY * 2;
-          const radius = Math.min(knotW, knotH) * 0.35;
-
-          // Vertical warp background thread guide behind knot
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-          ctx.lineWidth = Math.max(1, cellSize * 0.1);
-          ctx.beginPath();
-          ctx.moveTo(px + cellSize / 2, py);
-          ctx.lineTo(px + cellSize / 2, py + cellSize);
-          ctx.stroke();
-
-          // Knot pill body
-          ctx.fillStyle = effectiveHex;
-          ctx.beginPath();
-          ctx.roundRect(px + padX, py + padY, knotW, knotH, radius);
-          ctx.fill();
-
-          // Double half-hitch horizontal ridge (shows the knot structure)
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-          ctx.lineWidth = Math.max(1, cellSize * 0.12);
-          ctx.beginPath();
-          ctx.moveTo(px + padX + 2, py + cellSize * 0.52);
-          ctx.lineTo(px + cellSize - padX - 2, py + cellSize * 0.52);
-          ctx.stroke();
-
-          // Knot top highlight
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-          ctx.lineWidth = Math.max(0.8, cellSize * 0.1);
-          ctx.beginPath();
-          ctx.moveTo(px + padX + 3, py + padY + 2);
-          ctx.lineTo(px + cellSize - padX - 3, py + padY + 2);
-          ctx.stroke();
-        } else if (config.craftType === 'knitting') {
-          // Authentic Stockinette Knitting Texture (Interlocking V-Stitch Loop)
-          ctx.fillStyle = effectiveHex;
-          ctx.fillRect(px, py, cellSize, cellSize);
-
-          const legW = Math.max(1.2, cellSize * 0.18);
-          // Left strand of the V (curves from top-left toward bottom-center)
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-          ctx.lineWidth = legW;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(px + cellSize * 0.22, py + cellSize * 0.1);
-          ctx.quadraticCurveTo(px + cellSize * 0.35, py + cellSize * 0.55, px + cellSize * 0.5, py + cellSize * 0.88);
-          ctx.stroke();
-
-          // Right strand of the V (curves from top-right toward bottom-center)
-          ctx.beginPath();
-          ctx.moveTo(px + cellSize * 0.78, py + cellSize * 0.1);
-          ctx.quadraticCurveTo(px + cellSize * 0.65, py + cellSize * 0.55, px + cellSize * 0.5, py + cellSize * 0.88);
-          ctx.stroke();
-
-          // Center groove shadow (between the two legs of the V)
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
-          ctx.lineWidth = Math.max(1, cellSize * 0.12);
-          ctx.beginPath();
-          ctx.moveTo(px + cellSize * 0.5, py + cellSize * 0.25);
-          ctx.lineTo(px + cellSize * 0.5, py + cellSize * 0.82);
-          ctx.stroke();
-
-          // Interlocking loop top curve shadow
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-          ctx.lineWidth = Math.max(0.8, cellSize * 0.1);
-          ctx.beginPath();
-          ctx.arc(px + cellSize * 0.5, py + cellSize * 0.12, cellSize * 0.26, Math.PI, 0);
-          ctx.stroke();
-        } else if (config.craftType === 'loom') {
-          // Miyuki Delica Glass Cylinder Seed Bead Simulation
-          const padX = cellSize * 0.05;
-          const padY = cellSize * 0.08;
-          const bw = cellSize - padX * 2;
-          const bh = cellSize - padY * 2;
-          const r = Math.min(3, bh * 0.25);
-
-          // Bead base cylinder body with slight corner radius
-          ctx.fillStyle = effectiveHex;
-          ctx.beginPath();
-          if (ctx.roundRect) {
-            ctx.roundRect(px + padX, py + padY, bw, bh, r);
-          } else {
-            ctx.rect(px + padX, py + padY, bw, bh);
-          }
-          ctx.fill();
-
-          // Glass Cylindrical 3D Specular Highlight (gleam along upper cylinder edge)
-          const grad = ctx.createLinearGradient(px, py + padY, px, py + padY + bh);
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-          grad.addColorStop(0.25, 'rgba(255, 255, 255, 0.15)');
-          grad.addColorStop(0.65, 'rgba(0, 0, 0, 0.05)');
-          grad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          if (ctx.roundRect) {
-            ctx.roundRect(px + padX, py + padY, bw, bh, r);
-          } else {
-            ctx.rect(px + padX, py + padY, bw, bh);
-          }
-          ctx.fill();
-
-          // Bead inner thread hole / pass-through core slit
-          if (cellSize * zoom >= 12) {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-            const holeH = Math.max(1.5, bh * 0.18);
-            const holeW = bw * 0.55;
-            ctx.beginPath();
-            ctx.ellipse(
-              px + cellSize / 2,
-              py + cellSize / 2,
-              holeW / 2,
-              holeH / 2,
-              0,
-              0,
-              Math.PI * 2
-            );
-            ctx.fill();
-
-            // Inner thread white glimmer
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-            ctx.fillRect(px + cellSize / 2 - holeW * 0.35, py + cellSize / 2 - 0.5, holeW * 0.7, 1);
+          if (!hasOpaqueLayerAtCell) {
+            drawEmptyCellBackground(ctx, config.craftType, x, y, px, py, cellSize);
           }
 
-          // Delicate outer glass edge
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
-          ctx.lineWidth = Math.max(0.6, cellSize * 0.05);
-          ctx.stroke();
-        } else if (config.craftType === 'diamond') {
-          // Diamond painting faceted drill
-          const pad = cellSize * 0.06;
-          ctx.fillStyle = effectiveHex;
-          ctx.fillRect(px + pad, py + pad, cellSize - pad * 2, cellSize - pad * 2);
+          // Composite each visible layer bottom-to-top honoring per-layer opacity
+          for (let li = 0; li < visibleLayers.length; li++) {
+            const layer = visibleLayers[li];
+            const layerColorIdx = layer.grid[y]?.[x] ?? -1;
+            if (layerColorIdx < 0) continue;
+            const layerColor = palette[layerColorIdx];
+            if (!layerColor) continue;
+            const layerHex = isValueCheckActive
+              ? getGrayscaleHex(layerColor.r, layerColor.g, layerColor.b)
+              : layerColor.hex;
+            const layerSpotMatch = spotlightIndex === null || spotlightIndex === layerColorIdx;
+            ctx.save();
+            ctx.globalAlpha =
+              layer.opacity * (spotlightIndex !== null && !layerSpotMatch ? 0.15 : 1);
+            drawCraftCell(ctx, config.craftType, px, py, cellSize, layerHex, zoom);
+            ctx.restore();
+          }
 
-          // Facet specular sparkles
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-          ctx.beginPath();
-          ctx.moveTo(px + pad, py + pad);
-          ctx.lineTo(px + cellSize / 2, py + cellSize / 2);
-          ctx.lineTo(px + cellSize - pad, py + pad);
-          ctx.fill();
-
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-          ctx.beginPath();
-          ctx.moveTo(px + pad, py + cellSize - pad);
-          ctx.lineTo(px + cellSize / 2, py + cellSize / 2);
-          ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
-          ctx.fill();
+          if (spotlightIndex !== null && !isSpotlightMatch) {
+            ctx.globalAlpha = 0.15;
+          }
         } else {
-          // Clean pixel art
-          ctx.fillStyle = effectiveHex;
-          ctx.fillRect(px, py, cellSize, cellSize);
+          const effectiveHex = isValueCheckActive
+            ? getGrayscaleHex(color.r, color.g, color.b)
+            : color.hex;
+          if (spotlightIndex !== null && !isSpotlightMatch) {
+            ctx.globalAlpha = 0.15;
+          }
+          drawCraftCell(ctx, config.craftType, px, py, cellSize, effectiveHex, zoom);
         }
 
         // Draw Craft Symbol if enabled or zoomed in enough
@@ -1274,6 +1308,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     return () => cancelAnimationFrame(animId);
   }, [
     gridData,
+    layers,
     palette,
     config,
     spotlightColorId,
@@ -1353,16 +1388,16 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     return { vx, vy, fx, fy };
   };
 
-  // Magic Wand Selection
+  // Magic Wand Selection (operates on active layer grid)
   const handleMagicWandSelect = useCallback((startX: number, startY: number, additive: boolean) => {
     if (startY < 0 || startY >= gridHeight || startX < 0 || startX >= gridWidth) return;
-    const targetIdx = gridData[startY][startX];
+    const targetIdx = editableGrid[startY]?.[startX] ?? -1;
     const nextSelected = additive ? new Set(selectedCells) : new Set<string>();
 
     if (wandMode === 'all') {
       for (let y = 0; y < gridHeight; y++) {
         for (let x = 0; x < gridWidth; x++) {
-          if (gridData[y][x] === targetIdx) {
+          if (editableGrid[y]?.[x] === targetIdx) {
             nextSelected.add(`${x},${y}`);
           }
         }
@@ -1384,7 +1419,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         for (const [nx, ny] of neighbors) {
           if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
             const flatIdx = ny * gridWidth + nx;
-            if (!visited[flatIdx] && gridData[ny][nx] === targetIdx) {
+            if (!visited[flatIdx] && editableGrid[ny]?.[nx] === targetIdx) {
               visited[flatIdx] = 1;
               queue.push([nx, ny]);
             }
@@ -1395,7 +1430,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
     audioFeedback.playStitchSound(true);
     setSelectedCells(nextSelected);
-  }, [gridData, gridWidth, gridHeight, wandMode, selectedCells]);
+  }, [editableGrid, gridWidth, gridHeight, wandMode, selectedCells]);
 
   const handleNudgeSelection = useCallback((dx: number, dy: number) => {
     if (selectedCells.size === 0) return;
@@ -1410,7 +1445,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       const sx = parseInt(sxStr, 10);
       const sy = parseInt(syStr, 10);
       if (sy >= 0 && sy < gridHeight && sx >= 0 && sx < gridWidth) {
-        snapshot.set(key, gridData[sy][sx]);
+        snapshot.set(key, editableGrid[sy]?.[sx] ?? -1);
       }
     });
 
@@ -1451,7 +1486,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       audioFeedback.playStitchSound(true);
     }
     setSelectedCells(newSelection);
-  }, [selectedCells, gridData, gridWidth, gridHeight, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
+  }, [selectedCells, editableGrid, gridWidth, gridHeight, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
 
   const handleRecolorSelection = useCallback(() => {
     if (selectedCells.size === 0) return;
@@ -1505,10 +1540,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     setSelectedCells(new Set());
   }, [selectedCells, gridWidth, gridHeight, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
 
-  // Studio Flood Fill (BFS 4-way area fill)
+  // Studio Flood Fill (BFS 4-way area fill on active layer)
   const handleFloodFill = useCallback((startX: number, startY: number, fillIndex: number) => {
     if (startY < 0 || startY >= gridHeight || startX < 0 || startX >= gridWidth) return;
-    const targetColor = gridData[startY][startX];
+    const targetColor = editableGrid[startY]?.[startX] ?? -1;
     if (targetColor === fillIndex) return;
 
     onBeforePencilStroke?.();
@@ -1520,7 +1555,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     // If mirror mode is active, also seed mirror start cell if matching
     if (isMirrorMode) {
       const mirrorStartX = gridWidth - 1 - startX;
-      if (gridData[startY]?.[mirrorStartX] === targetColor) {
+      if (editableGrid[startY]?.[mirrorStartX] === targetColor) {
         const mIdx = startY * gridWidth + mirrorStartX;
         if (!visited[mIdx]) {
           visited[mIdx] = 1;
@@ -1545,7 +1580,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       for (const [nx, ny] of neighbors) {
         if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight) {
           const idx = ny * gridWidth + nx;
-          if (!visited[idx] && gridData[ny][nx] === targetColor) {
+          if (!visited[idx] && editableGrid[ny]?.[nx] === targetColor) {
             visited[idx] = 1;
             queue.push([nx, ny]);
           }
@@ -1563,7 +1598,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         }
       }
     }
-  }, [gridData, gridWidth, gridHeight, isMirrorMode, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
+  }, [editableGrid, gridWidth, gridHeight, isMirrorMode, onBeforePencilStroke, onBatchPaintCells, onPaintCell]);
 
   // Handle Pointer Events (Mouse, Touch, and Apple Pencil/Stylus)
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -1759,12 +1794,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             const updates: { x: number; y: number; colorIndex: number }[] = [];
             for (const c of lineCells) {
               if (c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight) {
-                if (gridData[c.y]?.[c.x] !== targetColor) {
+                if (editableGrid[c.y]?.[c.x] !== targetColor) {
                   updates.push({ x: c.x, y: c.y, colorIndex: targetColor });
                 }
                 if (isMirrorMode) {
                   const mX = gridWidth - 1 - c.x;
-                  if (mX >= 0 && mX < gridWidth && gridData[c.y]?.[mX] !== targetColor) {
+                  if (mX >= 0 && mX < gridWidth && editableGrid[c.y]?.[mX] !== targetColor) {
                     updates.push({ x: mX, y: c.y, colorIndex: targetColor });
                   }
                 }
@@ -2123,6 +2158,34 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
   return (
     <div className="relative flex-1 h-full w-full bg-slate-900/90 overflow-hidden flex flex-col select-none touch-none pb-14 lg:pb-0" ref={containerRef}>
+      {/* Active Layer Pill HUD (only shown when pattern has 2+ layers) */}
+      {layers && layers.length > 1 && activeLayer && (
+        <button
+          type="button"
+          onClick={onOpenLayersTab}
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 hidden sm:flex items-center gap-1.5 bg-slate-950/90 hover:bg-slate-900 border border-indigo-500/40 backdrop-blur-md px-2.5 py-1 rounded-full shadow-lg text-[11px] font-semibold text-slate-200 transition pointer-events-auto"
+          title="Click to manage layers in the right sidebar"
+        >
+          <Layers className="w-3 h-3 text-indigo-400" />
+          <span className="max-w-[140px] truncate">{activeLayer.name}</span>
+          {activeLayer.opacity < 0.999 && (
+            <span className="text-[10px] font-mono text-indigo-300">
+              {Math.round(activeLayer.opacity * 100)}%
+            </span>
+          )}
+          {activeLayer.locked && (
+            <span className="px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[9px] font-bold">
+              Locked
+            </span>
+          )}
+          {!activeLayer.visible && (
+            <span className="px-1.5 py-0.2 rounded-full bg-slate-700/80 text-slate-300 text-[9px] font-bold">
+              Hidden
+            </span>
+          )}
+        </button>
+      )}
+
       {/* Top Right: Progress & Spotlight Badges */}
       <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex flex-col items-end gap-1.5 pointer-events-auto">
         {spotlightColorId && (
@@ -2170,11 +2233,16 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       {/* Transform Popover Panel */}
       {isTransformOpen && onTransformGrid && (
         <div className="absolute bottom-32 lg:bottom-20 left-1/2 -translate-x-1/2 z-30 bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5 min-w-[270px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center justify-between border-b border-slate-800/90 pb-2">
+          <div className="flex items-center justify-between border-b border-slate-800/90 pb-2 gap-2">
             <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
               <Move className="w-3.5 h-3.5 text-indigo-400" />
-              Canvas Transforms
+              {layers && layers.length > 1 ? 'Layer Transforms' : 'Canvas Transforms'}
             </span>
+            {layers && layers.length > 1 && activeLayer && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold truncate max-w-[110px]">
+                {activeLayer.name}
+              </span>
+            )}
             <button
               onClick={() => setIsTransformOpen(false)}
               className="text-slate-500 hover:text-slate-200 text-xs px-1"

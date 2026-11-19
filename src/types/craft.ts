@@ -123,6 +123,15 @@ export interface UploadHistoryItem {
   height?: number;
 }
 
+export interface CanvasLayer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  opacity: number; // 0.1 to 1.0
+  grid: number[][]; // -1 = transparent/empty, >= 0 = palette index
+}
+
 export interface CraftProject {
   version: string;
   name: string;
@@ -132,6 +141,8 @@ export interface CraftProject {
   palette: PaletteColor[];
   completedCells: CellProgress;
   backstitches?: BackstitchLine[];
+  layers?: CanvasLayer[];
+  activeLayerId?: string;
 }
 
 export interface SavedProject {
@@ -145,6 +156,8 @@ export interface SavedProject {
   palette: PaletteColor[];
   completedCells?: CellProgress;
   backstitches?: BackstitchLine[];
+  layers?: CanvasLayer[];
+  activeLayerId?: string;
   thumbnailDataUrl: string;
   width: number;
   height: number;

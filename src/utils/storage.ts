@@ -5,7 +5,8 @@ import type {
   AiHistoryItem, 
   UploadHistoryItem, 
   BackstitchLine,
-  SavedProject 
+  SavedProject,
+  CanvasLayer
 } from '../types/craft';
 import { parseOXSFile } from './oxsFormat';
 
@@ -25,6 +26,8 @@ export interface SavedAppState {
   aiHistory?: AiHistoryItem[];
   uploadHistory?: UploadHistoryItem[];
   backstitches?: BackstitchLine[];
+  layers?: CanvasLayer[];
+  activeLayerId?: string;
 }
 
 const DB_NAME = 'PixelCraftStudioDB';
@@ -388,7 +391,7 @@ export async function importVaultProjectFromFile(file: File): Promise<SavedProje
             name: `${p.name} (Imported)`,
           });
         } else if (parsed.gridConfig && parsed.gridData && parsed.palette) {
-          // Legacy CraftProject format
+          // Legacy CraftProject format (or Wave 9+ JSON project with layers)
           projectToSave = await saveProjectToVault({
             name: parsed.name || file.name.replace(/\.[^/.]+$/, '') || 'Imported Pattern',
             craftType: parsed.gridConfig.craftType || 'cross-stitch',
@@ -397,6 +400,8 @@ export async function importVaultProjectFromFile(file: File): Promise<SavedProje
             palette: parsed.palette,
             completedCells: parsed.completedCells || {},
             backstitches: parsed.backstitches || [],
+            layers: Array.isArray(parsed.layers) ? parsed.layers : undefined,
+            activeLayerId: typeof parsed.activeLayerId === 'string' ? parsed.activeLayerId : undefined,
             width: parsed.gridConfig.width,
             height: parsed.gridConfig.height,
             colorCount: parsed.palette.length,

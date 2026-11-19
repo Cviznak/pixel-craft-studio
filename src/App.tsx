@@ -13,7 +13,8 @@ import type {
   BackstitchLine,
   PaletteMoodId,
   CraftType,
-  CanvasShapeMask
+  CanvasShapeMask,
+  CanvasLayer
 } from './types/craft';
 import { SAMPLE_IMAGES } from './utils/sampleImages';
 import { extractBeautifulPalette } from './utils/paletteExtractor';
@@ -59,6 +60,26 @@ const PublishPatternModal = lazy(() => import('./components/PublishPatternModal'
 const SharedPatternModal = lazy(() => import('./components/SharedPatternModal').then((m) => ({ default: m.SharedPatternModal })));
 
 import { recalculatePaletteCounts } from './utils/borderGenerator';
+import {
+  MAX_LAYERS,
+  cloneGrid,
+  cloneLayers,
+  countLayerFilledCells,
+  createEmptyLayerGrid,
+  createLayer,
+  createSingleLayerStack,
+  duplicateLayer as duplicateCanvasLayer,
+  extractBorderDiffGrid,
+  flattenLayers,
+  getUniqueLayerName,
+  inferColorIndexRemap,
+  mergeLayerDown as mergeCanvasLayerDown,
+  moveLayerOrder as moveCanvasLayerOrder,
+  normalizeLayersForGrid,
+  remapLayersColorIndices,
+  resizeLayerGrid,
+  rotateLayerGrid,
+} from './utils/layerUtils';
 import { exportPatternToOXS, exportPatternToSVG } from './utils/oxsFormat';
 import { loadWipStats, saveWipStats, type WipStats, type WipSessionLog } from './utils/wipTracker';
 import { isSupabaseConfigured, supabase } from './utils/supabaseClient';
@@ -125,6 +146,7 @@ import {
   Globe,
   Share2,
   RefreshCw,
+  Layers,
 } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
@@ -162,16 +184,19 @@ export default function App() {
   const [sampleImageId, setSampleImageId] = useState<string>('flower');
   const [aspectRatio, setAspectRatio] = useState<number>(1);
   const [palette, setPalette] = useState<PaletteColor[]>([]);
-  const [gridData, setGridData] = useState<number[][]>([]);
+  const [layers, setLayers] = useState<CanvasLayer[]>([]);
+  const [activeLayerId, setActiveLayerId] = useState<string>('');
+  const [rightSidebarTab, setRightSidebarTab] = useState<'palette' | 'layers'>('palette');
+  const gridData = useMemo(() => flattenLayers(layers), [layers]);
   const [spotlightColorId, setSpotlightColorId] = useState<string | null>(null);
   const [activeColorIndex, setActiveColorIndex] = useState<number>(0);
   const [completedCells, setCompletedCells] = useState<CellProgress>({});
   const [hasTransparency, setHasTransparency] = useState<boolean>(false);
   const [isInitialLoaded, setIsInitialLoaded] = useState<boolean>(false);
   
-  // Undo & Redo History for Pencil
-  const [gridHistory, setGridHistory] = useState<number[][][]>([]);
-  const [gridFuture, setGridFuture] = useState<number[][][]>([]);
+  // Undo & Redo History for Layer Stack
+  const [gridHistory, setGridHistory] = useState<{ layers: CanvasLayer[]; activeLayerId: string }[]>([]);
+  const [gridFuture, setGridFuture] = useState<{ layers: CanvasLayer[]; activeLayerId: string }[]>([]);
 
   // AI generation state & history
   const [lastAiPrompt, setLastAiPrompt] = useState<string>('');
@@ -272,8 +297,11 @@ export default function App() {
   // Persistent refs for zero-lag config and image pipeline synchronization
   const latestConfigRef = useRef<GridConfig>(config);
   const paletteRef = useRef<PaletteColor[]>(palette);
+  const layersRef = useRef<CanvasLayer[]>(layers);
+  const activeLayerIdRef = useRef<string>(activeLayerId);
   const sourceImageRef = useRef<HTMLImageElement | null>(sourceImage);
   const reprocessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastLayerGuardToastRef = useRef<number>(0);
 
   useEffect(() => {
     latestConfigRef.current = config;
@@ -284,14 +312,53 @@ export default function App() {
   }, [palette]);
 
   useEffect(() => {
+    layersRef.current = layers;
+  }, [layers]);
+
+  useEffect(() => {
+    activeLayerIdRef.current = activeLayerId;
+  }, [activeLayerId]);
+
+  useEffect(() => {
     sourceImageRef.current = sourceImage;
   }, [sourceImage]);
+
+  const applyLayerState = useCallback((nextLayers: CanvasLayer[], nextActiveId?: string) => {
+    const fallbackActive = nextLayers[nextLayers.length - 1]?.id || '';
+    const resolvedActive =
+      nextActiveId && nextLayers.some((l) => l.id === nextActiveId)
+        ? nextActiveId
+        : fallbackActive;
+    layersRef.current = nextLayers;
+    activeLayerIdRef.current = resolvedActive;
+    setLayers(nextLayers);
+    setActiveLayerId(resolvedActive);
+  }, []);
+
+  const setSingleLayerGrid = useCallback(
+    (grid: number[][], layerName = 'Layer 1') => {
+      const stack = createSingleLayerStack(grid, layerName);
+      applyLayerState(stack.layers, stack.activeLayerId);
+    },
+    [applyLayerState]
+  );
+
+  const syncPaletteCountsFromLayers = useCallback((targetLayers: CanvasLayer[], basePalette?: PaletteColor[]) => {
+    const pal = basePalette ?? paletteRef.current;
+    if (pal.length === 0) return;
+    const flat = flattenLayers(targetLayers);
+    const updated = recalculatePaletteCounts(flat, pal);
+    paletteRef.current = updated;
+    setPalette(updated);
+  }, []);
 
   // Reference for synchronous beforeunload save
   const currentStateRef = useRef({
     config,
     palette,
     gridData,
+    layers,
+    activeLayerId,
     completedCells,
     spotlightColorId,
     activeColorIndex,
@@ -308,6 +375,8 @@ export default function App() {
       config,
       palette,
       gridData,
+      layers,
+      activeLayerId,
       completedCells,
       spotlightColorId,
       activeColorIndex,
@@ -322,6 +391,8 @@ export default function App() {
     config,
     palette,
     gridData,
+    layers,
+    activeLayerId,
     completedCells,
     spotlightColorId,
     activeColorIndex,
@@ -333,30 +404,57 @@ export default function App() {
     uploadHistory,
   ]);
 
-  // Push snapshot to undo history before pencil stroke begins
+  // Push snapshot to undo history before pencil/layer stroke begins
   const handleBeforePencilStroke = useCallback(() => {
-    if (gridData.length === 0) return;
-    setGridHistory((prev) => [...prev.slice(-49), gridData.map((row) => [...row])]);
+    if (layersRef.current.length === 0) return;
+    setGridHistory((prev) => [
+      ...prev.slice(-29),
+      { layers: cloneLayers(layersRef.current), activeLayerId: activeLayerIdRef.current },
+    ]);
     setGridFuture([]); // clear redo stack on new action
-  }, [gridData]);
+  }, []);
 
   // Undo (Ctrl+Z)
   const handleUndo = useCallback(() => {
     if (gridHistory.length === 0) return;
     const previous = gridHistory[gridHistory.length - 1];
     setGridHistory((prev) => prev.slice(0, prev.length - 1));
-    setGridFuture((prev) => [...prev.slice(-49), gridData.map((row) => [...row])]);
-    setGridData(previous);
-  }, [gridHistory, gridData]);
+    setGridFuture((prev) => [
+      ...prev.slice(-29),
+      { layers: cloneLayers(layersRef.current), activeLayerId: activeLayerIdRef.current },
+    ]);
+    applyLayerState(previous.layers, previous.activeLayerId);
+    syncPaletteCountsFromLayers(previous.layers);
+    const prevH = previous.layers[0]?.grid.length ?? 0;
+    const prevW = prevH > 0 ? previous.layers[0].grid[0]?.length ?? 0 : 0;
+    if (prevW > 0 && prevH > 0 && (prevW !== latestConfigRef.current.width || prevH !== latestConfigRef.current.height)) {
+      const updatedCfg = { ...latestConfigRef.current, width: prevW, height: prevH };
+      latestConfigRef.current = updatedCfg;
+      setConfig(updatedCfg);
+      setAspectRatio(prevW / prevH);
+    }
+  }, [gridHistory, applyLayerState, syncPaletteCountsFromLayers]);
 
   // Redo (Ctrl+Y or Ctrl+Shift+Z)
   const handleRedo = useCallback(() => {
     if (gridFuture.length === 0) return;
     const next = gridFuture[gridFuture.length - 1];
     setGridFuture((prev) => prev.slice(0, prev.length - 1));
-    setGridHistory((prev) => [...prev.slice(-49), gridData.map((row) => [...row])]);
-    setGridData(next);
-  }, [gridFuture, gridData]);
+    setGridHistory((prev) => [
+      ...prev.slice(-29),
+      { layers: cloneLayers(layersRef.current), activeLayerId: activeLayerIdRef.current },
+    ]);
+    applyLayerState(next.layers, next.activeLayerId);
+    syncPaletteCountsFromLayers(next.layers);
+    const nextH = next.layers[0]?.grid.length ?? 0;
+    const nextW = nextH > 0 ? next.layers[0].grid[0]?.length ?? 0 : 0;
+    if (nextW > 0 && nextH > 0 && (nextW !== latestConfigRef.current.width || nextH !== latestConfigRef.current.height)) {
+      const updatedCfg = { ...latestConfigRef.current, width: nextW, height: nextH };
+      latestConfigRef.current = updatedCfg;
+      setConfig(updatedCfg);
+      setAspectRatio(nextW / nextH);
+    }
+  }, [gridFuture, applyLayerState, syncPaletteCountsFromLayers]);
 
   // Global Keyboard Shortcuts (Ctrl+K, Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
   useEffect(() => {
@@ -510,11 +608,11 @@ export default function App() {
 
     setPalette(paletteWithCounts);
     paletteRef.current = paletteWithCounts;
-    setGridData(newGrid);
+    setSingleLayerGrid(newGrid, 'Layer 1');
     setCompletedCells({});
     setGridHistory([]);
     setGridFuture([]);
-  }, []);
+  }, [setSingleLayerGrid]);
 
   // Load saved state on mount (restores on page refresh)
   useEffect(() => {
@@ -529,8 +627,9 @@ export default function App() {
               width: shared.width,
               height: shared.height,
             });
-            setGridData(shared.gridData);
+            setSingleLayerGrid(shared.gridData, shared.title || 'Layer 1');
             setPalette(shared.palette);
+            paletteRef.current = shared.palette;
             setToastMessage(`Loaded shared pattern: "${shared.title || 'Shared Pattern'}"`);
             setTimeout(() => setToastMessage(null), 3500);
             setIsInitialLoaded(true);
@@ -542,7 +641,12 @@ export default function App() {
         if (pendingProject) {
           setConfig(pendingProject.gridConfig);
           latestConfigRef.current = pendingProject.gridConfig;
-          setGridData(pendingProject.gridData);
+          const restoredPending = normalizeLayersForGrid(
+            pendingProject.layers,
+            pendingProject.activeLayerId,
+            pendingProject.gridData
+          );
+          applyLayerState(restoredPending.layers, restoredPending.activeLayerId);
           setPalette(pendingProject.palette);
           paletteRef.current = pendingProject.palette;
           setCompletedCells(pendingProject.completedCells || {});
@@ -566,9 +670,15 @@ export default function App() {
           });
           if (saved.palette && saved.palette.length > 0) {
             setPalette(saved.palette);
+            paletteRef.current = saved.palette;
           }
-          if (saved.gridData && saved.gridData.length > 0) {
-            setGridData(saved.gridData);
+          const restoredSaved = normalizeLayersForGrid(
+            saved.layers,
+            saved.activeLayerId,
+            saved.gridData || []
+          );
+          if (restoredSaved.layers.length > 0) {
+            applyLayerState(restoredSaved.layers, restoredSaved.activeLayerId);
           }
           setCompletedCells(saved.completedCells || {});
           setSpotlightColorId(saved.spotlightColorId || null);
@@ -775,6 +885,8 @@ export default function App() {
           config,
           palette,
           gridData,
+          layers,
+          activeLayerId,
           completedCells,
           spotlightColorId,
           activeColorIndex,
@@ -798,6 +910,8 @@ export default function App() {
     config,
     palette,
     gridData,
+    layers,
+    activeLayerId,
     completedCells,
     spotlightColorId,
     activeColorIndex,
@@ -1134,7 +1248,7 @@ export default function App() {
 
     latestConfigRef.current = newConfig;
     setConfig(newConfig);
-    setGridData(newGrid);
+    setSingleLayerGrid(newGrid, 'Layer 1');
     setPalette(updatedPalette);
     paletteRef.current = updatedPalette;
     setActiveColorIndex(initialActiveColor);
@@ -1156,7 +1270,7 @@ export default function App() {
     }
 
     showToast(`🎨 New ${width}×${height} canvas ready to draw!`);
-  }, [palette, showToast]);
+  }, [palette, setSingleLayerGrid, showToast]);
 
   // Add custom color to palette while drawing
   const handleAddCustomColor = useCallback((hex: string) => {
@@ -1192,20 +1306,32 @@ export default function App() {
   // Clean confetti colors (<1% stitches) into their nearest CIELAB neighbor
   const handleCleanConfetti = useCallback(() => {
     if (gridData.length === 0 || palette.length <= 1) return;
-    
-    // Save current state for undo
-    setGridHistory((prev) => [...prev.slice(-30), gridData.map((row) => [...row])]);
-    setGridFuture([]);
+
+    handleBeforePencilStroke();
 
     const result = cleanConfettiColors(gridData, palette, 1.0);
     if (result.removedCount > 0) {
-      setGridData(result.newGrid);
-      setPalette(result.newPalette);
+      const remap = inferColorIndexRemap(gridData, result.newGrid, palette, result.newPalette);
+      const remappedLayers = remapLayersColorIndices(
+        layersRef.current,
+        (idx) => remap[idx] ?? 0
+      );
+      applyLayerState(remappedLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(remappedLayers, result.newPalette);
       if (activeColorIndex >= result.newPalette.length) {
         setActiveColorIndex(0);
       }
+      showToast(`🧹 Merged ${result.removedCount} confetti color${result.removedCount > 1 ? 's' : ''}!`);
     }
-  }, [gridData, palette, activeColorIndex]);
+  }, [
+    gridData,
+    palette,
+    activeColorIndex,
+    handleBeforePencilStroke,
+    applyLayerState,
+    syncPaletteCountsFromLayers,
+    showToast,
+  ]);
 
   // Re-run color extraction and grid quantization on existing image
   const reprocessCurrentImage = useCallback((targetConfig?: GridConfig) => {
@@ -1293,8 +1419,8 @@ export default function App() {
 
     setPalette(paletteWithCounts);
     paletteRef.current = paletteWithCounts;
-    setGridData(newGrid);
-  }, []);
+    setSingleLayerGrid(newGrid, 'Layer 1');
+  }, [setSingleLayerGrid]);
 
   // Update Config Helper
   const handleUpdateConfig = useCallback((newConfig: Partial<GridConfig>) => {
@@ -1332,26 +1458,96 @@ export default function App() {
     }
   }, [reprocessCurrentImage, navigate]);
 
-  // Handle Stamping Pixel Text onto Canvas
+  const warnActiveLayerBlocked = useCallback((layer: CanvasLayer) => {
+    const now = Date.now();
+    if (now - lastLayerGuardToastRef.current < 1500) return;
+    lastLayerGuardToastRef.current = now;
+    if (layer.locked) {
+      showToast(`🔒 "${layer.name}" is locked — unlock it in the Layers tab to edit.`);
+    } else if (!layer.visible) {
+      showToast(`👁️ "${layer.name}" is hidden — unhide it in the Layers tab to edit.`);
+    }
+  }, [showToast]);
+
+  // Handle Stamping Pixel Text onto dedicated "Text" layer (or active empty layer)
   const handleStampText = useCallback((textMatrix: number[][], colorIndex: number, startX: number, startY: number) => {
+    const currentLayers = layersRef.current;
+    if (currentLayers.length === 0) return;
+    const h = currentLayers[0].grid.length;
+    const w = h > 0 ? currentLayers[0].grid[0]?.length ?? 0 : 0;
+    if (w === 0 || h === 0) return;
+
     handleBeforePencilStroke();
-    setGridData((prev) => {
-      const next = prev.map((row) => [...row]);
-      for (let r = 0; r < textMatrix.length; r++) {
-        for (let c = 0; c < textMatrix[r].length; c++) {
-          if (textMatrix[r][c] === 1) {
-            const y = startY + r;
-            const x = startX + c;
-            if (y >= 0 && y < next.length && x >= 0 && x < next[0].length) {
-              next[y][x] = colorIndex;
-            }
+
+    const sparseTextGrid = createEmptyLayerGrid(w, h);
+    for (let r = 0; r < textMatrix.length; r++) {
+      for (let c = 0; c < textMatrix[r].length; c++) {
+        if (textMatrix[r][c] === 1) {
+          const y = startY + r;
+          const x = startX + c;
+          if (y >= 0 && y < h && x >= 0 && x < w) {
+            sparseTextGrid[y][x] = colorIndex;
           }
         }
       }
-      return next;
-    });
-    showToast('Stamped pixel text onto canvas! ✨');
-  }, [handleBeforePencilStroke, showToast]);
+    }
+
+    const activeIdx = currentLayers.findIndex((l) => l.id === activeLayerIdRef.current);
+    const activeLayer = activeIdx >= 0 ? currentLayers[activeIdx] : undefined;
+
+    if (
+      activeLayer &&
+      activeLayer.visible &&
+      !activeLayer.locked &&
+      countLayerFilledCells(activeLayer.grid) === 0
+    ) {
+      const nextLayers = cloneLayers(currentLayers);
+      const renamed = /^Layer\s+\d+$/i.test(activeLayer.name)
+        ? getUniqueLayerName(currentLayers, 'Text')
+        : activeLayer.name;
+      nextLayers[activeIdx] = {
+        ...nextLayers[activeIdx],
+        name: renamed,
+        grid: sparseTextGrid,
+      };
+      applyLayerState(nextLayers, activeLayer.id);
+      syncPaletteCountsFromLayers(nextLayers);
+      showToast(`✨ Stamped pixel text onto "${renamed}" layer!`);
+      return;
+    }
+
+    if (currentLayers.length < MAX_LAYERS) {
+      const textName = getUniqueLayerName(currentLayers, 'Text');
+      const newLayer = createLayer(textName, sparseTextGrid);
+      const nextLayers = [...cloneLayers(currentLayers), newLayer];
+      applyLayerState(nextLayers, newLayer.id);
+      syncPaletteCountsFromLayers(nextLayers);
+      showToast(`✨ Stamped pixel text onto new "${textName}" layer!`);
+      return;
+    }
+
+    // Fallback at MAX_LAYERS limit: stamp into active or topmost unlocked layer
+    const targetIdx =
+      activeLayer && !activeLayer.locked && activeLayer.visible
+        ? activeIdx
+        : currentLayers.findIndex((l) => !l.locked && l.visible);
+    if (targetIdx === -1) {
+      showToast('🔒 All layers are locked or hidden — unlock a layer first!');
+      return;
+    }
+    const nextLayers = cloneLayers(currentLayers);
+    const targetGrid = nextLayers[targetIdx].grid;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (sparseTextGrid[y][x] !== -1) {
+          targetGrid[y][x] = sparseTextGrid[y][x];
+        }
+      }
+    }
+    applyLayerState(nextLayers, nextLayers[targetIdx].id);
+    syncPaletteCountsFromLayers(nextLayers);
+    showToast(`Stamped pixel text onto "${nextLayers[targetIdx].name}"! ✨`);
+  }, [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, showToast]);
 
   // Handle Creating New Canvas from Pixel Text
   const handleCreateNewFromText = useCallback((width: number, height: number, textMatrix: number[][], colorIndex: number) => {
@@ -1367,10 +1563,12 @@ export default function App() {
       }
     }
     handleUpdateConfig({ width, height });
-    setGridData(newGrid);
+    const stack = createSingleLayerStack(newGrid, 'Text');
+    applyLayerState(stack.layers, stack.activeLayerId);
+    syncPaletteCountsFromLayers(stack.layers);
     setCompletedCells({});
     showToast(`Created new text canvas (${width}×${height}) ✨`);
-  }, [handleBeforePencilStroke, handleUpdateConfig, showToast]);
+  }, [handleBeforePencilStroke, handleUpdateConfig, applyLayerState, syncPaletteCountsFromLayers, showToast]);
 
   // Handle Stash Restriction Toggle
   const handleToggleMyStashOnly = useCallback((enabled: boolean) => {
@@ -1415,56 +1613,126 @@ export default function App() {
     });
   }, []);
 
-  const handlePaintCell = (x: number, y: number, colorIndex: number) => {
-    if (y < 0 || y >= gridData.length || x < 0 || x >= gridData[0].length) return;
-    setGridData((prev) => {
-      if (prev[y]?.[x] === colorIndex) return prev;
-      const next = prev.map((row) => [...row]);
-      next[y][x] = colorIndex;
-      return next;
-    });
-  };
+  const handlePaintCell = useCallback((x: number, y: number, colorIndex: number) => {
+    const currentLayers = layersRef.current;
+    if (currentLayers.length === 0) return;
+    const activeIdx = currentLayers.findIndex((l) => l.id === activeLayerIdRef.current);
+    const targetIdx = activeIdx >= 0 ? activeIdx : currentLayers.length - 1;
+    const activeLayer = currentLayers[targetIdx];
+    if (!activeLayer) return;
+
+    if (activeLayer.locked || !activeLayer.visible) {
+      warnActiveLayerBlocked(activeLayer);
+      return;
+    }
+
+    const grid = activeLayer.grid;
+    if (y < 0 || y >= grid.length || x < 0 || x >= (grid[0]?.length ?? 0)) return;
+    if (grid[y][x] === colorIndex) return;
+
+    const nextGrid = cloneGrid(grid);
+    nextGrid[y][x] = colorIndex;
+    const nextLayers = currentLayers.map((l, idx) =>
+      idx === targetIdx ? { ...l, grid: nextGrid } : l
+    );
+    applyLayerState(nextLayers, activeLayer.id);
+    syncPaletteCountsFromLayers(nextLayers);
+  }, [applyLayerState, syncPaletteCountsFromLayers, warnActiveLayerBlocked]);
 
   const handleBatchPaintCells = useCallback((updates: { x: number; y: number; colorIndex: number }[]) => {
     if (updates.length === 0) return;
-    setGridData((prev) => {
-      if (prev.length === 0) return prev;
-      let next: number[][] | null = null;
-      let changed = false;
-      for (const { x, y, colorIndex } of updates) {
-        if (y >= 0 && y < prev.length && x >= 0 && x < prev[0].length) {
-          if (prev[y][x] !== colorIndex) {
-            if (!next) {
-              next = prev.map((row) => [...row]);
-            }
-            next[y][x] = colorIndex;
-            changed = true;
+    const currentLayers = layersRef.current;
+    if (currentLayers.length === 0) return;
+    const activeIdx = currentLayers.findIndex((l) => l.id === activeLayerIdRef.current);
+    const targetIdx = activeIdx >= 0 ? activeIdx : currentLayers.length - 1;
+    const activeLayer = currentLayers[targetIdx];
+    if (!activeLayer) return;
+
+    if (activeLayer.locked || !activeLayer.visible) {
+      warnActiveLayerBlocked(activeLayer);
+      return;
+    }
+
+    const prevGrid = activeLayer.grid;
+    if (prevGrid.length === 0) return;
+    const height = prevGrid.length;
+    const width = prevGrid[0]?.length ?? 0;
+
+    let nextGrid: number[][] | null = null;
+    let changed = false;
+    for (const { x, y, colorIndex } of updates) {
+      if (y >= 0 && y < height && x >= 0 && x < width) {
+        if (prevGrid[y][x] !== colorIndex) {
+          if (!nextGrid) {
+            nextGrid = cloneGrid(prevGrid);
           }
+          nextGrid[y][x] = colorIndex;
+          changed = true;
         }
       }
-      return changed && next ? next : prev;
-    });
-  }, []);
+    }
 
-  // Feature 1: Canvas Transforms (Auto-Center, Nudge, Flip, Rotate)
+    if (changed && nextGrid) {
+      const nextLayers = currentLayers.map((l, idx) =>
+        idx === targetIdx ? { ...l, grid: nextGrid } : l
+      );
+      applyLayerState(nextLayers, activeLayer.id);
+      syncPaletteCountsFromLayers(nextLayers);
+    }
+  }, [applyLayerState, syncPaletteCountsFromLayers, warnActiveLayerBlocked]);
+
+  // Feature 1: Canvas / Layer Transforms (Auto-Center, Nudge, Flip, Rotate)
   const handleTransformGrid = useCallback(
     (
       newGrid: number[][],
       newCompletedCells?: CellProgress,
       newWidth?: number,
-      newHeight?: number
+      newHeight?: number,
+      meta?: { kind: 'rotate'; direction: 'cw' | 'ccw' } | { kind: 'same-size' }
     ) => {
-      setGridData(newGrid);
-      if (newCompletedCells !== undefined) {
-        setCompletedCells(newCompletedCells);
+      const currentLayers = layersRef.current;
+      if (currentLayers.length === 0) return;
+
+      let nextLayers: CanvasLayer[];
+      if (meta?.kind === 'rotate') {
+        // Rotate all layers together to keep grid dimensions synchronized
+        nextLayers = currentLayers.map((layer) => ({
+          ...layer,
+          grid: rotateLayerGrid(layer.grid, meta.direction),
+        }));
+        applyLayerState(nextLayers, activeLayerIdRef.current);
+        if (newCompletedCells !== undefined) {
+          setCompletedCells(newCompletedCells);
+        }
+        if (newWidth && newHeight && (newWidth !== config.width || newHeight !== config.height)) {
+          const updatedConfig = { ...config, width: newWidth, height: newHeight };
+          setConfig(updatedConfig);
+          latestConfigRef.current = updatedConfig;
+          setAspectRatio(newWidth / newHeight);
+        }
+      } else {
+        const activeIdx = currentLayers.findIndex((l) => l.id === activeLayerIdRef.current);
+        const targetIdx = activeIdx >= 0 ? activeIdx : currentLayers.length - 1;
+        const activeLayer = currentLayers[targetIdx];
+        if (!activeLayer) return;
+
+        if (activeLayer.locked || !activeLayer.visible) {
+          warnActiveLayerBlocked(activeLayer);
+          return;
+        }
+
+        nextLayers = currentLayers.map((l, idx) =>
+          idx === targetIdx ? { ...l, grid: cloneGrid(newGrid) } : l
+        );
+        applyLayerState(nextLayers, activeLayer.id);
+        if (newCompletedCells !== undefined && currentLayers.length <= 1) {
+          setCompletedCells(newCompletedCells);
+        }
       }
-      if (newWidth && newHeight && (newWidth !== config.width || newHeight !== config.height)) {
-        const updatedConfig = { ...config, width: newWidth, height: newHeight };
-        setConfig(updatedConfig);
-        latestConfigRef.current = updatedConfig;
-        setAspectRatio(newWidth / newHeight);
-      }
-      const previewDataUrl = generateCanvasDataUrl(newGrid, palette);
+
+      const flatNext = flattenLayers(nextLayers);
+      syncPaletteCountsFromLayers(nextLayers);
+      const previewDataUrl = generateCanvasDataUrl(flatNext, paletteRef.current);
       if (previewDataUrl) {
         setSourceImageDataUrl(previewDataUrl);
         const img = new Image();
@@ -1474,9 +1742,13 @@ export default function App() {
         };
         img.src = previewDataUrl;
       }
-      showToast('✨ Canvas transformed!');
+      showToast(
+        meta?.kind === 'rotate' || currentLayers.length <= 1
+          ? '✨ Canvas transformed!'
+          : `✨ Transformed "${currentLayers.find((l) => l.id === activeLayerIdRef.current)?.name || 'layer'}"!`
+      );
     },
-    [config, palette, showToast]
+    [config, applyLayerState, syncPaletteCountsFromLayers, warnActiveLayerBlocked, showToast]
   );
 
   // Feature 2: Global Color Swap / Recolor Tool
@@ -1484,16 +1756,16 @@ export default function App() {
     (sourceIndex: number, targetIndex: number) => {
       if (sourceIndex === targetIndex) return;
       handleBeforePencilStroke();
-      setGridData((prev) => {
-        return prev.map((row) =>
-          row.map((cell) => (cell === sourceIndex ? targetIndex : cell))
-        );
-      });
+      const nextLayers = remapLayersColorIndices(layersRef.current, (cell) =>
+        cell === sourceIndex ? targetIndex : cell
+      );
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers);
       const sourceName = palette[sourceIndex]?.name || palette[sourceIndex]?.code || palette[sourceIndex]?.hex;
       const targetName = palette[targetIndex]?.name || palette[targetIndex]?.code || palette[targetIndex]?.hex;
       showToast(`🔄 Swapped all ${sourceName} stitches to ${targetName}!`);
     },
-    [handleBeforePencilStroke, palette, showToast]
+    [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, palette, showToast]
   );
 
   const handleSwapWithNewColor = useCallback(
@@ -1515,14 +1787,14 @@ export default function App() {
       };
       const newPalette = [...palette, newColor];
       const targetIndex = newPalette.length - 1;
-      setPalette(newPalette);
-      paletteRef.current = newPalette;
-      setGridData((prev) =>
-        prev.map((row) => row.map((cell) => (cell === sourceIndex ? targetIndex : cell)))
+      const nextLayers = remapLayersColorIndices(layersRef.current, (cell) =>
+        cell === sourceIndex ? targetIndex : cell
       );
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers, newPalette);
       showToast(`🎨 Recaptured stitches into new color ${newHex}!`);
     },
-    [handleBeforePencilStroke, palette, showToast]
+    [handleBeforePencilStroke, palette, applyLayerState, syncPaletteCountsFromLayers, showToast]
   );
 
   // Palette Handlers
@@ -1547,8 +1819,9 @@ export default function App() {
     });
 
     const img = sourceImageRef.current;
-    if (img) {
+    if (img && layersRef.current.length <= 1) {
       setTimeout(() => {
+        if (layersRef.current.length > 1) return;
         const curConfig = latestConfigRef.current;
         const { gridData: newGrid, paletteWithCounts } = processImageToGrid(
           img,
@@ -1557,7 +1830,7 @@ export default function App() {
           updatedPalette.length > 0 ? updatedPalette : paletteRef.current,
           curConfig
         );
-        setGridData(newGrid);
+        setSingleLayerGrid(newGrid, layersRef.current[0]?.name || 'Layer 1');
         setPalette(paletteWithCounts);
         paletteRef.current = paletteWithCounts;
       }, 30);
@@ -1579,12 +1852,21 @@ export default function App() {
       if (palette.length === 0 || gridData.length === 0) return;
       handleBeforePencilStroke();
       const { newPalette, newGrid } = applyPaletteMood(palette, gridData, mood, config.craftType);
-      setPalette(newPalette);
-      paletteRef.current = newPalette;
-      setGridData(newGrid);
+      const remap = inferColorIndexRemap(gridData, newGrid, palette, newPalette);
+      const nextLayers = remapLayersColorIndices(layersRef.current, (idx) => remap[idx] ?? 0);
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers, newPalette);
       showToast(`✨ Applied "${mood}" harmony to palette!`);
     },
-    [palette, gridData, config.craftType, handleBeforePencilStroke, showToast]
+    [
+      palette,
+      gridData,
+      config.craftType,
+      handleBeforePencilStroke,
+      applyLayerState,
+      syncPaletteCountsFromLayers,
+      showToast,
+    ]
   );
 
   const handleCrossConvertCraft = useCallback(
@@ -1595,9 +1877,10 @@ export default function App() {
       }
       handleBeforePencilStroke();
       const { newGrid, newPalette, mergedCount } = convertPatternToCraft(gridData, palette, targetCraft);
-      setPalette(newPalette);
-      paletteRef.current = newPalette;
-      setGridData(newGrid);
+      const remap = inferColorIndexRemap(gridData, newGrid, palette, newPalette);
+      const nextLayers = remapLayersColorIndices(layersRef.current, (idx) => remap[idx] ?? 0);
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers, newPalette);
       const nextStandard =
         targetCraft === 'perler' ? 'perler' : targetCraft === 'pixel' ? 'custom' : 'dmc';
       handleUpdateConfig({ craftType: targetCraft, craftStandard: nextStandard });
@@ -1607,7 +1890,15 @@ export default function App() {
         })!`
       );
     },
-    [palette, gridData, handleBeforePencilStroke, handleUpdateConfig, showToast]
+    [
+      palette,
+      gridData,
+      handleBeforePencilStroke,
+      applyLayerState,
+      syncPaletteCountsFromLayers,
+      handleUpdateConfig,
+      showToast,
+    ]
   );
 
   const handleApplyPhotoPaletteToGrid = useCallback(
@@ -1634,37 +1925,21 @@ export default function App() {
         return closestIdx;
       });
 
-      const newGrid = gridData.map((row) =>
-        row.map((idx) => {
-          if (idx < 0 || idx >= indexMapping.length) return idx;
-          return indexMapping[idx];
-        })
+      const nextLayers = remapLayersColorIndices(layersRef.current, (idx) =>
+        idx >= 0 && idx < indexMapping.length ? indexMapping[idx] : idx
       );
-
-      // Compute counts
-      const counts = new Array(newPalette.length).fill(0);
-      let total = 0;
-      for (const row of newGrid) {
-        for (const cell of row) {
-          if (cell >= 0 && cell < newPalette.length) {
-            counts[cell]++;
-            total++;
-          }
-        }
-      }
-
-      const paletteWithCounts: PaletteColor[] = newPalette.map((col, idx) => ({
-        ...col,
-        count: counts[idx] || 0,
-        percentage: total > 0 ? Math.round(((counts[idx] || 0) / total) * 100) : 0,
-      }));
-
-      setPalette(paletteWithCounts);
-      paletteRef.current = paletteWithCounts;
-      setGridData(newGrid);
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers, newPalette);
       showToast(`✨ Remapped pattern to photo palette harmony!`);
     },
-    [palette, gridData, handleBeforePencilStroke, showToast]
+    [
+      palette,
+      gridData,
+      handleBeforePencilStroke,
+      applyLayerState,
+      syncPaletteCountsFromLayers,
+      showToast,
+    ]
   );
 
   const handleSetPhotoPaletteOnly = useCallback(
@@ -1747,19 +2022,55 @@ export default function App() {
     [wipSessionSeconds, completedCountNow, wipSessionStartStitches, wipStats, handleUpdateWipStats, showToast]
   );
 
-  // Decorative Border & Sampler Frame Builder Apply Handler
+  // Decorative Border & Sampler Frame Builder Apply Handler (places border onto dedicated "Border" layer)
   const handleApplyFramedGrid = useCallback(
     (newGrid: number[][], newWidth: number, newHeight: number) => {
-      handleBeforePencilStroke();
-      setGridData(newGrid);
+      const currentLayers = layersRef.current;
+      if (currentLayers.length === 0) return;
 
-      const recalculated = recalculatePaletteCounts(newGrid, paletteRef.current);
-      setPalette(recalculated);
-      paletteRef.current = recalculated;
+      handleBeforePencilStroke();
+
+      const dx = newWidth !== config.width ? Math.floor((newWidth - config.width) / 2) : 0;
+      const dy = newHeight !== config.height ? Math.floor((newHeight - config.height) / 2) : 0;
+      const beforeFlattened = flattenLayers(currentLayers);
+      const borderDiffGrid = extractBorderDiffGrid(beforeFlattened, newGrid, dx, dy);
+
+      const resizedExisting = currentLayers.map((layer) => ({
+        ...layer,
+        grid: resizeLayerGrid(layer.grid, newWidth, newHeight, dx, dy),
+      }));
+
+      let nextLayers: CanvasLayer[];
+      let targetActiveId = activeLayerIdRef.current;
+      let toastText: string;
+
+      if (resizedExisting.length < MAX_LAYERS) {
+        const borderName = getUniqueLayerName(resizedExisting, 'Border');
+        const borderLayer = createLayer(borderName, borderDiffGrid);
+        nextLayers = [...resizedExisting, borderLayer];
+        targetActiveId = borderLayer.id;
+        toastText = `🖼️ Applied decorative frame on new "${borderName}" layer (${newWidth}×${newHeight})!`;
+      } else {
+        const topIdx = resizedExisting.length - 1;
+        const topGrid = cloneGrid(resizedExisting[topIdx].grid);
+        for (let y = 0; y < newHeight; y++) {
+          for (let x = 0; x < newWidth; x++) {
+            if (borderDiffGrid[y][x] !== -1) {
+              topGrid[y][x] = borderDiffGrid[y][x];
+            }
+          }
+        }
+        nextLayers = resizedExisting.map((l, idx) =>
+          idx === topIdx ? { ...l, grid: topGrid } : l
+        );
+        targetActiveId = resizedExisting[topIdx].id;
+        toastText = `🖼️ Applied decorative frame (${newWidth}×${newHeight})!`;
+      }
+
+      applyLayerState(nextLayers, targetActiveId);
+      syncPaletteCountsFromLayers(nextLayers);
 
       if (newWidth !== config.width || newHeight !== config.height) {
-        const dx = Math.floor((newWidth - config.width) / 2);
-        const dy = Math.floor((newHeight - config.height) / 2);
         const updatedConfig = { ...config, width: newWidth, height: newHeight };
         setConfig(updatedConfig);
         latestConfigRef.current = updatedConfig;
@@ -1780,10 +2091,175 @@ export default function App() {
         }
       }
 
-      showToast(`🖼️ Applied decorative frame (${newWidth}×${newHeight})!`);
+      showToast(toastText);
     },
-    [config, handleBeforePencilStroke, showToast]
+    [config, handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, showToast]
   );
+
+  // Wave 9: Smart Layers Panel CRUD Actions
+  const handleSelectLayer = useCallback((id: string) => {
+    activeLayerIdRef.current = id;
+    setActiveLayerId(id);
+  }, []);
+
+  const handleAddLayer = useCallback(() => {
+    const currentLayers = layersRef.current;
+    if (currentLayers.length === 0) return;
+    if (currentLayers.length >= MAX_LAYERS) {
+      showToast(`Layers limit (${MAX_LAYERS}) reached — merge or delete a layer first.`);
+      return;
+    }
+    const h = currentLayers[0].grid.length;
+    const w = h > 0 ? currentLayers[0].grid[0]?.length ?? 0 : 0;
+    if (w === 0 || h === 0) return;
+
+    handleBeforePencilStroke();
+    const newName = getUniqueLayerName(currentLayers, `Layer ${currentLayers.length + 1}`);
+    const newLayer = createLayer(newName, createEmptyLayerGrid(w, h));
+    const nextLayers = [...cloneLayers(currentLayers), newLayer];
+    applyLayerState(nextLayers, newLayer.id);
+    showToast(`✨ Added "${newName}"`);
+  }, [handleBeforePencilStroke, applyLayerState, showToast]);
+
+  const handleDeleteLayer = useCallback(
+    (id: string) => {
+      const currentLayers = layersRef.current;
+      if (currentLayers.length <= 1) return;
+      const idx = currentLayers.findIndex((l) => l.id === id);
+      if (idx === -1) return;
+      const removedName = currentLayers[idx].name;
+
+      handleBeforePencilStroke();
+      const nextLayers = cloneLayers(currentLayers.filter((l) => l.id !== id));
+      const fallbackActive =
+        activeLayerIdRef.current === id
+          ? (nextLayers[Math.max(0, idx - 1)] || nextLayers[0]).id
+          : activeLayerIdRef.current;
+      applyLayerState(nextLayers, fallbackActive);
+      syncPaletteCountsFromLayers(nextLayers);
+      showToast(`🗑️ Deleted "${removedName}"`);
+    },
+    [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, showToast]
+  );
+
+  const handleDuplicateLayer = useCallback(
+    (id: string) => {
+      const result = duplicateCanvasLayer(layersRef.current, id);
+      if (!result) {
+        if (layersRef.current.length >= MAX_LAYERS) {
+          showToast(`Layers limit (${MAX_LAYERS}) reached!`);
+        }
+        return;
+      }
+      handleBeforePencilStroke();
+      applyLayerState(result.layers, result.activeLayerId);
+      syncPaletteCountsFromLayers(result.layers);
+      const copy = result.layers.find((l) => l.id === result.activeLayerId);
+      showToast(`📋 Duplicated layer as "${copy?.name || 'Copy'}"`);
+    },
+    [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, showToast]
+  );
+
+  const handleRenameLayer = useCallback(
+    (id: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const nextLayers = layersRef.current.map((l) =>
+        l.id === id ? { ...l, name: trimmed } : l
+      );
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+    },
+    [applyLayerState]
+  );
+
+  const handleToggleLayerVisible = useCallback(
+    (id: string) => {
+      const nextLayers = layersRef.current.map((l) =>
+        l.id === id ? { ...l, visible: !l.visible } : l
+      );
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers);
+    },
+    [applyLayerState, syncPaletteCountsFromLayers]
+  );
+
+  const handleToggleLayerLock = useCallback(
+    (id: string) => {
+      const nextLayers = layersRef.current.map((l) =>
+        l.id === id ? { ...l, locked: !l.locked } : l
+      );
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+    },
+    [applyLayerState]
+  );
+
+  const handleChangeLayerOpacity = useCallback(
+    (id: string, opacity: number) => {
+      const clamped = Math.max(0.1, Math.min(1, opacity));
+      const nextLayers = layersRef.current.map((l) =>
+        l.id === id ? { ...l, opacity: clamped } : l
+      );
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+    },
+    [applyLayerState]
+  );
+
+  const handleMoveLayer = useCallback(
+    (id: string, direction: 'up' | 'down') => {
+      const nextLayers = moveCanvasLayerOrder(layersRef.current, id, direction);
+      if (!nextLayers) return;
+      handleBeforePencilStroke();
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers);
+    },
+    [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers]
+  );
+
+  const handleMergeLayerDown = useCallback(
+    (id: string) => {
+      const result = mergeCanvasLayerDown(layersRef.current, id);
+      if (!result) return;
+      handleBeforePencilStroke();
+      applyLayerState(result.layers, result.activeLayerId);
+      syncPaletteCountsFromLayers(result.layers);
+      showToast('⬇️ Merged layer down!');
+    },
+    [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, showToast]
+  );
+
+  const handleClearLayer = useCallback(
+    (id: string) => {
+      const target = layersRef.current.find((l) => l.id === id);
+      if (!target) return;
+      if (target.locked) {
+        warnActiveLayerBlocked(target);
+        return;
+      }
+      const h = target.grid.length;
+      const w = h > 0 ? target.grid[0]?.length ?? 0 : 0;
+      if (w === 0 || h === 0) return;
+
+      handleBeforePencilStroke();
+      const nextLayers = layersRef.current.map((l) =>
+        l.id === id ? { ...l, grid: createEmptyLayerGrid(w, h) } : l
+      );
+      applyLayerState(nextLayers, activeLayerIdRef.current);
+      syncPaletteCountsFromLayers(nextLayers);
+      showToast(`🧹 Cleared "${target.name}"`);
+    },
+    [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, warnActiveLayerBlocked, showToast]
+  );
+
+  const handleFlattenLayers = useCallback(() => {
+    const currentLayers = layersRef.current;
+    if (currentLayers.length <= 1) return;
+    handleBeforePencilStroke();
+    const flattened = flattenLayers(currentLayers);
+    const stack = createSingleLayerStack(flattened, 'Layer 1');
+    applyLayerState(stack.layers, stack.activeLayerId);
+    syncPaletteCountsFromLayers(stack.layers);
+    showToast('🧩 Flattened visible layers into Layer 1!');
+  }, [handleBeforePencilStroke, applyLayerState, syncPaletteCountsFromLayers, showToast]);
 
   // Wave 4: Cloud Sync, Community Publishing & /p/:shortId Handlers
   const handleSyncCloudAll = useCallback(
@@ -1929,7 +2405,7 @@ export default function App() {
       const recalculatedPalette = recalculatePaletteCounts(decodedGrid, record.palette);
       setPalette(recalculatedPalette);
       paletteRef.current = recalculatedPalette;
-      setGridData(decodedGrid);
+      setSingleLayerGrid(decodedGrid, record.title || 'Layer 1');
       setCompletedCells({});
       setBackstitches(record.backstitches || []);
       setRemixedFrom({ shortId: record.short_id, title: record.title });
@@ -1948,7 +2424,7 @@ export default function App() {
       navigate(getPathForCraft(record.craft_type));
       showToast(`✨ Opened "${record.title}" in Studio!`);
     },
-    [handleBeforePencilStroke, navigate, showToast]
+    [handleBeforePencilStroke, setSingleLayerGrid, navigate, showToast]
   );
 
   const handleSavePublishedToVault = useCallback(
@@ -2288,13 +2764,47 @@ export default function App() {
       },
       {
         id: 'action-toggle-right',
-        label: 'Toggle Palette Sidebar',
-        description: 'Expand or collapse the right floss & bead palette legend',
+        label: 'Toggle Palette & Layers Sidebar',
+        description: 'Expand or collapse the right palette & layers panel',
         category: 'Canvas Actions',
         shortcut: ']',
-        keywords: ['palette', 'legend', 'right', 'panel'],
+        keywords: ['palette', 'legend', 'right', 'panel', 'layers'],
         icon: <Palette className="w-4 h-4 text-pink-400" />,
         onExecute: () => setIsRightPanelOpen((p) => !p),
+      },
+      {
+        id: 'layers-open-panel',
+        label: 'Open Layers Panel',
+        description: 'Inspect layers, toggle visibility/lock, adjust opacity, or reorder stack',
+        category: 'Canvas Actions',
+        keywords: ['layer', 'layers', 'panel', 'opacity', 'visibility'],
+        icon: <Layers className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => {
+          setIsRightPanelOpen(true);
+          setRightSidebarTab('layers');
+        },
+      },
+      {
+        id: 'layers-add-new',
+        label: 'Add New Canvas Layer',
+        description: 'Create a transparent top layer (up to 10 layers) for edits, text or shading',
+        category: 'Canvas Actions',
+        keywords: ['new layer', 'add layer', 'stack'],
+        icon: <Layers className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => {
+          handleAddLayer();
+          setIsRightPanelOpen(true);
+          setRightSidebarTab('layers');
+        },
+      },
+      {
+        id: 'layers-flatten-all',
+        label: 'Flatten All Layers',
+        description: 'Merge all visible canvas layers into a single flattened Layer 1',
+        category: 'Canvas Actions',
+        keywords: ['flatten', 'merge layers', 'combine'],
+        icon: <Layers className="w-4 h-4 text-amber-400" />,
+        onExecute: handleFlattenLayers,
       },
       {
         id: 'action-zen-mode',
@@ -2384,7 +2894,7 @@ export default function App() {
         onExecute: () => setIsMyStashOpen(true),
       },
     ];
-  }, [config, gridData, palette, backstitches, lastAiPrompt, cloudDisplayName, sourceImage, cloudUser, handleSyncCloudAll, handleUpdateConfig, handleUndo, handleRedo, navigate, showToast]);
+  }, [config, gridData, palette, backstitches, lastAiPrompt, cloudDisplayName, sourceImage, cloudUser, handleSyncCloudAll, handleUpdateConfig, handleUndo, handleRedo, handleAddLayer, handleFlattenLayers, navigate, showToast]);
 
   const handleResetProgress = () => {
     if (Object.keys(completedCells).length === 0) return;
@@ -2410,7 +2920,8 @@ export default function App() {
   const handleLoadProjectJSON = (project: CraftProject) => {
     setConfig(project.gridConfig);
     latestConfigRef.current = project.gridConfig;
-    setGridData(project.gridData);
+    const restored = normalizeLayersForGrid(project.layers, project.activeLayerId, project.gridData);
+    applyLayerState(restored.layers, restored.activeLayerId);
     setPalette(project.palette);
     paletteRef.current = project.palette;
     setCompletedCells(project.completedCells || {});
@@ -2424,7 +2935,8 @@ export default function App() {
   const handleLoadVaultProject = useCallback((project: SavedProject) => {
     setConfig(project.gridConfig);
     latestConfigRef.current = project.gridConfig;
-    setGridData(project.gridData);
+    const restored = normalizeLayersForGrid(project.layers, project.activeLayerId, project.gridData);
+    applyLayerState(restored.layers, restored.activeLayerId);
     setPalette(project.palette);
     paletteRef.current = project.palette;
     setCompletedCells(project.completedCells || {});
@@ -2447,7 +2959,7 @@ export default function App() {
     setGridFuture([]);
     showToast(`Loaded "${project.name}" from Vault! ✨`);
     refreshVaultCount();
-  }, [showToast, refreshVaultCount]);
+  }, [applyLayerState, showToast, refreshVaultCount]);
 
   // Drag & drop picture over window
   const handleDragOver = (e: React.DragEvent) => {
@@ -2612,6 +3124,13 @@ export default function App() {
         {/* Center Interactive Craft Canvas */}
         <CraftCanvas
           gridData={gridData}
+          layers={layers}
+          activeLayerId={activeLayerId}
+          onOpenLayersTab={() => {
+            setIsRightPanelOpen(true);
+            setIsMobilePaletteOpen(true);
+            setRightSidebarTab('layers');
+          }}
           palette={palette}
           config={config}
           spotlightColorId={spotlightColorId}
@@ -2690,6 +3209,22 @@ export default function App() {
                 setIsMobilePaletteOpen(false);
                 setIsShoppingTripOpen(true);
               }}
+              layers={layers}
+              activeLayerId={activeLayerId}
+              rightSidebarTab={rightSidebarTab}
+              onChangeRightSidebarTab={setRightSidebarTab}
+              onSelectLayer={handleSelectLayer}
+              onAddLayer={handleAddLayer}
+              onDeleteLayer={handleDeleteLayer}
+              onDuplicateLayer={handleDuplicateLayer}
+              onRenameLayer={handleRenameLayer}
+              onToggleLayerVisible={handleToggleLayerVisible}
+              onToggleLayerLock={handleToggleLayerLock}
+              onChangeLayerOpacity={handleChangeLayerOpacity}
+              onMoveLayer={handleMoveLayer}
+              onMergeLayerDown={handleMergeLayerDown}
+              onClearLayer={handleClearLayer}
+              onFlattenLayers={handleFlattenLayers}
             />
           </div>
         )}
@@ -2821,6 +3356,8 @@ export default function App() {
             config={config}
             completedCells={completedCells}
             backstitches={backstitches}
+            layers={layers}
+            activeLayerId={activeLayerId}
             onOpenWrittenInstructions={() => {
               setIsExportOpen(false);
               setIsWrittenInstructionsOpen(true);
@@ -3142,6 +3679,8 @@ export default function App() {
             currentPalette={palette}
             currentCompletedCells={completedCells}
             currentBackstitches={backstitches}
+            currentLayers={layers}
+            currentActiveLayerId={activeLayerId}
             currentSourceImageDataUrl={sourceImageDataUrl}
             onLoadProject={handleLoadVaultProject}
             onProjectsChanged={refreshVaultCount}

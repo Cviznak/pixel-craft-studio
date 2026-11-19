@@ -24,7 +24,8 @@ import type {
   GridConfig, 
   PaletteColor, 
   CellProgress, 
-  BackstitchLine 
+  BackstitchLine,
+  CanvasLayer
 } from '../types/craft';
 import { 
   getAllVaultProjects, 
@@ -49,6 +50,8 @@ interface ProjectVaultModalProps {
   currentPalette: PaletteColor[];
   currentCompletedCells?: CellProgress;
   currentBackstitches?: BackstitchLine[];
+  currentLayers?: CanvasLayer[];
+  currentActiveLayerId?: string;
   currentSourceImageDataUrl?: string | null;
   // Handler when user selects a project to open
   onLoadProject: (project: SavedProject) => void;
@@ -81,6 +84,8 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
   currentPalette,
   currentCompletedCells,
   currentBackstitches,
+  currentLayers,
+  currentActiveLayerId,
   currentSourceImageDataUrl,
   onLoadProject,
   onProjectsChanged,
@@ -153,6 +158,8 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
       palette: currentPalette,
       completedCells: currentCompletedCells,
       backstitches: currentBackstitches,
+      layers: currentLayers && currentLayers.length > 0 ? currentLayers : undefined,
+      activeLayerId: currentLayers && currentLayers.length > 0 ? currentActiveLayerId : undefined,
       thumbnailDataUrl: thumb,
       width: currentConfig.width,
       height: currentConfig.height,
