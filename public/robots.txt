@@ -15,4 +15,5 @@ User-agent: Google-Extended
 Allow: /
 
 Sitemap: https://www.pixel-craft-studio.com/sitemap.xml
+Sitemap: https://www.pixel-craft-studio.com/sitemap-community.xml
 # LLMs documentation: https://www.pixel-craft-studio.com/llms.txt

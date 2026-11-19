@@ -74,7 +74,7 @@ export async function buildShareMetaHtml(params: {
   let description =
     'Turn images into Cross-Stitch DMC charts, Perler bead pegboards, Tapestry Crochet instructions, and Seed Bead Word Charts.';
   let canonicalUrl = `${ORIGIN}/`;
-  let imageUrl = `${ORIGIN}/og-image.png`;
+  let imageUrl = `${ORIGIN}/og-preview.png`;
   let authorLine = '';
 
   if (type === 'creator' && params.handle) {
@@ -88,7 +88,7 @@ export async function buildShareMetaHtml(params: {
     title = `@${cleanHandle} — Creator Portfolio & Craft Patterns | Pixel Craft Studio`;
     description = `Browse free public craft patterns published by @${cleanHandle} on Pixel Craft Studio. Open any pattern in Studio to stitch, inspect legends, or remix.`;
     canonicalUrl = `${ORIGIN}/u/${encodeURIComponent(cleanHandle)}`;
-    imageUrl = `${ORIGIN}/og-image.png`;
+    imageUrl = `${ORIGIN}/og-preview.png`;
   } else if (type === 'page' && params.slug) {
     const cleanSlug = params.slug.replace(/[^a-z0-9-]/gi, '').toLowerCase();
     const pageMeta = STATIC_PAGE_META[cleanSlug];
@@ -96,7 +96,7 @@ export async function buildShareMetaHtml(params: {
       title = pageMeta.title;
       description = pageMeta.description;
       canonicalUrl = `${ORIGIN}${pageMeta.path}`;
-      imageUrl = `${ORIGIN}/og-image.png`;
+      imageUrl = `${ORIGIN}/og-preview.png`;
     }
   } else if (type === 'pattern' && params.slug) {
     const cleanSlug = params.slug.replace(/[^a-z0-9-]/gi, '').toLowerCase();
@@ -104,7 +104,7 @@ export async function buildShareMetaHtml(params: {
     title = `${prettyName} — Free Printable Craft Pattern | Pixel Craft Studio`;
     description = `Open ${prettyName} in Pixel Craft Studio. View dimensions, material color counts, and export printable PDF, PNG, SVG, or .OXS charts for free.`;
     canonicalUrl = `${ORIGIN}/patterns/${cleanSlug}`;
-    imageUrl = `${ORIGIN}/og-image.png`;
+    imageUrl = `${ORIGIN}/og-preview.png`;
   } else if (params.id) {
     const shortId = params.id.replace(/[^a-z0-9]/gi, '').toLowerCase();
     canonicalUrl = `${ORIGIN}/p/${shortId}`;

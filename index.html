@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -19,6 +19,7 @@
     <meta name="google-site-verification" content="uhlQbPBdZCsr-Q1eIwLIgvkA8uGrybLclVRhVtcLoY0" />
 
     <!-- Schema.org JSON-LD Structured Data for Google Rich Snippets -->
+    <!-- ROUTE_JSONLD_START -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -105,6 +106,7 @@
       ]
     }
     </script>
+    <!-- ROUTE_JSONLD_END -->
 
     <!-- Open Graph / Facebook / Discord / Reddit / WhatsApp -->
     <meta property="og:type" content="website" />
@@ -130,18 +132,44 @@
   </head>
   <body>
     <div id="root">
-      <noscript>
-        <h1>Pixel Craft Studio — Free Pixel Art Maker & Pattern Generator</h1>
-        <p>Free online tool to draw pixel art freely and convert photos into Tapestry Crochet row-by-row written instructions, DMC Cross-Stitch charts, and Perler bead pegboard patterns.</p>
-        <h2>Key Features:</h2>
-        <ul>
-          <li><strong>Pixel Art Studio:</strong> Freehand pencil, eraser, flood fill paint bucket, straight lines, rectangles, live symmetry mirror mode, and retro palettes (Pico-8, GameBoy, Retro 16, Pastel).</li>
-          <li><strong>Tapestry Crochet:</strong> Generates row-by-row color instructions with active stitch counters and gauge yardage calculators.</li>
-          <li><strong>DMC Cross-Stitch:</strong> Perceptual color matching to official DMC embroidery floss numbers with printable symbol charts.</li>
-          <li><strong>Perler Beads:</strong> Converts images into fusible bead grids with exact bead counts and catalog color matching.</li>
-          <li><strong>Printable PDF Export:</strong> Multi-page poster charts with color legends and symbol keys.</li>
+      <!-- ROUTE_ROOT_START -->
+      <main style="min-height:100vh;background:#090d16;color:#e2e8f0;padding:2.5rem 1.25rem;max-width:58rem;margin:0 auto;font-family:system-ui,-apple-system,sans-serif;">
+        <h1 style="font-size:2rem;line-height:1.2;font-weight:800;color:#ffffff;margin:0 0 0.75rem 0;">Pixel Craft Studio — Free Pixel Art Maker &amp; Pattern Generator</h1>
+        <p style="font-size:1rem;line-height:1.65;color:#cbd5e1;margin:0 0 1rem 0;">Free online studio to draw pixel art and convert photos into Tapestry Crochet row-by-row instructions, DMC Cross-Stitch symbol charts, Intarsia Knitting graphs, Perler bead pegboard patterns, and Miyuki Delica Loom charts.</p>
+        <ul style="color:#cbd5e1;margin:1rem 0;padding-left:1.25rem;line-height:1.7;">
+          <li><strong>DMC Cross-Stitch &amp; .OXS:</strong> Perceptual CIELAB color matching to 175+ DMC shades, Aida calculators, Pattern Keeper PDF, layered SVG, and bidirectional .OXS XML export.</li>
+          <li><strong>Tapestry Crochet &amp; Knitting:</strong> Row-by-row written stitch counts, realistic 4:5 stockinette knitting gauge, and yardage calculators.</li>
+          <li><strong>Perler &amp; Miyuki Bead Loom:</strong> Fusible 29×29 pegboard grids, staggered Peyote/Brick looms, and Bead Word Charts.</li>
+          <li><strong>Free Online Pixel Art Studio:</strong> Pencil, fill bucket, symmetry mirror mode, retro palettes, and instant Ctrl+V clipboard paste.</li>
         </ul>
-      </noscript>
+        <nav aria-label="Pixel Craft Studio Directory" style="margin-top:1.75rem;padding-top:1.25rem;border-top:1px solid #1e293b;font-size:0.875rem;line-height:1.6;">
+          <div style="margin-bottom:0.75rem;">
+            <strong style="color:#f8fafc;">Craft Studios:</strong><br/>
+            <a href="/cross-stitch" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Cross-Stitch Pattern Maker</a>
+            <a href="/crochet" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Tapestry Crochet &amp; C2C</a>
+            <a href="/knitting" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Intarsia Knitting Charts</a>
+            <a href="/loom-beading" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Bead Loom &amp; Peyote</a>
+            <a href="/alpha-keychain" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Alpha Keychain Studio</a>
+            <a href="/perler-beads" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Perler &amp; Fuse Beads</a>
+            <a href="/diamond-painting" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Diamond Painting</a>
+            <a href="/pixel-art" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Pixel Art Studio</a>
+          </div>
+          <div>
+            <strong style="color:#f8fafc;">Free Craft Tools &amp; Showcase:</strong><br/>
+            <a href="/oxs-viewer" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">.OXS Pattern Viewer</a>
+            <a href="/tools/color-substitutor" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Batch Color Substitutor</a>
+            <a href="/color-chart" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Color Chart &amp; Hex Matcher</a>
+            <a href="/color-chart/dmc-to-anchor" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">DMC to Anchor Chart</a>
+            <a href="/calculators" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Craft Calculators</a>
+            <a href="/community" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Community Showcase</a>
+            <a href="/gallery" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Starter Gallery</a>
+            <a href="/about" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">About</a>
+            <a href="/license" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Commercial License</a>
+            <a href="/privacy" style="color:#93c5fd;margin-right:0.9rem;display:inline-block;">Privacy</a>
+          </div>
+        </nav>
+      </main>
+      <!-- ROUTE_ROOT_END -->
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

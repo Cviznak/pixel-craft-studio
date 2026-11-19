@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { CRAFT_ROUTES } from '../utils/craftRoutes';
 import type { CraftType, GridConfig, CraftProject } from '../types/craft';
 import { 
   Download, 
@@ -127,7 +128,6 @@ export const Header: React.FC<HeaderProps> = ({
   isRightPanelOpen = true,
   onToggleRightPanel,
 }) => {
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProjectMenuOpen, setIsProjectMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -266,10 +266,10 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 group">
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-pink-500 via-indigo-600 to-amber-400 p-[1.5px] shadow-md shadow-indigo-500/20 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[9px] sm:rounded-[10px] flex items-center justify-center">
-              <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-pink-400" />
+              <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-pink-400 group-hover:scale-105 transition" />
             </div>
           </div>
           <div>
@@ -283,7 +283,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Center: Mobile Craft Dropdown (< md) */}
@@ -334,8 +334,9 @@ export const Header: React.FC<HeaderProps> = ({
         {craftTypes.map((item) => {
           const isActive = config.craftType === item.id;
           return (
-            <button
+            <Link
               key={item.id}
+              to={CRAFT_ROUTES[item.id].path}
               onClick={() => onUpdateConfig({ craftType: item.id })}
               className={`px-2 py-1 xl:px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
                 isActive
@@ -346,7 +347,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <span className="text-xs">{item.icon}</span>
               <span className={isActive ? 'inline font-bold' : 'hidden 2xl:inline'}>{item.label}</span>
-            </button>
+            </Link>
           );
         })}
       </div>
@@ -872,49 +873,41 @@ export const Header: React.FC<HeaderProps> = ({
                 Standalone Pages
               </div>
 
-              <button
-                onClick={() => {
-                  setIsProjectMenuOpen(false);
-                  navigate('/oxs-viewer');
-                }}
+              <Link
+                to="/oxs-viewer"
+                onClick={() => setIsProjectMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
               >
                 <FileCode2 className="w-3.5 h-3.5 text-emerald-400" />
                 <span>.OXS Pattern Viewer</span>
-              </button>
+              </Link>
 
-              <button
-                onClick={() => {
-                  setIsProjectMenuOpen(false);
-                  navigate('/tools/color-substitutor');
-                }}
+              <Link
+                to="/tools/color-substitutor"
+                onClick={() => setIsProjectMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Color Substitutor &amp; Blends</span>
-              </button>
+              </Link>
 
-              <button
-                onClick={() => {
-                  setIsProjectMenuOpen(false);
-                  navigate('/community');
-                }}
+              <Link
+                to="/community"
+                onClick={() => setIsProjectMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left"
               >
                 <Globe className="w-3.5 h-3.5 text-pink-400" />
                 <span>Community Showcase Hub</span>
-              </button>
+              </Link>
 
-              <button
-                onClick={() => {
-                  setIsProjectMenuOpen(false);
-                  navigate('/about');
-                }}
+              <Link
+                to="/about"
+                onClick={() => setIsProjectMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition text-left"
               >
                 <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
                 <span>About, License &amp; Privacy</span>
-              </button>
+              </Link>
 
               <div className="my-1 border-t border-slate-800/80" />
 

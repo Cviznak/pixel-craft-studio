@@ -2,6 +2,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "cleanUrls": true,
+  "trailingSlash": false,
   "redirects": [
     {
       "source": "/:path*",
@@ -17,26 +19,19 @@
   ],
   "rewrites": [
     {
+      "source": "/sitemap-community.xml",
+      "destination": "/api/sitemap-community"
+    },
+    {
       "source": "/p/:id",
       "has": [
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Embedly|SkypeUriPreview|vkShare|Qwantify|iMessage).*"
         }
       ],
       "destination": "/api/share-meta?type=p&id=:id"
-    },
-    {
-      "source": "/patterns/:slug",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
-        }
-      ],
-      "destination": "/api/share-meta?type=pattern&slug=:slug"
     },
     {
       "source": "/u/:handle",
@@ -44,80 +39,14 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
+          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Embedly|SkypeUriPreview|vkShare|Qwantify|iMessage).*"
         }
       ],
       "destination": "/api/share-meta?type=creator&handle=:handle"
     },
     {
-      "source": "/oxs-viewer",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
-        }
-      ],
-      "destination": "/api/share-meta?type=page&slug=oxs-viewer"
-    },
-    {
-      "source": "/tools/color-substitutor",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
-        }
-      ],
-      "destination": "/api/share-meta?type=page&slug=color-substitutor"
-    },
-    {
-      "source": "/community",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
-        }
-      ],
-      "destination": "/api/share-meta?type=page&slug=community"
-    },
-    {
-      "source": "/about",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
-        }
-      ],
-      "destination": "/api/share-meta?type=page&slug=about"
-    },
-    {
-      "source": "/license",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
-        }
-      ],
-      "destination": "/api/share-meta?type=page&slug=license"
-    },
-    {
-      "source": "/privacy",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(facebookexternalhit|Facebot|Twitterbot|Pinterest|Discordbot|Slackbot|WhatsApp|TelegramBot|LinkedInBot|Redditbot|Applebot|bingbot|Googlebot|Embedly|SkypeUriPreview|iMessage|bot|Bot|crawler|Crawler|spider|Spider).*"
-        }
-      ],
-      "destination": "/api/share-meta?type=page&slug=privacy"
-    },
-    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ]
 }
