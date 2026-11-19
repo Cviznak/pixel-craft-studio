@@ -46,6 +46,7 @@ interface HeaderProps {
   onOpenCalculatorsModal?: () => void;
   onOpenProjectVaultModal?: () => void;
   onOpenEtsyKitModal?: () => void;
+  onOpenMaterialKitModal?: () => void;
   savedProjectsCount?: number;
   isAutoSaving?: boolean;
   isZenMode?: boolean;
@@ -77,6 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCalculatorsModal,
   onOpenProjectVaultModal,
   onOpenEtsyKitModal,
+  onOpenMaterialKitModal,
   savedProjectsCount = 0,
   isAutoSaving = false,
   isZenMode = false,
@@ -363,6 +365,30 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
+        {/* Community Pattern Showcase Button */}
+        {onOpenStarterGallery && (
+          <button
+            onClick={onOpenStarterGallery}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 hover:border-pink-500/50 shadow-sm transition active:scale-95"
+            title="Browse Community Pattern Showcase & Discovery (34+ curated designs)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            <span className="hidden xl:inline">Showcase</span>
+          </button>
+        )}
+
+        {/* Smart Craft Supply Kit Button */}
+        {onOpenMaterialKitModal && (
+          <button
+            onClick={onOpenMaterialKitModal}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/50 shadow-sm transition active:scale-95"
+            title="Smart Craft Supply Kit & 1-Click Amazon Checkout (Fabric, Hoop, Tools & Palette)"
+          >
+            <Package className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden xl:inline">Supply Kit</span>
+          </button>
+        )}
+
         {/* Palette Panel Toggle (Desktop) */}
         {onToggleRightPanel && (
           <button
@@ -612,6 +638,20 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Smartphone className="w-3.5 h-3.5 text-teal-400" />
                   <span>Stitch Companion (Phone Mode)</span>
+                </button>
+              )}
+
+              {/* Smart Craft Supply Kit & 1-Click Amazon Checkout */}
+              {onOpenMaterialKitModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenMaterialKitModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <Package className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Smart Craft Supply Kit</span>
                 </button>
               )}
 

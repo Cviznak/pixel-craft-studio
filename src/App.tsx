@@ -43,6 +43,7 @@ import { CraftCalculatorsModal } from './components/CraftCalculatorsModal';
 import { ProjectVaultModal } from './components/ProjectVaultModal';
 import { EtsySellerKitModal } from './components/EtsySellerKitModal';
 import { PhotoPaletteModal } from './components/PhotoPaletteModal';
+import { MaterialKitModal } from './components/MaterialKitModal';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb, rgbToLab, deltaE } from './utils/colorUtils';
@@ -133,6 +134,7 @@ export default function App() {
   const [isProjectVaultOpen, setIsProjectVaultOpen] = useState<boolean>(false);
   const [isEtsyKitOpen, setIsEtsyKitOpen] = useState<boolean>(false);
   const [isPhotoPaletteOpen, setIsPhotoPaletteOpen] = useState<boolean>(false);
+  const [isMaterialKitOpen, setIsMaterialKitOpen] = useState<boolean>(false);
   const [vaultProjectsCount, setVaultProjectsCount] = useState<number>(0);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
@@ -603,11 +605,31 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
 
-  const handleSelectSample = (sample: SampleImage) => {
+  const handleSelectSample = (
+    sample: SampleImage,
+    targetCraft?: CraftType,
+    gridSize?: { width: number; height: number },
+    colorsCount?: number
+  ) => {
+    let nextConfig = { ...latestConfigRef.current };
+    if (targetCraft && targetCraft !== nextConfig.craftType) {
+      nextConfig.craftType = targetCraft;
+      navigate(getPathForCraft(targetCraft), { replace: true });
+    }
+    if (gridSize) {
+      nextConfig.width = gridSize.width;
+      nextConfig.height = gridSize.height;
+    }
+    if (colorsCount) {
+      nextConfig.colorsCount = colorsCount;
+    }
+    latestConfigRef.current = nextConfig;
+    setConfig(nextConfig);
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      applyImageAndProcess(img, sample.url, sample.id);
+      applyImageAndProcess(img, sample.url, sample.id, nextConfig);
     };
     img.src = sample.url;
   };
@@ -1530,6 +1552,7 @@ export default function App() {
         onOpenCalculatorsModal={() => setIsCalculatorsOpen(true)}
         onOpenProjectVaultModal={() => setIsProjectVaultOpen(true)}
         onOpenEtsyKitModal={() => setIsEtsyKitOpen(true)}
+        onOpenMaterialKitModal={() => setIsMaterialKitOpen(true)}
         savedProjectsCount={vaultProjectsCount}
         isAutoSaving={isAutoSaving}
         isZenMode={isZenMode}
@@ -1696,6 +1719,10 @@ export default function App() {
               onApplyPaletteMood={handleApplyPaletteMood}
               onCrossConvertCraft={handleCrossConvertCraft}
               onOpenPhotoPalette={() => setIsPhotoPaletteOpen(true)}
+              onOpenMaterialKit={() => {
+                setIsMobilePaletteOpen(false);
+                setIsMaterialKitOpen(true);
+              }}
               onOpenShoppingTrip={() => {
                 setIsMobilePaletteOpen(false);
                 setIsShoppingTripOpen(true);
@@ -1845,6 +1872,10 @@ export default function App() {
           setIsExportOpen(false);
           setIsEtsyKitOpen(true);
         }}
+        onOpenMaterialKit={() => {
+          setIsExportOpen(false);
+          setIsMaterialKitOpen(true);
+        }}
       />
 
       {/* Tapestry Crochet & Alpha Knot Written Row-by-Row Instructions Modal */}
@@ -1866,16 +1897,14 @@ export default function App() {
             navigate(getPathForCraft(config.craftType));
           }
         }}
-        onSelectStarter={(sample, craftType) => {
-          if (craftType) {
-            handleUpdateConfig({ craftType });
-          }
-          handleSelectSample(sample);
+        onSelectStarter={(sample, craftType, gridSize, colorsCount) => {
+          handleSelectSample(sample, craftType, gridSize, colorsCount);
           if (location.pathname === '/gallery') {
             navigate(getPathForCraft(craftType || config.craftType));
           }
         }}
         onOpenAiGenerator={() => setIsAiModalOpen(true)}
+        onOpenSocialCard={() => setIsSocialCardOpen(true)}
       />
 
       {/* Ask AI to Generate Picture Modal with History */}
@@ -2029,6 +2058,24 @@ export default function App() {
           if (useMyStashOnly && sourceImageRef.current) {
             reprocessCurrentImage();
           }
+        }}
+        onOpenMaterialKit={() => {
+          setIsShoppingTripOpen(false);
+          setIsMaterialKitOpen(true);
+        }}
+      />
+
+      {/* Smart Craft Supply Kit & Materials Checkout Modal */}
+      <MaterialKitModal
+        isOpen={isMaterialKitOpen}
+        onClose={() => setIsMaterialKitOpen(false)}
+        config={config}
+        palette={palette}
+        gridData={gridData}
+        completedCells={completedCells}
+        onOpenShoppingTrip={() => {
+          setIsMaterialKitOpen(false);
+          setIsShoppingTripOpen(true);
         }}
       />
 

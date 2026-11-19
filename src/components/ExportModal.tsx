@@ -30,7 +30,8 @@ import {
   ChevronDown,
   ChevronUp,
   Store,
-  ShoppingBag
+  ShoppingBag,
+  Package
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -45,6 +46,7 @@ interface ExportModalProps {
   onOpenSocialCard?: () => void;
   onOpenShoppingTrip?: () => void;
   onOpenEtsyKit?: () => void;
+  onOpenMaterialKit?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -59,6 +61,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onOpenSocialCard,
   onOpenShoppingTrip,
   onOpenEtsyKit,
+  onOpenMaterialKit,
 }) => {
   const [projectName, setProjectName] = useState('My Pixel Craft Pattern');
   const [scale, setScale] = useState(16);
@@ -645,7 +648,37 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               </div>
             )}
 
-            {/* 6. Craft Supplies & Support Banner */}
+            {/* 6. Smart Craft Supplies & Materials Kit */}
+            {onOpenMaterialKit && (
+              <div className="p-3.5 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-950/20 via-orange-950/20 to-amber-950/20 hover:from-amber-950/30 hover:to-orange-950/30 transition flex items-center justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 mt-0.5">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-100 text-xs flex items-center gap-1.5">
+                      <span>Smart Craft Supply Kit</span>
+                      <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 text-[9px] rounded-full font-bold">1-Click Amazon Kit</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Custom Aida/pegboard dimensions, hoop sizes, essential tools, and palette skeins tailored for this pattern.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    onClose();
+                    onOpenMaterialKit();
+                  }}
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5"
+                >
+                  <Package className="w-3.5 h-3.5" />
+                  View Kit
+                </button>
+              </div>
+            )}
+
+            {/* 7. Craft Supplies & Support Banner */}
             <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {/* Amazon Supplies Kit */}
               <a

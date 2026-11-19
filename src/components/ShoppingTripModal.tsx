@@ -7,7 +7,8 @@ import {
   PackageCheck,
   Sparkles,
   ArrowUpDown,
-  DollarSign
+  DollarSign,
+  Package
 } from 'lucide-react';
 import type { PaletteColor, CraftType } from '../types/craft';
 import { getContrastingTextColor } from '../utils/colorUtils';
@@ -21,6 +22,7 @@ interface ShoppingTripModalProps {
   gridData: number[][];
   craftType: CraftType;
   onStashUpdated?: () => void;
+  onOpenMaterialKit?: () => void;
 }
 
 type CurrencySymbol = '$' | '€' | '£';
@@ -65,6 +67,7 @@ export const ShoppingTripModal: React.FC<ShoppingTripModalProps> = ({
   gridData,
   craftType,
   onStashUpdated,
+  onOpenMaterialKit,
 }) => {
   const stashBrand: 'DMC' | 'Perler' = craftType === 'perler' ? 'Perler' : 'DMC';
   const [stashCodes, setStashCodes] = useState<Set<string>>(() => getMyStash(stashBrand));
@@ -236,14 +239,30 @@ export const ShoppingTripModal: React.FC<ShoppingTripModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenMaterialKit && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenMaterialKit();
+                }}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-xs font-bold transition"
+                title="View complete physical kit (fabric, hoop, tools & threads)"
+              >
+                <Package className="w-3.5 h-3.5" />
+                <span>Full Supply Kit</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Summary & Pricing Bar */}

@@ -33,6 +33,7 @@ import {
   Wand2,
   ChevronDown,
   Check,
+  Package,
   Camera
 } from 'lucide-react';
 
@@ -58,6 +59,7 @@ interface PaletteLegendProps {
   onCrossConvertCraft?: (targetCraft: CraftType) => void;
   onOpenShoppingTrip?: () => void;
   onOpenPhotoPalette?: () => void;
+  onOpenMaterialKit?: () => void;
 }
 
 const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
@@ -82,6 +84,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   onCrossConvertCraft,
   onOpenShoppingTrip,
   onOpenPhotoPalette,
+  onOpenMaterialKit,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'todo' | 'done'>('all');
@@ -815,6 +818,17 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
 
       {/* Supplies & Shopping Footer */}
       <div className="p-2.5 border-t border-slate-800 bg-slate-950/80 flex flex-col gap-1.5 text-xs">
+        {onOpenMaterialKit && (
+          <button
+            type="button"
+            onClick={onOpenMaterialKit}
+            className="w-full py-1.5 px-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 rounded-lg border border-amber-500/40 flex items-center justify-center gap-1.5 font-bold transition shadow-sm"
+            title="Order tailored supply kit on Amazon (fabric, hoop, tools & threads)"
+          >
+            <Package className="w-3.5 h-3.5 text-amber-400" />
+            <span>Smart Supply Kit & Checkout</span>
+          </button>
+        )}
         {onOpenShoppingTrip && (
           <button
             type="button"
