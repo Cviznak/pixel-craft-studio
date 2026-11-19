@@ -248,12 +248,13 @@ export async function saveProjectToVault(
     createdAt?: number;
     updatedAt?: number;
     thumbnailDataUrl?: string;
-  }
+  },
+  preserveUpdatedAt = false
 ): Promise<SavedProject> {
   const now = Date.now();
   const id = projectData.id || `proj_${now}_${Math.random().toString(36).substring(2, 8)}`;
   const createdAt = projectData.createdAt || now;
-  const updatedAt = now;
+  const updatedAt = preserveUpdatedAt && projectData.updatedAt ? projectData.updatedAt : now;
 
   const thumbnailDataUrl = projectData.thumbnailDataUrl || generateProjectThumbnail(
     projectData.gridData,

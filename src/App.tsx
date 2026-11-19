@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { User } from '@supabase/supabase-js';
 import type { 
   GridConfig, 
   PaletteColor, 
@@ -17,7 +18,7 @@ import type {
 import { SAMPLE_IMAGES } from './utils/sampleImages';
 import { extractBeautifulPalette } from './utils/paletteExtractor';
 import { processImageToGrid } from './utils/pixelation';
-import { saveAppState, loadAppState, clearSavedAppState, getAllVaultProjects } from './utils/storage';
+import { saveAppState, loadAppState, clearSavedAppState, getAllVaultProjects, saveProjectToVault } from './utils/storage';
 import { DEFAULT_CROCHET_GAUGE } from './utils/craftCalculator';
 import { Header } from './components/Header';
 import { ControlsPanel } from './components/ControlsPanel';
@@ -50,8 +51,22 @@ import { BackgroundRemoverModal } from './components/BackgroundRemoverModal';
 import { BorderBuilderModal } from './components/BorderBuilderModal';
 import { WipTrackerModal } from './components/WipTrackerModal';
 import { CommandPaletteModal, type CommandPaletteItem } from './components/CommandPaletteModal';
+import { CloudAuthModal } from './components/CloudAuthModal';
+import { PublishPatternModal } from './components/PublishPatternModal';
+import { SharedPatternModal } from './components/SharedPatternModal';
 import { recalculatePaletteCounts } from './utils/borderGenerator';
 import { loadWipStats, saveWipStats, type WipStats, type WipSessionLog } from './utils/wipTracker';
+import { isSupabaseConfigured, supabase } from './utils/supabaseClient';
+import {
+  fetchUserLikedPatternIds,
+  pushPreferencesToCloud,
+  pushSingleProjectToCloud,
+  syncProjectsWithCloud,
+  syncStashAndWipWithCloud,
+  toggleCommunityPatternLike,
+  type CloudSyncSummary,
+  type PublishedPatternRecord,
+} from './utils/cloudSync';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb, rgbToLab, deltaE } from './utils/colorUtils';
@@ -69,7 +84,9 @@ import {
   updateDocumentMeta, 
   getCalculatorRoute,
   getColorChartRoute,
-  getPatternRouteInfo
+  getPatternRouteInfo,
+  getSharedPatternRouteId,
+  buildSharedPatternMeta
 } from './utils/craftRoutes';
 import { getPatternBySlug } from './utils/communityPatterns';
 import { decodePatternFromHash } from './utils/shareUtils';
@@ -98,6 +115,10 @@ import {
   Maximize2,
   ShoppingCart,
   ShoppingBag,
+  Cloud,
+  Globe,
+  Share2,
+  RefreshCw,
 } from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
@@ -186,8 +207,27 @@ export default function App() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
   const [splitCompareSignal, setSplitCompareSignal] = useState<number>(0);
 
+  // Wave 4: Cloud Auth, Sync, Publishing & Shared Pattern Modal States
+  const [isCloudAuthOpen, setIsCloudAuthOpen] = useState<boolean>(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState<boolean>(false);
+  const [activeSharedPatternId, setActiveSharedPatternId] = useState<string | null>(null);
+  const [galleryInitialTab, setGalleryInitialTab] = useState<'curated' | 'community'>('curated');
+  const [cloudUser, setCloudUser] = useState<User | null>(null);
+  const [cloudDisplayName, setCloudDisplayName] = useState<string>(() =>
+    typeof window !== 'undefined' ? localStorage.getItem('pcs_cloud_display_name') || '' : ''
+  );
+  const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
+  const [lastCloudSyncedAt, setLastCloudSyncedAt] = useState<string | null>(null);
+  const [lastCloudSyncSummary, setLastCloudSyncSummary] = useState<CloudSyncSummary | null>(null);
+  const [likedPatternIds, setLikedPatternIds] = useState<Set<string>>(new Set());
+
   // WIP Time Tracker, Stitch Speed & Session Journal
   const [wipStats, setWipStats] = useState<WipStats>(() => loadWipStats());
+  const wipStatsRef = useRef<WipStats>(wipStats);
+  useEffect(() => {
+    wipStatsRef.current = wipStats;
+  }, [wipStats]);
+  const isSyncInFlightRef = useRef<boolean>(false);
   const [isWipTimerRunning, setIsWipTimerRunning] = useState<boolean>(false);
   const [wipSessionSeconds, setWipSessionSeconds] = useState<number>(0);
   const [wipSessionStartStitches, setWipSessionStartStitches] = useState<number>(0);
@@ -588,6 +628,7 @@ export default function App() {
     const calcRoute = getCalculatorRoute(cleanPath);
     const colorChartRoute = getColorChartRoute(cleanPath);
     const patternRouteInfo = getPatternRouteInfo(cleanPath);
+    const sharedPatternId = getSharedPatternRouteId(cleanPath);
 
     if (route) {
       if (latestConfigRef.current.craftType !== route.craftType) {
@@ -596,6 +637,7 @@ export default function App() {
         setConfig(next);
       }
       setActivePatternSlug(null);
+      setActiveSharedPatternId(null);
       setIsColorChartOpen(false);
       setIsStarterGalleryOpen(false);
       setIsCalculatorsOpen(false);
@@ -603,6 +645,7 @@ export default function App() {
     } else if (calcRoute) {
       setIsCalculatorsOpen(true);
       setActivePatternSlug(null);
+      setActiveSharedPatternId(null);
       setIsColorChartOpen(false);
       setIsStarterGalleryOpen(false);
       if (cleanPath === '/calculators/floss-estimator') {
@@ -626,6 +669,7 @@ export default function App() {
       setIsColorChartOpen(true);
       setIsStarterGalleryOpen(false);
       setActivePatternSlug(null);
+      setActiveSharedPatternId(null);
       setIsCalculatorsOpen(false);
       updateDocumentMeta(colorChartRoute, {
         '@context': 'https://schema.org',
@@ -640,6 +684,7 @@ export default function App() {
     } else if (patternRouteInfo) {
       const { pattern, meta } = patternRouteInfo;
       setActivePatternSlug(pattern.slug);
+      setActiveSharedPatternId(null);
       setIsStarterGalleryOpen(false);
       setIsColorChartOpen(false);
       setIsCalculatorsOpen(false);
@@ -667,14 +712,23 @@ export default function App() {
       });
     } else if (cleanPath.startsWith('/patterns/')) {
       navigate('/gallery', { replace: true });
+    } else if (sharedPatternId) {
+      setActiveSharedPatternId(sharedPatternId);
+      setActivePatternSlug(null);
+      setIsStarterGalleryOpen(false);
+      setIsColorChartOpen(false);
+      setIsCalculatorsOpen(false);
+      updateDocumentMeta(buildSharedPatternMeta(sharedPatternId), null);
     } else if (cleanPath === '/gallery') {
       setIsStarterGalleryOpen(true);
       setActivePatternSlug(null);
+      setActiveSharedPatternId(null);
       setIsColorChartOpen(false);
       setIsCalculatorsOpen(false);
       updateDocumentMeta(GALLERY_ROUTE, null);
     } else {
       setActivePatternSlug(null);
+      setActiveSharedPatternId(null);
       setIsColorChartOpen(false);
       setIsCalculatorsOpen(false);
       updateDocumentMeta(null, null);
@@ -1703,6 +1757,240 @@ export default function App() {
     [config, handleBeforePencilStroke, showToast]
   );
 
+  // Wave 4: Cloud Sync, Community Publishing & /p/:shortId Handlers
+  const handleSyncCloudAll = useCallback(
+    async (targetUser?: User | null, silent = false) => {
+      const activeUser = targetUser ?? cloudUser;
+      if (!activeUser || !isSupabaseConfigured || isSyncInFlightRef.current) return;
+
+      isSyncInFlightRef.current = true;
+      setIsCloudSyncing(true);
+      try {
+        const [projRes, prefRes, liked] = await Promise.all([
+          syncProjectsWithCloud(activeUser.id),
+          syncStashAndWipWithCloud(activeUser.id, wipStatsRef.current),
+          fetchUserLikedPatternIds(activeUser.id),
+        ]);
+
+        setWipStats(prefRes.wipStats);
+        setCloudDisplayName(prefRes.displayName);
+        setLikedPatternIds(liked);
+        await refreshVaultCount();
+
+        const summary: CloudSyncSummary = {
+          pulledProjects: projRes.pulledProjects,
+          pushedProjects: projRes.pushedProjects,
+          mergedStashItems: prefRes.mergedStashItems,
+          mergedWipSessions: prefRes.mergedWipSessions,
+          syncedAtIso: new Date().toISOString(),
+        };
+        setLastCloudSyncedAt(summary.syncedAtIso);
+        setLastCloudSyncSummary(summary);
+
+        if (!silent) {
+          showToast(
+            `☁️ Cloud synced (+${projRes.pushedProjects} pushed, +${projRes.pulledProjects} pulled)`
+          );
+        }
+      } catch (err) {
+        if (!silent) {
+          showToast(
+            `Cloud sync failed: ${err instanceof Error ? err.message : 'Network error'}`
+          );
+        }
+      } finally {
+        isSyncInFlightRef.current = false;
+        setIsCloudSyncing(false);
+      }
+    },
+    [cloudUser, refreshVaultCount, showToast]
+  );
+
+  useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+    let active = true;
+
+    client.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      const sessionUser = data.session?.user ?? null;
+      setCloudUser(sessionUser);
+      if (sessionUser) {
+        handleSyncCloudAll(sessionUser, true).catch((err) =>
+          console.warn('Initial cloud sync failed:', err)
+        );
+      }
+    });
+
+    const { data: authListener } = client.auth.onAuthStateChange((event, session) => {
+      if (!active) return;
+      const nextUser = session?.user ?? null;
+      setCloudUser(nextUser);
+      if (nextUser && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+        handleSyncCloudAll(nextUser, false).catch((err) =>
+          console.warn('Auth sync failed:', err)
+        );
+      } else if (!nextUser) {
+        setLikedPatternIds(new Set());
+      }
+    });
+
+    return () => {
+      active = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [handleSyncCloudAll]);
+
+  // Debounced cloud push whenever local WIP stats change while signed in
+  useEffect(() => {
+    if (!cloudUser || !isSupabaseConfigured) return;
+    const t = window.setTimeout(() => {
+      pushPreferencesToCloud(cloudUser.id, { wipStats }).catch(() => {
+        // ignore background push failures
+      });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [cloudUser, wipStats]);
+
+  const handleUpdateCloudDisplayName = useCallback(
+    (name: string) => {
+      setCloudDisplayName(name);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('pcs_cloud_display_name', name);
+        } catch {
+          // ignore
+        }
+      }
+      if (cloudUser && isSupabaseConfigured) {
+        pushPreferencesToCloud(cloudUser.id, { displayName: name });
+      }
+      showToast('✨ Creator display name updated!');
+    },
+    [cloudUser, showToast]
+  );
+
+  const handleCloudSignOut = useCallback(async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    setCloudUser(null);
+    setLikedPatternIds(new Set());
+    showToast('Signed out from cloud sync (local projects remain saved).');
+  }, [showToast]);
+
+  const handleOpenPublishedPatternInStudio = useCallback(
+    (record: PublishedPatternRecord, decodedGrid: number[][]) => {
+      handleBeforePencilStroke();
+      const nextConfig: GridConfig = {
+        ...latestConfigRef.current,
+        craftType: record.craft_type,
+        width: record.width,
+        height: record.height,
+        beadLoom:
+          record.craft_type === 'loom'
+            ? {
+                stitchStyle: record.bead_stitch_style || 'loom',
+                beadType: latestConfigRef.current.beadLoom?.beadType || 'delica-11',
+              }
+            : latestConfigRef.current.beadLoom,
+      };
+      setConfig(nextConfig);
+      latestConfigRef.current = nextConfig;
+      setAspectRatio(record.width / Math.max(1, record.height));
+
+      const recalculatedPalette = recalculatePaletteCounts(decodedGrid, record.palette);
+      setPalette(recalculatedPalette);
+      paletteRef.current = recalculatedPalette;
+      setGridData(decodedGrid);
+      setCompletedCells({});
+      setBackstitches(record.backstitches || []);
+
+      const previewUrl = generateCanvasDataUrl(decodedGrid, recalculatedPalette);
+      if (previewUrl) {
+        setSourceImageDataUrl(previewUrl);
+        const img = new Image();
+        img.onload = () => {
+          setSourceImage(img);
+          sourceImageRef.current = img;
+        };
+        img.src = previewUrl;
+      }
+
+      navigate(getPathForCraft(record.craft_type));
+      showToast(`✨ Opened "${record.title}" in Studio!`);
+    },
+    [handleBeforePencilStroke, navigate, showToast]
+  );
+
+  const handleSavePublishedToVault = useCallback(
+    async (record: PublishedPatternRecord, decodedGrid: number[][]) => {
+      const projectConfig: GridConfig = {
+        ...latestConfigRef.current,
+        craftType: record.craft_type,
+        width: record.width,
+        height: record.height,
+        beadLoom:
+          record.craft_type === 'loom'
+            ? {
+                stitchStyle: record.bead_stitch_style || 'loom',
+                beadType: latestConfigRef.current.beadLoom?.beadType || 'delica-11',
+              }
+            : latestConfigRef.current.beadLoom,
+      };
+      const saved = await saveProjectToVault({
+        name: record.title,
+        craftType: record.craft_type,
+        gridConfig: projectConfig,
+        gridData: decodedGrid,
+        palette: recalculatePaletteCounts(decodedGrid, record.palette),
+        completedCells: {},
+        backstitches: record.backstitches || [],
+        thumbnailDataUrl: record.thumbnail_data_url || undefined,
+        width: record.width,
+        height: record.height,
+        colorCount: record.color_count || record.palette.length,
+      });
+
+      if (cloudUser && isSupabaseConfigured) {
+        pushSingleProjectToCloud(cloudUser.id, saved).catch((err) =>
+          console.warn('Cloud push failed:', err)
+        );
+      }
+      await refreshVaultCount();
+      showToast(`💾 Saved "${record.title}" to My Projects Vault!`);
+    },
+    [cloudUser, refreshVaultCount, showToast]
+  );
+
+  const handleToggleCommunityLike = useCallback(
+    async (patternId: string) => {
+      if (!cloudUser) {
+        setIsCloudAuthOpen(true);
+        return;
+      }
+      const currentlyLiked = likedPatternIds.has(patternId);
+      setLikedPatternIds((prev) => {
+        const next = new Set(prev);
+        if (currentlyLiked) next.delete(patternId);
+        else next.add(patternId);
+        return next;
+      });
+      try {
+        await toggleCommunityPatternLike(patternId, cloudUser.id, currentlyLiked);
+      } catch (err) {
+        // Revert optimistic update on error
+        setLikedPatternIds((prev) => {
+          const next = new Set(prev);
+          if (currentlyLiked) next.add(patternId);
+          else next.delete(patternId);
+          return next;
+        });
+        showToast(err instanceof Error ? err.message : 'Could not update like');
+      }
+    },
+    [cloudUser, likedPatternIds, showToast]
+  );
+
   // Quick Command Palette Items (Ctrl+K / Cmd+K)
   const commandPaletteItems = useMemo<CommandPaletteItem[]>(() => {
     const craftEntries: { id: CraftType; label: string; desc: string; kw: string[] }[] = [
@@ -1717,6 +2005,51 @@ export default function App() {
     ];
 
     return [
+      {
+        id: 'tool-publish-share',
+        label: 'Publish Pattern & Short Link (/p/:id)',
+        description: 'Publish to the Community Feed or create a compact /p/:id share URL',
+        category: 'Export & Shop',
+        keywords: ['publish', 'share', 'short link', 'community', 'url'],
+        icon: <Share2 className="w-4 h-4 text-pink-400" />,
+        onExecute: () => setIsPublishModalOpen(true),
+      },
+      {
+        id: 'tool-community-feed',
+        label: 'Live Community Pattern Feed',
+        description: 'Browse user-published patterns across all crafts, like, and remix in Studio',
+        category: 'Tools',
+        keywords: ['community', 'feed', 'showcase', 'browse', 'remix'],
+        icon: <Globe className="w-4 h-4 text-pink-400" />,
+        onExecute: () => {
+          setGalleryInitialTab('community');
+          setIsStarterGalleryOpen(true);
+        },
+      },
+      {
+        id: 'tool-cloud-auth',
+        label: cloudUser ? 'Cloud Account & Sync Settings' : 'Sign In for Cloud Vault & Stash Sync',
+        description: 'Manage cross-device sync for Projects Vault, DMC/Perler Stash & WIP Journal',
+        category: 'Tools',
+        keywords: ['cloud', 'sync', 'account', 'login', 'supabase'],
+        icon: <Cloud className="w-4 h-4 text-cyan-400" />,
+        onExecute: () => setIsCloudAuthOpen(true),
+      },
+      {
+        id: 'action-cloud-sync-now',
+        label: 'Sync Vault & Stash with Cloud Now',
+        description: 'Merge local Projects Vault, Stash inventory, Favorites & WIP sessions with Supabase',
+        category: 'Canvas Actions',
+        keywords: ['sync', 'cloud', 'upload', 'backup'],
+        icon: <RefreshCw className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => {
+          if (!cloudUser) {
+            setIsCloudAuthOpen(true);
+            return;
+          }
+          handleSyncCloudAll(cloudUser, false);
+        },
+      },
       {
         id: 'tool-border-builder',
         label: 'Border & Sampler Frame Builder',
@@ -1945,7 +2278,7 @@ export default function App() {
         onExecute: () => setIsMyStashOpen(true),
       },
     ];
-  }, [config.craftType, sourceImage, handleUpdateConfig, handleUndo, handleRedo, navigate, showToast]);
+  }, [config.craftType, sourceImage, cloudUser, handleSyncCloudAll, handleUpdateConfig, handleUndo, handleRedo, navigate, showToast]);
 
   const handleResetProgress = () => {
     if (Object.keys(completedCells).length === 0) return;
@@ -2057,6 +2390,10 @@ export default function App() {
         onOpenWipTrackerModal={() => setIsWipTrackerOpen(true)}
         isWipTimerRunning={isWipTimerRunning}
         wipSessionSeconds={wipSessionSeconds}
+        cloudUserEmail={cloudUser?.email || null}
+        isCloudSyncing={isCloudSyncing}
+        onOpenCloudAuthModal={() => setIsCloudAuthOpen(true)}
+        onOpenPublishModal={() => setIsPublishModalOpen(true)}
         savedProjectsCount={vaultProjectsCount}
         isAutoSaving={isAutoSaving}
         isZenMode={isZenMode}
@@ -2391,6 +2728,10 @@ export default function App() {
           setIsExportOpen(false);
           setIsMaterialKitOpen(true);
         }}
+        onOpenPublishModal={() => {
+          setIsExportOpen(false);
+          setIsPublishModalOpen(true);
+        }}
       />
 
       {/* Tapestry Crochet & Alpha Knot Written Row-by-Row Instructions Modal */}
@@ -2409,6 +2750,7 @@ export default function App() {
         isOpen={isStarterGalleryOpen}
         onClose={() => {
           setIsStarterGalleryOpen(false);
+          setGalleryInitialTab('curated');
           if (location.pathname === '/gallery') {
             navigate(getPathForCraft(config.craftType));
           }
@@ -2421,6 +2763,13 @@ export default function App() {
         }}
         onOpenAiGenerator={() => setIsAiModalOpen(true)}
         onOpenSocialCard={() => setIsSocialCardOpen(true)}
+        initialTab={galleryInitialTab}
+        onOpenPublishModal={() => setIsPublishModalOpen(true)}
+        onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
+        onOpenCommunityPattern={handleOpenPublishedPatternInStudio}
+        user={cloudUser}
+        likedPatternIds={likedPatternIds}
+        onToggleCommunityLike={handleToggleCommunityLike}
       />
 
       {/* Ask AI to Generate Picture Modal with History */}
@@ -2560,6 +2909,9 @@ export default function App() {
           if (useMyStashOnly && sourceImageRef.current) {
             reprocessCurrentImage();
           }
+          if (cloudUser && isSupabaseConfigured) {
+            pushPreferencesToCloud(cloudUser.id, {});
+          }
         }}
       />
 
@@ -2584,6 +2936,9 @@ export default function App() {
         onStashUpdated={() => {
           if (useMyStashOnly && sourceImageRef.current) {
             reprocessCurrentImage();
+          }
+          if (cloudUser && isSupabaseConfigured) {
+            pushPreferencesToCloud(cloudUser.id, {});
           }
         }}
         onOpenMaterialKit={() => {
@@ -2637,6 +2992,11 @@ export default function App() {
         currentSourceImageDataUrl={sourceImageDataUrl}
         onLoadProject={handleLoadVaultProject}
         onProjectsChanged={refreshVaultCount}
+        cloudUser={cloudUser}
+        isCloudSyncing={isCloudSyncing}
+        lastCloudSyncedAt={lastCloudSyncedAt}
+        onTriggerCloudSync={() => handleSyncCloudAll(cloudUser, false)}
+        onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
       />
 
       {/* Etsy & Seller Commercial Kit Modal */}
@@ -2687,6 +3047,9 @@ export default function App() {
         onStashUpdated={() => {
           if (useMyStashOnly && sourceImageRef.current) {
             reprocessCurrentImage();
+          }
+          if (cloudUser && isSupabaseConfigured) {
+            pushPreferencesToCloud(cloudUser.id, {});
           }
         }}
       />
@@ -2748,6 +3111,59 @@ export default function App() {
         isOpen={isCommandPaletteOpen}
         onClose={() => setIsCommandPaletteOpen(false)}
         items={commandPaletteItems}
+      />
+
+      {/* Cloud Auth, Multi-Device Vault, Stash & WIP Sync Modal */}
+      <CloudAuthModal
+        isOpen={isCloudAuthOpen}
+        onClose={() => setIsCloudAuthOpen(false)}
+        user={cloudUser}
+        displayName={cloudDisplayName}
+        onUpdateDisplayName={handleUpdateCloudDisplayName}
+        isSyncing={isCloudSyncing}
+        lastSyncedAt={lastCloudSyncedAt}
+        lastSyncSummary={lastCloudSyncSummary}
+        onSyncNow={() => handleSyncCloudAll(cloudUser, false)}
+        onSignOut={handleCloudSignOut}
+        localVaultCount={vaultProjectsCount}
+        wipSessionsCount={wipStats.sessions.length}
+      />
+
+      {/* Publish to Community Showcase & Short Link (/p/:id) Modal */}
+      <PublishPatternModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        config={config}
+        gridData={gridData}
+        palette={palette}
+        backstitches={backstitches}
+        user={cloudUser}
+        defaultAuthorName={cloudDisplayName}
+        onOpenCloudAuth={() => setIsCloudAuthOpen(true)}
+        onPublished={(shortId, patternTitle) => {
+          showToast(`🚀 Published "${patternTitle}" at /p/${shortId}!`);
+        }}
+      />
+
+      {/* Shared Pattern Detail View (/p/:id Short Share Links) */}
+      <SharedPatternModal
+        shortId={activeSharedPatternId}
+        onClose={() => {
+          setActiveSharedPatternId(null);
+          navigate(getPathForCraft(config.craftType));
+        }}
+        user={cloudUser}
+        likedPatternIds={likedPatternIds}
+        onToggleLike={handleToggleCommunityLike}
+        onOpenCloudAuth={() => {
+          setActiveSharedPatternId(null);
+          setIsCloudAuthOpen(true);
+        }}
+        onOpenInStudio={handleOpenPublishedPatternInStudio}
+        onSaveToVault={handleSavePublishedToVault}
+        onDeleted={() => {
+          showToast('Deleted published pattern.');
+        }}
       />
     </div>
   );

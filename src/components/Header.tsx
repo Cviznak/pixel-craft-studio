@@ -31,7 +31,8 @@ import {
   Eraser,
   Command,
   Frame,
-  Timer
+  Timer,
+  Cloud
 } from 'lucide-react';
 import { formatDurationClock } from '../utils/wipTracker';
 
@@ -60,6 +61,10 @@ interface HeaderProps {
   onOpenWipTrackerModal?: () => void;
   isWipTimerRunning?: boolean;
   wipSessionSeconds?: number;
+  cloudUserEmail?: string | null;
+  isCloudSyncing?: boolean;
+  onOpenCloudAuthModal?: () => void;
+  onOpenPublishModal?: () => void;
   savedProjectsCount?: number;
   isAutoSaving?: boolean;
   isZenMode?: boolean;
@@ -99,6 +104,10 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenWipTrackerModal,
   isWipTimerRunning = false,
   wipSessionSeconds = 0,
+  cloudUserEmail = null,
+  isCloudSyncing = false,
+  onOpenCloudAuthModal,
+  onOpenPublishModal,
   savedProjectsCount = 0,
   isAutoSaving = false,
   isZenMode = false,
@@ -391,6 +400,28 @@ export const Header: React.FC<HeaderProps> = ({
             <kbd className="hidden md:inline text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">
               ⌘K
             </kbd>
+          </button>
+        )}
+
+        {/* Cloud Sync / Sign-In Button */}
+        {onOpenCloudAuthModal && (
+          <button
+            onClick={onOpenCloudAuthModal}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shadow-sm transition active:scale-95 ${
+              cloudUserEmail
+                ? 'text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30'
+                : 'text-cyan-300 bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-cyan-500/40'
+            }`}
+            title={
+              cloudUserEmail
+                ? `Cloud Sync Active (${cloudUserEmail})`
+                : 'Cloud Sync & Community Account (Sign In / Setup)'
+            }
+          >
+            <Cloud className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-pulse text-emerald-400' : cloudUserEmail ? 'text-emerald-400' : 'text-cyan-400'}`} />
+            <span className="hidden 2xl:inline max-w-[100px] truncate">
+              {cloudUserEmail ? (isCloudSyncing ? 'Syncing...' : 'Synced') : 'Cloud'}
+            </span>
           </button>
         )}
 
@@ -730,6 +761,34 @@ export const Header: React.FC<HeaderProps> = ({
                       {formatDurationClock(wipSessionSeconds)}
                     </span>
                   )}
+                </button>
+              )}
+
+              {/* Publish & Short Share Link (/p/:id) */}
+              {onOpenPublishModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenPublishModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Publish &amp; Short Link (/p/:id)</span>
+                </button>
+              )}
+
+              {/* Cloud Account & Sync */}
+              {onOpenCloudAuthModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenCloudAuthModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-cyan-300 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <Cloud className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{cloudUserEmail ? 'Cloud Sync (Connected)' : 'Cloud Sync & Sign In'}</span>
                 </button>
               )}
 

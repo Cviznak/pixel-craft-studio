@@ -13,8 +13,11 @@ import {
   Check, 
   Layers, 
   Clock, 
-  Sparkles 
+  Sparkles,
+  Cloud,
+  RefreshCw
 } from 'lucide-react';
+import type { User } from '@supabase/supabase-js';
 import type { 
   SavedProject, 
   CraftType, 
@@ -32,6 +35,10 @@ import {
   importVaultProjectFromFile,
   generateProjectThumbnail 
 } from '../utils/storage';
+import {
+  deleteCloudProject,
+  pushSingleProjectToCloud,
+} from '../utils/cloudSync';
 
 interface ProjectVaultModalProps {
   isOpen: boolean;
@@ -46,6 +53,12 @@ interface ProjectVaultModalProps {
   // Handler when user selects a project to open
   onLoadProject: (project: SavedProject) => void;
   onProjectsChanged?: () => void;
+  // Cloud Sync props (Wave 4)
+  cloudUser?: User | null;
+  isCloudSyncing?: boolean;
+  lastCloudSyncedAt?: string | null;
+  onTriggerCloudSync?: () => Promise<void>;
+  onOpenCloudAuth?: () => void;
 }
 
 const CRAFT_FILTERS: { id: CraftType | 'all'; label: string; icon: string }[] = [
@@ -71,6 +84,11 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
   currentSourceImageDataUrl,
   onLoadProject,
   onProjectsChanged,
+  cloudUser = null,
+  isCloudSyncing = false,
+  lastCloudSyncedAt = null,
+  onTriggerCloudSync,
+  onOpenCloudAuth,
 }) => {
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -127,7 +145,7 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
 
     const thumb = generateProjectThumbnail(currentGridData, currentPalette, currentBackstitches);
 
-    await saveProjectToVault({
+    const saved = await saveProjectToVault({
       name,
       craftType: currentConfig.craftType,
       gridConfig: currentConfig,
@@ -142,6 +160,12 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
       sourceImageDataUrl: currentSourceImageDataUrl,
     });
 
+    if (cloudUser) {
+      pushSingleProjectToCloud(cloudUser.id, saved).catch((err) =>
+        console.warn('Cloud push failed:', err)
+      );
+    }
+
     setIsSavingCurrent(false);
     await refreshProjects();
   };
@@ -150,7 +174,12 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
   const handleDuplicate = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await duplicateVaultProject(id);
+      const copy = await duplicateVaultProject(id);
+      if (cloudUser) {
+        pushSingleProjectToCloud(cloudUser.id, copy).catch((err) =>
+          console.warn('Cloud duplicate push failed:', err)
+        );
+      }
       await refreshProjects();
     } catch (err) {
       console.error('Duplicate failed:', err);
@@ -162,6 +191,11 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
     e.stopPropagation();
     try {
       await deleteVaultProject(id);
+      if (cloudUser) {
+        deleteCloudProject(cloudUser.id, id).catch((err) =>
+          console.warn('Cloud delete failed:', err)
+        );
+      }
       setDeleteConfirmId(null);
       await refreshProjects();
     } catch (err) {
@@ -181,7 +215,12 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
     if (!file) return;
 
     try {
-      await importVaultProjectFromFile(file);
+      const imported = await importVaultProjectFromFile(file);
+      if (cloudUser) {
+        pushSingleProjectToCloud(cloudUser.id, imported).catch((err) =>
+          console.warn('Cloud import push failed:', err)
+        );
+      }
       await refreshProjects();
     } catch (err) {
       alert(`Could not import project: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -196,10 +235,15 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
       setEditingId(null);
       return;
     }
-    await saveProjectToVault({
+    const renamed = await saveProjectToVault({
       ...project,
       name: editingName.trim(),
     });
+    if (cloudUser) {
+      pushSingleProjectToCloud(cloudUser.id, renamed).catch((err) =>
+        console.warn('Cloud rename push failed:', err)
+      );
+    }
     setEditingId(null);
     await refreshProjects();
   };
@@ -222,7 +266,7 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60 shrink-0">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60 shrink-0 gap-2 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
               <FolderArchive className="w-5 h-5" />
@@ -243,6 +287,36 @@ export const ProjectVaultModal: React.FC<ProjectVaultModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Cloud Sync Trigger */}
+            {cloudUser ? (
+              <button
+                onClick={async () => {
+                  if (onTriggerCloudSync) {
+                    await onTriggerCloudSync();
+                    await refreshProjects();
+                  }
+                }}
+                disabled={isCloudSyncing}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition"
+                title={lastCloudSyncedAt ? `Last synced ${new Date(lastCloudSyncedAt).toLocaleTimeString()}` : 'Sync Vault & Stash with Cloud'}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isCloudSyncing ? 'Syncing...' : 'Sync Cloud'}</span>
+              </button>
+            ) : onOpenCloudAuth ? (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenCloudAuth();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 transition"
+                title="Sign in to sync projects across devices"
+              >
+                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Cloud Sync</span>
+              </button>
+            ) : null}
+
             {/* 1-Click Save Current Canvas */}
             <button
               onClick={() => setIsSavingCurrent(!isSavingCurrent)}

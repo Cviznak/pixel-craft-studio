@@ -12,7 +12,7 @@ export interface SharedPatternData {
 /**
  * Compresses 2D grid numbers using Run-Length Encoding (e.g. [0,0,0,1,1] -> "0:3,1:2")
  */
-function compressGridRLE(grid: number[][]): string {
+export function compressGridRLE(grid: number[][]): string {
   const flat: number[] = [];
   for (let y = 0; y < grid.length; y++) {
     for (let x = 0; x < grid[y].length; x++) {
@@ -43,7 +43,7 @@ function compressGridRLE(grid: number[][]): string {
 /**
  * Decompresses Run-Length Encoded string back to 2D grid numbers
  */
-function decompressGridRLE(rle: string, width: number, height: number): number[][] {
+export function decompressGridRLE(rle: string, width: number, height: number): number[][] {
   const flat: number[] = [];
   const parts = rle.split(';');
   for (const part of parts) {

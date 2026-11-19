@@ -32,7 +32,8 @@ import {
   ChevronUp,
   Store,
   ShoppingBag,
-  Package
+  Package,
+  Globe
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -48,6 +49,7 @@ interface ExportModalProps {
   onOpenShoppingTrip?: () => void;
   onOpenEtsyKit?: () => void;
   onOpenMaterialKit?: () => void;
+  onOpenPublishModal?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -63,6 +65,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onOpenShoppingTrip,
   onOpenEtsyKit,
   onOpenMaterialKit,
+  onOpenPublishModal,
 }) => {
   const [projectName, setProjectName] = useState('My Pixel Craft Pattern');
   const [scale, setScale] = useState(16);
@@ -562,17 +565,32 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </p>
                 </div>
               </div>
-              <button
-                onClick={handleCopyShareLink}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5 ${
-                  isCopiedLink
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                }`}
-              >
-                {isCopiedLink ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
-                <span>{isCopiedLink ? 'Copied!' : 'Copy Link'}</span>
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {onOpenPublishModal && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenPublishModal();
+                    }}
+                    className="px-3 py-2 rounded-lg text-xs font-bold bg-pink-600/20 hover:bg-pink-600/30 text-pink-300 border border-pink-500/40 transition flex items-center gap-1.5"
+                    title="Publish to Community Showcase or generate a compact /p/:id link"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-pink-400" />
+                    <span className="hidden sm:inline">/p/:id Link</span>
+                  </button>
+                )}
+                <button
+                  onClick={handleCopyShareLink}
+                  className={`px-3.5 py-2 rounded-lg text-xs font-bold shadow-md transition shrink-0 flex items-center gap-1.5 ${
+                    isCopiedLink
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  }`}
+                >
+                  {isCopiedLink ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+                  <span>{isCopiedLink ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+              </div>
             </div>
 
             {/* Written Row-by-Row Crochet Instructions Card */}

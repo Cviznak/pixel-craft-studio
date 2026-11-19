@@ -225,6 +225,36 @@ export function getPatternRouteInfo(
 }
 
 /**
+ * Matches community/shared pattern short links `/p/:shortId`.
+ */
+export function getSharedPatternRouteId(pathname: string): string | null {
+  const clean = pathname.replace(/\/+$/, '') || '/';
+  if (!clean.startsWith('/p/')) return null;
+  const shortId = clean.slice('/p/'.length).toLowerCase();
+  return /^[a-z0-9]{6,16}$/.test(shortId) ? shortId : null;
+}
+
+/**
+ * Builds SEO metadata for a loaded `/p/:shortId` pattern view.
+ */
+export function buildSharedPatternMeta(
+  shortId: string,
+  title = 'Shared Craft Pattern',
+  craftType?: CraftType,
+  width?: number,
+  height?: number
+): StaticRouteConfig {
+  const craftTitle = craftType ? (CRAFT_ROUTES[craftType]?.title || craftType) : 'Craft';
+  const dimText = width && height ? ` (${width}×${height})` : '';
+  return {
+    path: `/p/${shortId}`,
+    metaTitle: `${title} — ${craftTitle} Pattern${dimText} | Pixel Craft Studio`,
+    metaDescription: `Interactive ${craftTitle.toLowerCase()} pattern${dimText} shared on Pixel Craft Studio. Open in the browser canvas to track stitches, swap DMC/Delica colors, or export a printable PDF chart.`,
+    canonicalUrl: `https://www.pixel-craft-studio.com/p/${shortId}`,
+  };
+}
+
+/**
  * Returns the route configuration for a given URL path, or null if root / unknown.
  */
 export function getRouteByPath(pathname: string): CraftRouteConfig | null {
