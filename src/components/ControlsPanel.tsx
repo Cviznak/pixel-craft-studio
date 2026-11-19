@@ -885,11 +885,44 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                 );
               })()}
 
-              {/* Loom & Peyote Seed Beading Sizing */}
+              {/* Loom, Peyote & Brick Seed Beading Sizing */}
               {config.craftType === 'loom' && (() => {
-                const res = calculateBeadLoomDimensions(config.width, config.height, config.beadLoom);
+                const currentBeadLoom = config.beadLoom || { stitchStyle: 'loom', beadType: 'delica-11' };
+                const res = calculateBeadLoomDimensions(config.width, config.height, currentBeadLoom);
                 return (
-                  <div className="space-y-1 text-xs">
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-semibold block mb-1">
+                        Bead Stitch Grid & Word Chart
+                      </span>
+                      <div className="grid grid-cols-3 gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-700/80">
+                        {([
+                          { id: 'loom', label: 'Square Loom' },
+                          { id: 'peyote', label: 'Peyote' },
+                          { id: 'brick', label: 'Brick' },
+                        ] as const).map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() =>
+                              onUpdateConfig({
+                                beadLoom: {
+                                  ...currentBeadLoom,
+                                  stitchStyle: opt.id,
+                                },
+                              })
+                            }
+                            className={`py-1 px-1.5 rounded-md text-[10px] font-bold transition ${
+                              currentBeadLoom.stitchStyle === opt.id
+                                ? 'bg-teal-600 text-white shadow-sm'
+                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div className="text-amber-200 font-bold font-mono">
                       {res.dimensions.summary}
                     </div>
@@ -897,8 +930,22 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
                       Delica 11/0: <span className="text-slate-200 font-bold">{res.totalBeads.toLocaleString()} beads</span> (~{res.totalGrams}g • {res.estimated5gTubes} {res.estimated5gTubes === 1 ? 'tube' : 'tubes'})
                     </div>
                     <div className="text-[10px] text-teal-300">
-                      Clasp: {res.recommendedClaspSize} • {res.warpThreadsCount} warps
+                      {currentBeadLoom.stitchStyle === 'loom'
+                        ? `Clasp: ${res.recommendedClaspSize} • ${res.warpThreadsCount} warps`
+                        : currentBeadLoom.stitchStyle === 'peyote'
+                        ? 'Staggered odd-column Delica grid'
+                        : 'Staggered odd-row Delica brick grid'}
                     </div>
+                    {onOpenWrittenInstructions && (
+                      <button
+                        type="button"
+                        onClick={onOpenWrittenInstructions}
+                        className="w-full mt-1 py-1.5 px-3 bg-gradient-to-r from-teal-600/20 to-emerald-600/20 hover:from-teal-600/30 hover:to-emerald-600/30 border border-teal-500/40 hover:border-teal-500/60 text-teal-300 hover:text-teal-200 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-teal-400" />
+                        <span>Open Bead Word Chart</span>
+                      </button>
+                    )}
                   </div>
                 );
               })()}

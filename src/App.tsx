@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { 
   GridConfig, 
@@ -47,6 +47,11 @@ import { MaterialKitModal } from './components/MaterialKitModal';
 import { ColorChartModal, type ColorChartTab } from './components/ColorChartModal';
 import { PatternDetailModal } from './components/PatternDetailModal';
 import { BackgroundRemoverModal } from './components/BackgroundRemoverModal';
+import { BorderBuilderModal } from './components/BorderBuilderModal';
+import { WipTrackerModal } from './components/WipTrackerModal';
+import { CommandPaletteModal, type CommandPaletteItem } from './components/CommandPaletteModal';
+import { recalculatePaletteCounts } from './utils/borderGenerator';
+import { loadWipStats, saveWipStats, type WipStats, type WipSessionLog } from './utils/wipTracker';
 import { applyPaletteMood, convertPatternToCraft } from './utils/craftCrossConverter';
 import { getMyStash } from './utils/stashManager';
 import { hexToRgb, rgbToLab, deltaE } from './utils/colorUtils';
@@ -68,7 +73,32 @@ import {
 } from './utils/craftRoutes';
 import { getPatternBySlug } from './utils/communityPatterns';
 import { decodePatternFromHash } from './utils/shareUtils';
-import { SlidersHorizontal, Sparkles, Wand2, Palette, ChevronLeft, ChevronRight, FileText, Smartphone, FolderArchive } from 'lucide-react';
+import {
+  SlidersHorizontal,
+  Sparkles,
+  Wand2,
+  Palette,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Smartphone,
+  FolderArchive,
+  Frame,
+  Timer,
+  SplitSquareHorizontal,
+  Download,
+  Ruler,
+  Video,
+  Type,
+  Package,
+  Calculator,
+  Eraser,
+  Undo2,
+  Redo2,
+  Maximize2,
+  ShoppingCart,
+  ShoppingBag,
+} from 'lucide-react';
 
 const DEFAULT_CONFIG: GridConfig = {
   width: 32,
@@ -151,6 +181,24 @@ export default function App() {
   const [colorChartInitialTab, setColorChartInitialTab] = useState<ColorChartTab>('hex-matcher');
   const [activePatternSlug, setActivePatternSlug] = useState<string | null>(null);
   const [isBgRemoverOpen, setIsBgRemoverOpen] = useState<boolean>(false);
+  const [isBorderModalOpen, setIsBorderModalOpen] = useState<boolean>(false);
+  const [isWipTrackerOpen, setIsWipTrackerOpen] = useState<boolean>(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [splitCompareSignal, setSplitCompareSignal] = useState<number>(0);
+
+  // WIP Time Tracker, Stitch Speed & Session Journal
+  const [wipStats, setWipStats] = useState<WipStats>(() => loadWipStats());
+  const [isWipTimerRunning, setIsWipTimerRunning] = useState<boolean>(false);
+  const [wipSessionSeconds, setWipSessionSeconds] = useState<number>(0);
+  const [wipSessionStartStitches, setWipSessionStartStitches] = useState<number>(0);
+
+  useEffect(() => {
+    if (!isWipTimerRunning) return;
+    const id = window.setInterval(() => {
+      setWipSessionSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [isWipTimerRunning]);
   const [vaultProjectsCount, setVaultProjectsCount] = useState<number>(0);
   const [isAutoSaving, setIsAutoSaving] = useState<boolean>(false);
   const [backstitches, setBackstitches] = useState<BackstitchLine[]>([]);
@@ -262,9 +310,15 @@ export default function App() {
     setGridData(next);
   }, [gridFuture, gridData]);
 
-  // Global Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
+  // Global Keyboard Shortcuts (Ctrl+K, Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+        return;
+      }
+
       const target = e.target as HTMLElement;
       if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
 
@@ -1562,6 +1616,337 @@ export default function App() {
     );
   }, [config.shapeMask, handleUpdateConfig, showToast]);
 
+  // WIP Time Tracker Handlers
+  const completedCountNow = useMemo(
+    () => Object.values(completedCells).filter(Boolean).length,
+    [completedCells]
+  );
+
+  const handleUpdateWipStats = useCallback((next: WipStats) => {
+    setWipStats(next);
+    saveWipStats(next);
+  }, []);
+
+  const handleStartWipTimer = useCallback(() => {
+    if (wipSessionSeconds === 0) {
+      setWipSessionStartStitches(completedCountNow);
+    }
+    setIsWipTimerRunning(true);
+  }, [wipSessionSeconds, completedCountNow]);
+
+  const handlePauseWipTimer = useCallback(() => {
+    setIsWipTimerRunning(false);
+  }, []);
+
+  const handleSaveAndResetWipTimer = useCallback(
+    (note?: string) => {
+      setIsWipTimerRunning(false);
+      if (wipSessionSeconds <= 0) return;
+
+      const stitchesCompleted = Math.max(0, completedCountNow - wipSessionStartStitches);
+      const newLog: WipSessionLog = {
+        id: `wip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        dateIso: new Date().toISOString(),
+        durationSeconds: wipSessionSeconds,
+        stitchesCompleted,
+        note: note?.trim() || undefined,
+      };
+
+      const nextStats: WipStats = {
+        ...wipStats,
+        totalSeconds: wipStats.totalSeconds + wipSessionSeconds,
+        sessions: [newLog, ...wipStats.sessions].slice(0, 60),
+      };
+      handleUpdateWipStats(nextStats);
+      setWipSessionSeconds(0);
+      setWipSessionStartStitches(completedCountNow);
+      showToast(`⏱️ Saved WIP session (+${stitchesCompleted} stitches)!`);
+    },
+    [wipSessionSeconds, completedCountNow, wipSessionStartStitches, wipStats, handleUpdateWipStats, showToast]
+  );
+
+  // Decorative Border & Sampler Frame Builder Apply Handler
+  const handleApplyFramedGrid = useCallback(
+    (newGrid: number[][], newWidth: number, newHeight: number) => {
+      handleBeforePencilStroke();
+      setGridData(newGrid);
+
+      const recalculated = recalculatePaletteCounts(newGrid, paletteRef.current);
+      setPalette(recalculated);
+      paletteRef.current = recalculated;
+
+      if (newWidth !== config.width || newHeight !== config.height) {
+        const dx = Math.floor((newWidth - config.width) / 2);
+        const dy = Math.floor((newHeight - config.height) / 2);
+        const updatedConfig = { ...config, width: newWidth, height: newHeight };
+        setConfig(updatedConfig);
+        latestConfigRef.current = updatedConfig;
+        setAspectRatio(newWidth / newHeight);
+
+        if (dx > 0 || dy > 0) {
+          setCompletedCells((prev) => {
+            const shifted: CellProgress = {};
+            for (const [key, val] of Object.entries(prev)) {
+              if (!val) continue;
+              const [sx, sy] = key.split(',').map(Number);
+              if (!Number.isNaN(sx) && !Number.isNaN(sy)) {
+                shifted[`${sx + dx},${sy + dy}`] = true;
+              }
+            }
+            return shifted;
+          });
+        }
+      }
+
+      showToast(`🖼️ Applied decorative frame (${newWidth}×${newHeight})!`);
+    },
+    [config, handleBeforePencilStroke, showToast]
+  );
+
+  // Quick Command Palette Items (Ctrl+K / Cmd+K)
+  const commandPaletteItems = useMemo<CommandPaletteItem[]>(() => {
+    const craftEntries: { id: CraftType; label: string; desc: string; kw: string[] }[] = [
+      { id: 'perler', label: 'Switch to Perler & Fuse Beads', desc: '5mm & 2.6mm Hama / Artkal / Perler pegboards', kw: ['fuse', 'hama', 'artkal', 'bead'] },
+      { id: 'cross-stitch', label: 'Switch to Cross-Stitch & DMC', desc: 'Aida count fabric & DMC embroidery floss key', kw: ['embroidery', 'aida', 'floss', 'dmc'] },
+      { id: 'crochet', label: 'Switch to Tapestry Crochet & C2C', desc: 'Row-by-row tapestry & corner-to-corner graphghan', kw: ['yarn', 'graphghan', 'c2c', 'tapestry'] },
+      { id: 'pixel', label: 'Switch to Digital Pixel Art & Latch Hook', desc: 'Clean square pixels, retro sprites & latch-hook grids', kw: ['pixel', 'sprite', 'rug', 'latch'] },
+      { id: 'diamond', label: 'Switch to Diamond Painting', desc: 'Round & square 5D DMC resin drills', kw: ['drills', 'gem', '5d'] },
+      { id: 'knitting', label: 'Switch to Intarsia Knitting Chart', desc: 'Non-square stitch gauge & RS/WS knitting chart', kw: ['knit', 'purl', 'gauge', 'fair isle'] },
+      { id: 'alpha', label: 'Switch to Friendship Alpha Pattern', desc: 'Bracketed knotting strings & keychain guide', kw: ['bracelet', 'knot', 'keychain'] },
+      { id: 'loom', label: 'Switch to Seed Bead Loom / Peyote / Brick', desc: 'Miyuki Delica 11/0, staggered peyote & word charts', kw: ['miyuki', 'delica', 'peyote', 'brick', 'bead'] },
+    ];
+
+    return [
+      {
+        id: 'tool-border-builder',
+        label: 'Border & Sampler Frame Builder',
+        description: 'Add heirloom double-rule, floral vine, scalloped lace, or geometric borders',
+        category: 'Tools',
+        keywords: ['frame', 'border', 'sampler', 'vine', 'corner'],
+        icon: <Frame className="w-4 h-4 text-pink-400" />,
+        onExecute: () => setIsBorderModalOpen(true),
+      },
+      {
+        id: 'tool-wip-tracker',
+        label: 'WIP Time Tracker & Stats Card',
+        description: 'Start stitch stopwatch, view stitches/hour speed, and export 1080×1350 PNG card',
+        category: 'Tools',
+        keywords: ['timer', 'stopwatch', 'speed', 'wip', 'stats', 'journal', 'png'],
+        icon: <Timer className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => setIsWipTrackerOpen(true),
+      },
+      {
+        id: 'action-split-compare',
+        label: 'Before / After Photo Split Slider',
+        description: 'Toggle interactive divider comparing original photo vs live craft pattern',
+        category: 'Canvas Actions',
+        keywords: ['split', 'compare', 'before', 'after', 'photo', 'slider'],
+        icon: <SplitSquareHorizontal className="w-4 h-4 text-cyan-400" />,
+        onExecute: () => {
+          if (!sourceImage) {
+            showToast('Upload or select an image first to compare!');
+            return;
+          }
+          setSplitCompareSignal((s) => s + 1);
+        },
+      },
+      {
+        id: 'tool-written-instructions',
+        label: config.craftType === 'loom' ? 'Bead Word Chart & Miyuki DB Key' : 'Written Row-by-Row Instructions',
+        description: 'View printable row instructions, voice read-aloud, or (count)A bead word chart',
+        category: 'Tools',
+        keywords: ['word chart', 'written', 'rows', 'miyuki', 'peyote', 'crochet', 'instructions'],
+        icon: <FileText className="w-4 h-4 text-teal-400" />,
+        onExecute: () => setIsWrittenInstructionsOpen(true),
+      },
+      {
+        id: 'tool-ai-generator',
+        label: 'AI Motif Generator',
+        description: 'Generate custom pixel & cross-stitch art directly from a text prompt',
+        category: 'Tools',
+        keywords: ['ai', 'generate', 'prompt', 'create'],
+        icon: <Wand2 className="w-4 h-4 text-purple-400" />,
+        onExecute: () => setIsAiModalOpen(true),
+      },
+      {
+        id: 'tool-bg-remover',
+        label: 'Smart Background Remover',
+        description: 'Remove photo backgrounds with CIELAB segmentation & manual brush touch-up',
+        category: 'Tools',
+        keywords: ['background', 'transparent', 'cutout', 'remove'],
+        icon: <Eraser className="w-4 h-4 text-teal-400" />,
+        onExecute: () => setIsBgRemoverOpen(true),
+      },
+      {
+        id: 'tool-pixel-text',
+        label: 'Pixel Text & Monogram Stamping',
+        description: 'Stamp classic pixel fonts, initials & dates onto your pattern canvas',
+        category: 'Tools',
+        keywords: ['text', 'font', 'letters', 'monogram', 'name'],
+        icon: <Type className="w-4 h-4 text-amber-400" />,
+        onExecute: () => setIsPixelTextOpen(true),
+      },
+      {
+        id: 'tool-color-chart',
+        label: 'Thread & Bead Color Chart / Hex Matcher',
+        description: 'DMC to Anchor, Perler to Artkal/Hama, and Miyuki Delica hex conversions',
+        category: 'Tools',
+        keywords: ['color', 'hex', 'dmc', 'anchor', 'artkal', 'chart', 'convert'],
+        icon: <Palette className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => navigate('/color-chart'),
+      },
+      {
+        id: 'tool-stitch-companion',
+        label: 'Stitch Companion (Hands-Free Phone Mode)',
+        description: 'Focused row tracking & voice narration for stitching away from your desk',
+        category: 'Tools',
+        keywords: ['companion', 'phone', 'voice', 'narrator', 'couch'],
+        icon: <Smartphone className="w-4 h-4 text-teal-400" />,
+        onExecute: () => setIsStitchCompanionOpen(true),
+      },
+      {
+        id: 'tool-calculators',
+        label: 'Craft Calculators Suite',
+        description: 'Floss skein estimator, bead grams-to-count, and C2C blanket sizer',
+        category: 'Tools',
+        keywords: ['calculator', 'skein', 'grams', 'blanket', 'c2c'],
+        icon: <Calculator className="w-4 h-4 text-amber-400" />,
+        onExecute: () => setIsCalculatorsOpen(true),
+      },
+      {
+        id: 'tool-size-frame',
+        label: 'Size & Framing Calculator',
+        description: 'Check finished dimensions across fabric counts & standard picture frame sizes',
+        category: 'Tools',
+        keywords: ['size', 'dimensions', 'hoop', 'inch', 'cm'],
+        icon: <Ruler className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => setIsSizeAndFrameOpen(true),
+      },
+      {
+        id: 'tool-timelapse',
+        label: 'Social Timelapse Video Generator',
+        description: 'Record & export an animated pixel reveal video for TikTok & Reels',
+        category: 'Tools',
+        keywords: ['video', 'timelapse', 'tiktok', 'reels', 'animation'],
+        icon: <Video className="w-4 h-4 text-rose-400" />,
+        onExecute: () => setIsTimelapseOpen(true),
+      },
+      {
+        id: 'tool-projects-vault',
+        label: 'My Projects Vault',
+        description: 'Switch between auto-saved WIPs or import/export .pixelcraft backups',
+        category: 'Tools',
+        keywords: ['vault', 'save', 'projects', 'load'],
+        icon: <FolderArchive className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => setIsProjectVaultOpen(true),
+      },
+      ...craftEntries.map((c) => ({
+        id: `craft-${c.id}`,
+        label: c.label,
+        description: c.desc,
+        category: 'Crafts' as const,
+        keywords: c.kw,
+        icon: <Sparkles className="w-4 h-4 text-pink-400" />,
+        onExecute: () => handleUpdateConfig({ craftType: c.id }),
+      })),
+      {
+        id: 'action-undo',
+        label: 'Undo Last Canvas Edit',
+        description: 'Step back one grid or border edit',
+        category: 'Canvas Actions',
+        shortcut: 'Ctrl+Z',
+        keywords: ['undo', 'revert', 'back'],
+        icon: <Undo2 className="w-4 h-4 text-slate-300" />,
+        onExecute: handleUndo,
+      },
+      {
+        id: 'action-redo',
+        label: 'Redo Canvas Edit',
+        description: 'Re-apply the previously undone edit',
+        category: 'Canvas Actions',
+        shortcut: 'Ctrl+Y',
+        keywords: ['redo', 'forward'],
+        icon: <Redo2 className="w-4 h-4 text-slate-300" />,
+        onExecute: handleRedo,
+      },
+      {
+        id: 'action-toggle-left',
+        label: 'Toggle Controls Sidebar',
+        description: 'Expand or collapse the left pattern generation panel',
+        category: 'Canvas Actions',
+        shortcut: '[',
+        keywords: ['sidebar', 'controls', 'left', 'panel'],
+        icon: <SlidersHorizontal className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => setIsLeftPanelOpen((p) => !p),
+      },
+      {
+        id: 'action-toggle-right',
+        label: 'Toggle Palette Sidebar',
+        description: 'Expand or collapse the right floss & bead palette legend',
+        category: 'Canvas Actions',
+        shortcut: ']',
+        keywords: ['palette', 'legend', 'right', 'panel'],
+        icon: <Palette className="w-4 h-4 text-pink-400" />,
+        onExecute: () => setIsRightPanelOpen((p) => !p),
+      },
+      {
+        id: 'action-zen-mode',
+        label: 'Toggle Focus Zen Mode',
+        description: 'Hide sidebars for distraction-free stitching or drawing',
+        category: 'Canvas Actions',
+        shortcut: '\\',
+        keywords: ['zen', 'focus', 'fullscreen', 'hide'],
+        icon: <Maximize2 className="w-4 h-4 text-indigo-400" />,
+        onExecute: () => setIsZenMode((p) => !p),
+      },
+      {
+        id: 'export-pdf-png',
+        label: 'Export & Print Pattern (PDF, PNG, Pattern Keeper)',
+        description: 'Generate multi-page symbol charts, Pattern Keeper vector PDF, or JSON',
+        category: 'Export & Shop',
+        keywords: ['export', 'print', 'pdf', 'png', 'pattern keeper', 'download'],
+        icon: <Download className="w-4 h-4 text-pink-400" />,
+        onExecute: () => setIsExportOpen(true),
+      },
+      {
+        id: 'export-supply-kit',
+        label: 'Smart Craft Supply Kit & Amazon Lookup',
+        description: 'Fabric cut dimensions, hoop sizes, pegboards & missing thread shopping list',
+        category: 'Export & Shop',
+        keywords: ['supply', 'kit', 'buy', 'amazon', 'materials'],
+        icon: <Package className="w-4 h-4 text-amber-400" />,
+        onExecute: () => setIsMaterialKitOpen(true),
+      },
+      {
+        id: 'export-shopping-trip',
+        label: 'In-Store Shopping Checklist',
+        description: 'Mobile store checklist to tick off floss skeins & bead tubes in the aisle',
+        category: 'Export & Shop',
+        keywords: ['shop', 'shopping', 'checklist', 'store'],
+        icon: <ShoppingCart className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => setIsShoppingTripOpen(true),
+      },
+      {
+        id: 'export-etsy-kit',
+        label: 'Etsy & Commercial Seller Kit',
+        description: '4 listing mockups, Etsy tags, pattern description & ZIP bundle export',
+        category: 'Export & Shop',
+        keywords: ['etsy', 'seller', 'mockup', 'commercial', 'zip'],
+        icon: <ShoppingBag className="w-4 h-4 text-amber-400" />,
+        onExecute: () => setIsEtsyKitOpen(true),
+      },
+      {
+        id: 'export-my-stash',
+        label: 'My Floss & Bead Stash Inventory',
+        description: 'Manage owned DMC & bead shades and match patterns to your stash',
+        category: 'Export & Shop',
+        keywords: ['stash', 'inventory', 'owned'],
+        icon: <Package className="w-4 h-4 text-emerald-400" />,
+        onExecute: () => setIsMyStashOpen(true),
+      },
+    ];
+  }, [config.craftType, sourceImage, handleUpdateConfig, handleUndo, handleRedo, navigate, showToast]);
+
   const handleResetProgress = () => {
     if (Object.keys(completedCells).length === 0) return;
     if (window.confirm('Reset all completed stitches/beads progress?')) {
@@ -1667,6 +2052,11 @@ export default function App() {
         onOpenMaterialKitModal={() => setIsMaterialKitOpen(true)}
         onOpenColorChartModal={() => navigate('/color-chart')}
         onOpenBgRemoverModal={() => setIsBgRemoverOpen(true)}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onOpenBorderModal={() => setIsBorderModalOpen(true)}
+        onOpenWipTrackerModal={() => setIsWipTrackerOpen(true)}
+        isWipTimerRunning={isWipTimerRunning}
+        wipSessionSeconds={wipSessionSeconds}
         savedProjectsCount={vaultProjectsCount}
         isAutoSaving={isAutoSaving}
         isZenMode={isZenMode}
@@ -1796,6 +2186,9 @@ export default function App() {
           showPegboardLines={showPegboardLines}
           backstitches={backstitches}
           onUpdateBackstitches={setBackstitches}
+          sourceImage={sourceImage}
+          onOpenBorderModal={() => setIsBorderModalOpen(true)}
+          splitCompareSignal={splitCompareSignal}
         />
 
         {/* Right Palette Legend (Desktop Sidebar & Mobile Drawer) */}
@@ -2008,6 +2401,7 @@ export default function App() {
         palette={palette}
         projectName="Pixel Craft Pattern"
         craftType={config.craftType}
+        beadStitchStyle={config.beadLoom?.stitchStyle || 'loom'}
       />
 
       {/* Starter Patterns & Inspiration Gallery Modal */}
@@ -2320,6 +2714,40 @@ export default function App() {
           showToast(`✨ Loaded "${pattern.name}" into Studio!`);
         }}
         unitSystem={config.unitSystem}
+      />
+
+      {/* Decorative Border, Frame & Sampler Builder Modal */}
+      <BorderBuilderModal
+        isOpen={isBorderModalOpen}
+        onClose={() => setIsBorderModalOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        onApplyFramedGrid={handleApplyFramedGrid}
+      />
+
+      {/* WIP Time Tracker, Stitch Speed & Social PNG Stats Card Modal */}
+      <WipTrackerModal
+        isOpen={isWipTrackerOpen}
+        onClose={() => setIsWipTrackerOpen(false)}
+        gridData={gridData}
+        palette={palette}
+        config={config}
+        completedCells={completedCells}
+        isTimerRunning={isWipTimerRunning}
+        activeSessionSeconds={wipSessionSeconds}
+        activeSessionStartStitches={wipSessionStartStitches}
+        onStartTimer={handleStartWipTimer}
+        onPauseTimer={handlePauseWipTimer}
+        onSaveAndResetTimer={handleSaveAndResetWipTimer}
+        wipStats={wipStats}
+        onUpdateWipStats={handleUpdateWipStats}
+      />
+
+      {/* Searchable Command Palette (Ctrl+K / Cmd+K) */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        items={commandPaletteItems}
       />
     </div>
   );

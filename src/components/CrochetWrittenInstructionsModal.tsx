@@ -1,11 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { PaletteColor, CraftType } from '../types/craft';
+import type { PaletteColor, CraftType, BeadStitchStyle } from '../types/craft';
 import { 
   generateCrochetInstructions, 
   formatInstructionsAsPlainText,
   DEFAULT_INSTRUCTIONS_CONFIG,
   type WrittenInstructionsConfig
 } from '../utils/crochetInstructions';
+import {
+  generateBeadWordChart,
+  formatBeadWordChartText,
+} from '../utils/beadWordChart';
 import { 
   X, 
   Copy, 
@@ -32,6 +36,7 @@ interface CrochetWrittenInstructionsModalProps {
   palette: PaletteColor[];
   projectName?: string;
   craftType?: CraftType;
+  beadStitchStyle?: BeadStitchStyle;
 }
 
 export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstructionsModalProps> = ({
@@ -41,8 +46,21 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
   palette,
   projectName = 'Craft Pattern',
   craftType = 'crochet',
+  beadStitchStyle = 'loom',
 }) => {
   const [config, setConfig] = useState<WrittenInstructionsConfig>(DEFAULT_INSTRUCTIONS_CONFIG);
+  const [chartViewMode, setChartViewMode] = useState<'standard' | 'word-chart'>(
+    craftType === 'loom' ? 'word-chart' : 'standard'
+  );
+  const [prevOpenCraft, setPrevOpenCraft] = useState<string>('');
+  const openCraftKey = `${isOpen}:${craftType}`;
+  if (openCraftKey !== prevOpenCraft) {
+    setPrevOpenCraft(openCraftKey);
+    if (isOpen) {
+      setChartViewMode(craftType === 'loom' ? 'word-chart' : 'standard');
+    }
+  }
+
   const [completedRows, setCompletedRows] = useState<{ [rowNum: number]: boolean }>(() => {
     try {
       const saved = localStorage.getItem('crochet_completed_rows');
@@ -90,6 +108,13 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
     return generateCrochetInstructions(gridData, palette, config);
   }, [gridData, palette, config]);
 
+  const beadWordChart = useMemo(() => {
+    if (craftType !== 'loom') return null;
+    return generateBeadWordChart(gridData, palette, beadStitchStyle);
+  }, [craftType, gridData, palette, beadStitchStyle]);
+
+  const isWordChartActive = craftType === 'loom' && chartViewMode === 'word-chart' && beadWordChart !== null;
+
   const toggleRow = (rowNum: number) => {
     setCompletedRows((prev) => ({
       ...prev,
@@ -98,7 +123,9 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
   };
 
   const handleCopyText = async () => {
-    const text = formatInstructionsAsPlainText(instructions, projectName);
+    const text = isWordChartActive && beadWordChart
+      ? formatBeadWordChartText(beadWordChart, projectName)
+      : formatInstructionsAsPlainText(instructions, projectName);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -109,18 +136,22 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
   };
 
   const handleDownloadTxt = () => {
-    const text = formatInstructionsAsPlainText(instructions, projectName);
+    const text = isWordChartActive && beadWordChart
+      ? formatBeadWordChartText(beadWordChart, projectName)
+      : formatInstructionsAsPlainText(instructions, projectName);
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${projectName.toLowerCase().replace(/\s+/g, '-')}-written-instructions.txt`;
+    a.download = isWordChartActive
+      ? `${projectName.toLowerCase().replace(/\s+/g, '-')}-bead-word-chart.txt`
+      : `${projectName.toLowerCase().replace(/\s+/g, '-')}-written-instructions.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const handleResetProgress = () => {
-    if (window.confirm('Reset your crochet row progress?')) {
+    if (window.confirm('Reset your row progress?')) {
       setCompletedRows({});
     }
   };
@@ -128,7 +159,7 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
   if (!isOpen) return null;
 
   const doneCount = Object.values(completedRows).filter(Boolean).length;
-  const totalRows = instructions.totalRows;
+  const totalRows = isWordChartActive && beadWordChart ? beadWordChart.rows.length : instructions.totalRows;
   const percentDone = totalRows > 0 ? Math.round((doneCount / totalRows) * 100) : 0;
 
   const filteredRows = instructions.rows.filter((r) => {
@@ -143,6 +174,26 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
     }
     return true;
   });
+
+  const filteredWordRows = (beadWordChart?.rows || []).filter((r) => {
+    const isDone = !!completedRows[r.rowNumber];
+    if (filterMode === 'todo' && isDone) return false;
+    if (filterMode === 'done' && !isDone) return false;
+    if (searchQuery) {
+      return (
+        String(r.rowNumber).includes(searchQuery) ||
+        r.notationText.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    return true;
+  });
+
+  const beadStyleBadge =
+    beadStitchStyle === 'peyote'
+      ? 'Peyote Stitch'
+      : beadStitchStyle === 'brick'
+      ? 'Brick Stitch'
+      : 'Square Bead Loom';
 
   return (
     <div
@@ -163,6 +214,8 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
                 <h2 className="text-sm font-bold text-slate-100 truncate">
                   {craftType === 'alpha' 
                     ? 'Alpha Pattern Row-by-Row Knotting Guide' 
+                    : isWordChartActive
+                    ? `${beadStyleBadge} Word Chart & Delica Key`
                     : craftType === 'loom'
                     ? 'Bead Loom & Peyote Row-by-Row Threading Guide'
                     : craftType === 'knitting'
@@ -172,6 +225,8 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 shrink-0">
                   {craftType === 'alpha' 
                     ? 'Alpha Knotting' 
+                    : isWordChartActive
+                    ? beadStyleBadge
                     : craftType === 'loom'
                     ? 'Bead Weaving'
                     : craftType === 'knitting' 
@@ -180,7 +235,7 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 truncate">
-                {totalRows} Rows • {instructions.totalStitches} {craftType === 'alpha' ? 'knots' : craftType === 'loom' ? 'beads' : 'stitches'} • {craftType === 'alpha' ? 'Alternating L→R and R→L passes' : craftType === 'loom' ? 'Alternating warp passes (L→R / R→L)' : craftType === 'knitting' ? 'Alternating RS (Knit) & WS (Purl) passes' : 'Interactive progress tracker'}
+                {totalRows} Rows • {isWordChartActive && beadWordChart ? beadWordChart.totalBeads : instructions.totalStitches} {craftType === 'alpha' ? 'knots' : craftType === 'loom' ? 'beads' : 'stitches'} • {isWordChartActive ? 'Standard (count)A notation • Worked bottom-to-top' : craftType === 'alpha' ? 'Alternating L→R and R→L passes' : craftType === 'loom' ? 'Alternating warp passes (L→R / R→L)' : craftType === 'knitting' ? 'Alternating RS (Knit) & WS (Purl) passes' : 'Interactive progress tracker'}
               </p>
             </div>
           </div>
@@ -274,7 +329,7 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
               onClick={() => setFilterMode('todo')}
               className={`px-2.5 py-1 rounded-md transition ${filterMode === 'todo' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
             >
-              To Do ({totalRows - doneCount})
+              To Do ({Math.max(0, totalRows - doneCount)})
             </button>
             <button
               type="button"
@@ -286,26 +341,50 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
           </div>
 
           {/* Right: Quick Formatting & Settings Toggles */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Bead Word Chart Mode Toggle (for Seed Bead craft) */}
+            {craftType === 'loom' && (
+              <div className="flex bg-slate-900 p-0.5 rounded-lg border border-teal-500/30 text-[10px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('word-chart')}
+                  className={`px-2 py-1 rounded-md transition ${isWordChartActive ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                  title="Compact Bead Word Chart: (count)A with Miyuki Delica DB key"
+                >
+                  Word Chart
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('standard')}
+                  className={`px-2 py-1 rounded-md transition ${!isWordChartActive ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  title="Standard row-by-row pass guide"
+                >
+                  Row Guide
+                </button>
+              </div>
+            )}
+
             {/* Format Style Pill */}
-            <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[10px] font-semibold">
-              <button
-                type="button"
-                onClick={() => setConfig({ ...config, formatStyle: 'abbreviation' })}
-                className={`px-2 py-1 rounded-md transition ${config.formatStyle === 'abbreviation' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                title="Shorthand codes: (A) x 12, (B) x 4"
-              >
-                Codes (A, B)
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfig({ ...config, formatStyle: 'color-name' })}
-                className={`px-2 py-1 rounded-md transition ${config.formatStyle === 'color-name' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                title="Full color names: (Black) x 12"
-              >
-                Full Names
-              </button>
-            </div>
+            {!isWordChartActive && (
+              <div className="flex bg-slate-900 p-0.5 rounded-lg border border-slate-800 text-[10px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setConfig({ ...config, formatStyle: 'abbreviation' })}
+                  className={`px-2 py-1 rounded-md transition ${config.formatStyle === 'abbreviation' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  title="Shorthand codes: (A) x 12, (B) x 4"
+                >
+                  Codes (A, B)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfig({ ...config, formatStyle: 'color-name' })}
+                  className={`px-2 py-1 rounded-md transition ${config.formatStyle === 'color-name' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  title="Full color names: (Black) x 12"
+                >
+                  Full Names
+                </button>
+              </div>
+            )}
 
             {/* Display Mode (Chips vs Compact Text) */}
             <button
@@ -334,21 +413,23 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
               title="Toggle color key overview"
             >
               <Palette className="w-3 h-3" />
-              <span>Key ({instructions.colorLegend.length})</span>
+              <span>Key ({isWordChartActive && beadWordChart ? beadWordChart.legend.length : instructions.colorLegend.length})</span>
               {showKey ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
 
             {/* Direction & Turns Options Dropdown Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowSettings(!showSettings)}
-              className={`p-1.5 rounded-lg border text-slate-400 hover:text-slate-200 transition ${
-                showSettings ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'
-              }`}
-              title="Configure crochet direction & turn mode"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-            </button>
+            {!isWordChartActive && (
+              <button
+                type="button"
+                onClick={() => setShowSettings(!showSettings)}
+                className={`p-1.5 rounded-lg border text-slate-400 hover:text-slate-200 transition ${
+                  showSettings ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-300' : 'bg-slate-900 border-slate-800'
+                }`}
+                title="Configure crochet direction & turn mode"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -404,35 +485,181 @@ export const CrochetWrittenInstructionsModal: React.FC<CrochetWrittenInstruction
           <div className="shrink-0 px-4 py-2 bg-slate-950/90 border-b border-slate-800/80 max-h-28 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:#334155_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">
-                Color Key:
+                {isWordChartActive ? 'Miyuki Delica Key:' : 'Color Key:'}
               </span>
-              {instructions.colorLegend.map((item) => (
-                <div
-                  key={item.abbreviation}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800/90 hover:border-slate-700 transition shrink-0"
-                >
+              {isWordChartActive && beadWordChart ? (
+                beadWordChart.legend.map((item) => (
                   <div
-                    className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0 shadow-sm"
-                    style={{ backgroundColor: item.color.hex }}
-                  />
-                  <span className="font-bold text-pink-400 font-mono text-[11px]">
-                    {item.abbreviation}
-                  </span>
-                  <span className="text-slate-300 text-[11px] font-medium">
-                    {item.color.name || item.color.code}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    ({item.color.count})
-                  </span>
-                </div>
-              ))}
+                    key={item.abbreviation}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800/90 hover:border-teal-500/40 transition shrink-0"
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0 shadow-sm"
+                      style={{ backgroundColor: item.hex }}
+                    />
+                    <span className="font-bold text-teal-300 font-mono text-[11px]">
+                      {item.abbreviation}
+                    </span>
+                    <span className="text-[10px] px-1 rounded bg-teal-500/15 text-teal-200 border border-teal-500/25 font-mono">
+                      {item.delicaCode}
+                    </span>
+                    <span className="text-slate-300 text-[11px] font-medium">
+                      {item.colorName}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      ({item.count})
+                    </span>
+                  </div>
+                ))
+              ) : (
+                instructions.colorLegend.map((item) => (
+                  <div
+                    key={item.abbreviation}
+                    className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-900 border border-slate-800/90 hover:border-slate-700 transition shrink-0"
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full border border-white/30 shrink-0 shadow-sm"
+                      style={{ backgroundColor: item.color.hex }}
+                    />
+                    <span className="font-bold text-pink-400 font-mono text-[11px]">
+                      {item.abbreviation}
+                    </span>
+                    <span className="text-slate-300 text-[11px] font-medium">
+                      {item.color.name || item.color.code}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      ({item.color.count})
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
 
         {/* 5. Row-by-Row Interactive List */}
         <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-2.5 [scrollbar-width:thin] [scrollbar-color:#334155_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent">
-          {filteredRows.length === 0 ? (
+          {isWordChartActive ? (
+            filteredWordRows.length === 0 ? (
+              <div className="text-center py-16 text-slate-500 text-xs">
+                No word-chart rows match your current filter or search query.
+              </div>
+            ) : (
+              filteredWordRows.map((row) => {
+                const isDone = !!completedRows[row.rowNumber];
+                return (
+                  <div
+                    key={row.rowNumber}
+                    onClick={() => toggleRow(row.rowNumber)}
+                    className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                      isDone
+                        ? 'bg-slate-950/40 border-slate-800/60 opacity-60 hover:opacity-80'
+                        : 'bg-slate-950/75 border-slate-800 hover:border-teal-500/60 hover:bg-slate-850/60 shadow-sm'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRow(row.rowNumber);
+                      }}
+                      className={`mt-0.5 w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition ${
+                        isDone
+                          ? 'bg-emerald-600 border-emerald-500 text-white shadow-sm'
+                          : 'border-slate-700 bg-slate-900 hover:border-teal-500 text-transparent'
+                      }`}
+                      title={isDone ? 'Mark as to-do' : 'Mark as done'}
+                    >
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    </button>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className={`font-mono text-xs font-bold ${isDone ? 'text-slate-400 line-through' : 'text-slate-100'}`}>
+                          {row.rowLabel}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-teal-950/80 text-teal-300 border border-teal-500/30">
+                          {row.direction} {row.direction === '→' ? 'L→R' : 'R→L'}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          ({row.totalBeads} beads)
+                        </span>
+                        {speechAvailable && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (speakingRowNum === row.rowNumber) {
+                                stopSpeaking();
+                                setSpeakingRowNum(null);
+                                return;
+                              }
+                              const segText = row.segments
+                                .map((s) => `${s.count} ${s.isEmpty ? 'skip' : s.colorName}`)
+                                .join(', ');
+                              setSpeakingRowNum(row.rowNumber);
+                              speakText(`${row.rowLabel}: ${segText}.`, {
+                                onEnd: () => setSpeakingRowNum(null),
+                              });
+                            }}
+                            className={`px-2 py-0.5 rounded-md border text-[10px] font-semibold flex items-center gap-1 transition ${
+                              speakingRowNum === row.rowNumber
+                                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                                : 'bg-slate-900 border-slate-700/80 text-slate-400 hover:text-teal-300 hover:border-teal-500/40'
+                            }`}
+                            title={speakingRowNum === row.rowNumber ? 'Stop voice reading' : 'Read this bead row aloud'}
+                          >
+                            {speakingRowNum === row.rowNumber ? (
+                              <>
+                                <Square className="w-2.5 h-2.5 fill-current" />
+                                <span>Stop</span>
+                              </>
+                            ) : (
+                              <>
+                                <Volume2 className="w-3 h-3" />
+                                <span>Read</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                        {isDone && (
+                          <span className="ml-auto text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Completed</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {displayMode === 'text' ? (
+                        <p className="font-mono text-xs text-teal-200 leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/80">
+                          {row.notationText}
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5 items-center">
+                          {row.segments.map((seg, sIdx) => (
+                            <div
+                              key={sIdx}
+                              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs shadow-inner transition ${
+                                isDone ? 'bg-slate-900/50 border-slate-800 text-slate-500' : 'bg-slate-900/90 border-slate-800 text-slate-200'
+                              }`}
+                            >
+                              <div
+                                className="w-2.5 h-2.5 rounded-full border border-white/20 shrink-0"
+                                style={{ backgroundColor: seg.hex }}
+                              />
+                              <span className="font-bold text-teal-300 font-mono">
+                                ({seg.count}){seg.abbreviation}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )
+          ) : filteredRows.length === 0 ? (
             <div className="text-center py-16 text-slate-500 text-xs">
               No rows match your current filter or search query.
             </div>

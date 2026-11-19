@@ -37,7 +37,9 @@ import {
   Wand2,
   PenTool,
   Trash2,
-  Circle
+  Circle,
+  Frame,
+  SplitSquareHorizontal
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -82,6 +84,9 @@ interface CraftCanvasProps {
   showPegboardLines?: boolean;
   backstitches?: BackstitchLine[];
   onUpdateBackstitches?: (lines: BackstitchLine[]) => void;
+  sourceImage?: HTMLImageElement | null;
+  onOpenBorderModal?: () => void;
+  splitCompareSignal?: number;
 }
 
 export type CanvasTool = 'pan' | 'tracker' | 'pencil' | 'eraser' | 'bucket' | 'eyedropper' | 'line' | 'rectangle' | 'wand' | 'backstitch';
@@ -176,9 +181,24 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   showPegboardLines = false,
   backstitches = [],
   onUpdateBackstitches,
+  sourceImage = null,
+  onOpenBorderModal,
+  splitCompareSignal = 0,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Before/After Split Photo Compare state
+  const [isSplitCompare, setIsSplitCompare] = useState<boolean>(false);
+  const [splitRatio, setSplitRatio] = useState<number>(0.5);
+  const [prevSplitSignal, setPrevSplitSignal] = useState<number>(splitCompareSignal);
+  if (splitCompareSignal !== prevSplitSignal) {
+    setPrevSplitSignal(splitCompareSignal);
+    if (splitCompareSignal > 0 && sourceImage) {
+      setIsSplitCompare((prev) => !prev);
+    }
+  }
+  const effectiveSplitCompare = isSplitCompare && !!sourceImage;
 
   // Transform popover & wrap state
   const [isTransformOpen, setIsTransformOpen] = useState(false);
@@ -320,6 +340,18 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   const gridWidth = gridHeight > 0 ? gridData[0].length : 0;
   const baseCellSize = config.cellSize || 24;
 
+  const beadStyle = config.craftType === 'loom' ? (config.beadLoom?.stitchStyle || 'loom') : 'loom';
+  const extraWCells = beadStyle === 'brick' && gridHeight > 1 ? 0.5 : 0;
+  const extraHCells = beadStyle === 'peyote' && gridWidth > 1 ? 0.5 : 0;
+  const getStaggerOffsetX = useCallback(
+    (y: number, cs: number) => (beadStyle === 'brick' && y % 2 === 1 ? 0.5 * cs : 0),
+    [beadStyle]
+  );
+  const getStaggerOffsetY = useCallback(
+    (x: number, cs: number) => (beadStyle === 'peyote' && x % 2 === 1 ? 0.5 * cs : 0),
+    [beadStyle]
+  );
+
   // Auto-fit to viewport on initial load or grid dimension change
   const fitToScreen = useCallback(() => {
     if (!containerRef.current || gridWidth === 0 || gridHeight === 0) return;
@@ -329,8 +361,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     const targetH = clientHeight - padding;
 
     const rulerOffset = config.showRulers ? 24 : 0;
-    const totalGridW = gridWidth * baseCellSize + rulerOffset;
-    const totalGridH = gridHeight * baseCellSize + rulerOffset;
+    const totalGridW = (gridWidth + extraWCells) * baseCellSize + rulerOffset;
+    const totalGridH = (gridHeight + extraHCells) * baseCellSize + rulerOffset;
 
     const scaleX = targetW / totalGridW;
     const scaleY = targetH / totalGridH;
@@ -341,7 +373,7 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       x: (clientWidth - totalGridW * newZoom) / 2 + rulerOffset * newZoom,
       y: (clientHeight - totalGridH * newZoom) / 2 + rulerOffset * newZoom,
     });
-  }, [gridWidth, gridHeight, baseCellSize, config.showRulers]);
+  }, [gridWidth, gridHeight, baseCellSize, config.showRulers, extraWCells, extraHCells]);
 
   useEffect(() => {
     fitToScreen();
@@ -381,8 +413,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       ctx.scale(zoom, zoom);
 
       const cellSize = baseCellSize;
-      const totalW = gridWidth * cellSize;
-      const totalH = gridHeight * cellSize;
+      const totalW = (gridWidth + extraWCells) * cellSize;
+      const totalH = (gridHeight + extraHCells) * cellSize;
 
       // Draw Background Pegboard / Fabric Texture
       if (config.craftType === 'perler') {
@@ -426,8 +458,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       for (let y = minRow; y <= maxRow; y++) {
         for (let x = minCol; x <= maxCol; x++) {
         const colorIdx = gridData[y][x];
-        const px = x * cellSize;
-        const py = y * cellSize;
+        const px = x * cellSize + getStaggerOffsetX(y, cellSize);
+        const py = y * cellSize + getStaggerOffsetY(x, cellSize);
 
         if (colorIdx === -1) {
           // Empty transparent cell (no stitch/bead placed)
@@ -787,8 +819,8 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       }
     }
 
-    // Draw 10x10 Major Grid Lines (The universal craft pattern standard)
-    if (config.show10x10MajorLines) {
+    // Draw 10x10 Major Grid Lines (Skipped on staggered Peyote/Brick stitch grids)
+    if (config.show10x10MajorLines && beadStyle === 'loom') {
       ctx.strokeStyle = '#dc2626'; // Red or bold dark grid line
       ctx.lineWidth = 2 / zoom;
 
@@ -1028,7 +1060,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       ctx.globalAlpha = 0.6;
       for (const c of previewCells) {
         if (c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight) {
-          ctx.fillRect(c.x * cellSize, c.y * cellSize, cellSize, cellSize);
+          ctx.fillRect(
+            c.x * cellSize + getStaggerOffsetX(c.y, cellSize),
+            c.y * cellSize + getStaggerOffsetY(c.x, cellSize),
+            cellSize,
+            cellSize
+          );
         }
       }
       ctx.strokeStyle = '#ffffff';
@@ -1036,7 +1073,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
       ctx.globalAlpha = 0.9;
       for (const c of previewCells) {
         if (c.x >= 0 && c.x < gridWidth && c.y >= 0 && c.y < gridHeight) {
-          ctx.strokeRect(c.x * cellSize, c.y * cellSize, cellSize, cellSize);
+          ctx.strokeRect(
+            c.x * cellSize + getStaggerOffsetX(c.y, cellSize),
+            c.y * cellSize + getStaggerOffsetY(c.x, cellSize),
+            cellSize,
+            cellSize
+          );
         }
       }
       ctx.restore();
@@ -1053,8 +1095,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         const sx = parseInt(sxStr, 10);
         const sy = parseInt(syStr, 10);
         if (sx >= 0 && sx < gridWidth && sy >= 0 && sy < gridHeight) {
-          ctx.fillRect(sx * cellSize, sy * cellSize, cellSize, cellSize);
-          ctx.strokeRect(sx * cellSize, sy * cellSize, cellSize, cellSize);
+          const ox = sx * cellSize + getStaggerOffsetX(sy, cellSize);
+          const oy = sy * cellSize + getStaggerOffsetY(sx, cellSize);
+          ctx.fillRect(ox, oy, cellSize, cellSize);
+          ctx.strokeRect(ox, oy, cellSize, cellSize);
         }
       });
       ctx.restore();
@@ -1109,7 +1153,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     if (hoverCoord && hoverCoord.x >= 0 && hoverCoord.x < gridWidth && hoverCoord.y >= 0 && hoverCoord.y < gridHeight) {
       ctx.strokeStyle = tool === 'eyedropper' ? '#a855f7' : tool === 'eraser' ? '#f43f5e' : '#2563eb';
       ctx.lineWidth = 2 / zoom;
-      ctx.strokeRect(hoverCoord.x * cellSize, hoverCoord.y * cellSize, cellSize, cellSize);
+      ctx.strokeRect(
+        hoverCoord.x * cellSize + getStaggerOffsetX(hoverCoord.y, cellSize),
+        hoverCoord.y * cellSize + getStaggerOffsetY(hoverCoord.x, cellSize),
+        cellSize,
+        cellSize
+      );
 
       // If mirror mode is active and drawing/erasing, also draw ghost hover box on mirror cell
       if (isMirrorMode && ['pencil', 'eraser', 'line', 'rectangle'].includes(tool)) {
@@ -1119,13 +1168,33 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           ctx.strokeStyle = '#38bdf8';
           ctx.lineWidth = 1.5 / zoom;
           ctx.setLineDash([3 / zoom, 3 / zoom]);
-          ctx.strokeRect(mirrorX * cellSize, hoverCoord.y * cellSize, cellSize, cellSize);
+          ctx.strokeRect(
+            mirrorX * cellSize + getStaggerOffsetX(hoverCoord.y, cellSize),
+            hoverCoord.y * cellSize + getStaggerOffsetY(mirrorX, cellSize),
+            cellSize,
+            cellSize
+          );
           ctx.restore();
         }
       }
     }
 
       ctx.restore();
+
+      // Before/After Original Photo Split Comparison Overlay
+      if (effectiveSplitCompare && sourceImage && sourceImage.complete && sourceImage.naturalWidth > 0) {
+        const splitX = width * splitRatio;
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        ctx.beginPath();
+        ctx.rect(0, 0, splitX, height);
+        ctx.clip();
+        ctx.translate(pan.x, pan.y);
+        ctx.scale(zoom, zoom);
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(sourceImage, 0, 0, totalW, totalH);
+        ctx.restore();
+      }
 
       // Display Shaders & Authentic Textures post-processing overlay
       if (activeShader === 'crt') {
@@ -1217,6 +1286,14 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     backstitches,
     backstitchStart,
     backstitchEnd,
+    beadStyle,
+    extraWCells,
+    extraHCells,
+    getStaggerOffsetX,
+    getStaggerOffsetY,
+    effectiveSplitCompare,
+    splitRatio,
+    sourceImage,
   ]);
 
   // Coordinate conversion helper from pointer/mouse event to cell [x, y]
@@ -1228,8 +1305,23 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
     const mouseY = e.clientY - rect.top;
 
     const cellSize = baseCellSize;
-    const cellX = Math.floor((mouseX - pan.x) / (cellSize * zoom));
-    const cellY = Math.floor((mouseY - pan.y) / (cellSize * zoom));
+    const worldX = (mouseX - pan.x) / (cellSize * zoom);
+    const worldY = (mouseY - pan.y) / (cellSize * zoom);
+
+    let cellX: number;
+    let cellY: number;
+    if (beadStyle === 'peyote') {
+      cellX = Math.floor(worldX);
+      const yShift = cellX >= 0 && cellX % 2 === 1 ? 0.5 : 0;
+      cellY = Math.floor(worldY - yShift);
+    } else if (beadStyle === 'brick') {
+      cellY = Math.floor(worldY);
+      const xShift = cellY >= 0 && cellY % 2 === 1 ? 0.5 : 0;
+      cellX = Math.floor(worldX - xShift);
+    } else {
+      cellX = Math.floor(worldX);
+      cellY = Math.floor(worldY);
+    }
 
     if (cellX >= 0 && cellX < gridWidth && cellY >= 0 && cellY < gridHeight) {
       return { x: cellX, y: cellY };
@@ -2493,6 +2585,30 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
 
+          {onOpenBorderModal && (
+            <button
+              onClick={onOpenBorderModal}
+              className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-pink-300 transition"
+              title="Add Decorative Border & Sampler Frame"
+            >
+              <Frame className="w-3.5 h-3.5 text-pink-400" />
+            </button>
+          )}
+
+          {sourceImage && (
+            <button
+              onClick={() => setIsSplitCompare((prev) => !prev)}
+              className={`p-1.5 rounded-lg transition ${
+                effectiveSplitCompare
+                  ? 'bg-indigo-600 text-white shadow-md ring-1 ring-indigo-400'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+              title={effectiveSplitCompare ? 'Close Before/After Photo Split Slider' : 'Before/After Photo Split Comparison Slider'}
+            >
+              <SplitSquareHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+            </button>
+          )}
+
           {onInspectSourceImage && (
             <button
               onClick={onInspectSourceImage}
@@ -2554,6 +2670,63 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           'cursor-crosshair'
         }`}
       />
+
+      {/* Interactive Before/After Photo Split Slider Handle */}
+      {effectiveSplitCompare && (
+        <>
+          <div
+            role="slider"
+            aria-label="Before and after comparison divider"
+            aria-valuemin={4}
+            aria-valuemax={96}
+            aria-valuenow={Math.round(splitRatio * 100)}
+            tabIndex={0}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              if (e.buttons === 0 && e.pointerType === 'mouse') return;
+              if (!containerRef.current) return;
+              const rect = containerRef.current.getBoundingClientRect();
+              const ratio = (e.clientX - rect.left) / Math.max(1, rect.width);
+              setSplitRatio(Math.max(0.04, Math.min(0.96, ratio)));
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') setSplitRatio((r) => Math.max(0.04, r - 0.03));
+              if (e.key === 'ArrowRight') setSplitRatio((r) => Math.min(0.96, r + 0.03));
+            }}
+            style={{ left: `${splitRatio * 100}%` }}
+            className="absolute inset-y-0 z-20 -translate-x-1/2 w-7 cursor-ew-resize flex items-center justify-center touch-none group"
+            title="Drag left or right to compare Original Photo vs Craft Pattern"
+          >
+            <div className="h-full w-0.5 bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.85)]" />
+            <div className="absolute top-1/2 -translate-y-1/2 w-8 h-10 rounded-xl bg-slate-950/95 border-2 border-cyan-400 shadow-2xl flex items-center justify-center text-cyan-300 group-hover:scale-110 transition">
+              <SplitSquareHorizontal className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="absolute top-12 left-3 z-20 pointer-events-none px-2.5 py-1 rounded-lg bg-slate-950/85 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 backdrop-blur-md shadow">
+            Original Photo
+          </div>
+          <div className="absolute top-12 right-3 z-20 flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/85 border border-indigo-500/40 text-[11px] font-bold text-indigo-300 backdrop-blur-md shadow">
+            <span>Craft Pattern</span>
+            <button
+              type="button"
+              onClick={() => setIsSplitCompare(false)}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
+            >
+              Exit
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Magic Wand Selection Action Toolbar */}
       {(tool === 'wand' || selectedCells.size > 0) && (

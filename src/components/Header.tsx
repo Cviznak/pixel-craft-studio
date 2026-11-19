@@ -28,8 +28,12 @@ import {
   FolderArchive,
   ShoppingBag,
   Palette,
-  Eraser
+  Eraser,
+  Command,
+  Frame,
+  Timer
 } from 'lucide-react';
+import { formatDurationClock } from '../utils/wipTracker';
 
 interface HeaderProps {
   config: GridConfig;
@@ -51,6 +55,11 @@ interface HeaderProps {
   onOpenMaterialKitModal?: () => void;
   onOpenColorChartModal?: () => void;
   onOpenBgRemoverModal?: () => void;
+  onOpenCommandPalette?: () => void;
+  onOpenBorderModal?: () => void;
+  onOpenWipTrackerModal?: () => void;
+  isWipTimerRunning?: boolean;
+  wipSessionSeconds?: number;
   savedProjectsCount?: number;
   isAutoSaving?: boolean;
   isZenMode?: boolean;
@@ -85,6 +94,11 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMaterialKitModal,
   onOpenColorChartModal,
   onOpenBgRemoverModal,
+  onOpenCommandPalette,
+  onOpenBorderModal,
+  onOpenWipTrackerModal,
+  isWipTimerRunning = false,
+  wipSessionSeconds = 0,
   savedProjectsCount = 0,
   isAutoSaving = false,
   isZenMode = false,
@@ -353,6 +367,32 @@ export const Header: React.FC<HeaderProps> = ({
             </>
           )}
         </div>
+
+        {/* Live Running WIP Timer Pill */}
+        {onOpenWipTrackerModal && isWipTimerRunning && (
+          <button
+            onClick={onOpenWipTrackerModal}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold text-emerald-300 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 shadow-sm transition animate-pulse"
+            title="WIP Stitch Timer running — click to open journal & PNG stats card"
+          >
+            <Timer className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{formatDurationClock(wipSessionSeconds)}</span>
+          </button>
+        )}
+
+        {/* Quick Command Palette Launcher (Ctrl+K) */}
+        {onOpenCommandPalette && (
+          <button
+            onClick={onOpenCommandPalette}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 shadow-sm transition active:scale-95"
+            title="Command Palette & Quick Actions (Ctrl+K / Cmd+K)"
+          >
+            <Command className="w-3.5 h-3.5 text-indigo-400" />
+            <kbd className="hidden md:inline text-[10px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">
+              ⌘K
+            </kbd>
+          </button>
+        )}
 
         {/* My Projects Vault Button */}
         {onOpenProjectVaultModal && (
@@ -632,6 +672,20 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
 
+              {/* Decorative Border & Sampler Builder */}
+              {onOpenBorderModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenBorderModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-200 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <Frame className="w-3.5 h-3.5 text-pink-400" />
+                  <span>Border & Sampler Frame</span>
+                </button>
+              )}
+
               {/* My Stash Inventory */}
               {onOpenMyStashModal && (
                 <button
@@ -657,6 +711,25 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <Smartphone className="w-3.5 h-3.5 text-teal-400" />
                   <span>Stitch Companion (Phone Mode)</span>
+                </button>
+              )}
+
+              {/* WIP Timer & Progress Stats Card */}
+              {onOpenWipTrackerModal && (
+                <button
+                  onClick={() => {
+                    setIsProjectMenuOpen(false);
+                    onOpenWipTrackerModal();
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-200 hover:bg-slate-800 transition text-left font-semibold"
+                >
+                  <Timer className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>WIP Timer & Stats Card</span>
+                  {isWipTimerRunning && (
+                    <span className="ml-auto text-[10px] font-mono text-emerald-400">
+                      {formatDurationClock(wipSessionSeconds)}
+                    </span>
+                  )}
                 </button>
               )}
 
