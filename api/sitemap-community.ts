@@ -23,7 +23,16 @@ function toIsoDate(rawDate?: string | null): string {
 }
 
 export function buildCommunitySitemapXml(rows: SitemapPatternRow[]): string {
-  const entries: string[] = [];
+  let latestDate = toIsoDate(rows[0]?.updated_at);
+  for (const row of rows) {
+    if (!row.updated_at) continue;
+    const d = toIsoDate(row.updated_at);
+    if (d > latestDate) latestDate = d;
+  }
+
+  const entries: string[] = [
+    `  <url>\n    <loc>${escapeXml(`${ORIGIN}/community`)}</loc>\n    <lastmod>${latestDate}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.85</priority>\n  </url>`,
+  ];
   const seenPatternIds = new Set<string>();
   const creatorLastMod = new Map<string, string>();
 
