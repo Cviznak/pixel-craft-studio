@@ -13,7 +13,6 @@ import {
   Sparkles,
   PanelLeft,
   PanelRight,
-  MoreHorizontal,
   CheckCircle2,
   Smartphone,
   Share2,
@@ -185,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
-  // Close dropdowns on outside click
+  // Close dropdowns on outside click or Escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -195,10 +194,20 @@ export const Header: React.FC<HeaderProps> = ({
         setIsMobileCraftMenuOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsProjectMenuOpen(false);
+        setIsMobileCraftMenuOpen(false);
+      }
+    };
     if (isProjectMenuOpen || isMobileCraftMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isProjectMenuOpen, isMobileCraftMenuOpen]);
 
   const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,9 +287,12 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="hidden sm:inline">Pixel Craft Studio</span>
                 <span className="sm:hidden">PixelCraft</span>
               </h1>
-              <span className="hidden 2xl:inline text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                Pattern Maker
-              </span>
+              <span
+                className={`w-2 h-2 rounded-full transition-colors ${
+                  isAutoSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400/70'
+                }`}
+                title={isAutoSaving ? 'Saving to browser vault...' : 'Auto-saved to browser vault'}
+              />
             </div>
           </div>
         </Link>
@@ -363,40 +375,6 @@ export const Header: React.FC<HeaderProps> = ({
           className="hidden"
         />
 
-        {/* Focus / Zen Mode Button (One-click distraction-free canvas) */}
-        {onToggleZenMode && (
-          <button
-            onClick={onToggleZenMode}
-            className={`hidden md:flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold border transition ${
-              isZenMode
-                ? 'bg-indigo-600/30 border-indigo-500/60 text-indigo-300'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-            }`}
-            title={isZenMode ? 'Exit focus mode (show sidebars)' : 'Focus mode (hide all sidebars)'}
-          >
-            {isZenMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            <span className="hidden xl:inline">{isZenMode ? 'Exit Focus' : 'Focus'}</span>
-          </button>
-        )}
-
-        {/* Auto-Save Status Indicator */}
-        <div 
-          className="hidden 2xl:flex items-center gap-1.5 text-[10px] text-slate-400 font-medium px-2 py-1 rounded-lg bg-slate-900/80 border border-slate-800/80"
-          title="Designs and edits are continuously auto-saved to your browser vault"
-        >
-          {isAutoSaving ? (
-            <>
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-amber-300">Saving...</span>
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-              <span className="text-slate-400">Auto-saved</span>
-            </>
-          )}
-        </div>
-
         {/* Live Running WIP Timer Pill */}
         {onOpenWipTrackerModal && isWipTimerRunning && (
           <button
@@ -413,7 +391,7 @@ export const Header: React.FC<HeaderProps> = ({
         {onOpenCommandPalette && (
           <button
             onClick={onOpenCommandPalette}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 shadow-sm transition active:scale-95"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 shadow-sm transition active:scale-95"
             title="Command Palette & Quick Actions (Ctrl+K / Cmd+K)"
           >
             <Command className="w-3.5 h-3.5 text-indigo-400" />
@@ -423,34 +401,16 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Cloud Sync / Sign-In Button */}
-        {onOpenCloudAuthModal && (
-          <button
-            onClick={onOpenCloudAuthModal}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shadow-sm transition active:scale-95 ${
-              cloudUserEmail
-                ? 'text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30'
-                : 'text-cyan-300 bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-cyan-500/40'
-            }`}
-            title={
-              cloudUserEmail
-                ? `Cloud Sync Active (${cloudUserEmail})`
-                : 'Cloud Sync & Community Account (Sign In / Setup)'
-            }
-          >
-            <Cloud className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-pulse text-emerald-400' : cloudUserEmail ? 'text-emerald-400' : 'text-cyan-400'}`} />
-            <span className="hidden 2xl:inline max-w-[100px] truncate">
-              {cloudUserEmail ? (isCloudSyncing ? 'Syncing...' : 'Synced') : 'Cloud'}
-            </span>
-          </button>
-        )}
-
-        {/* My Projects Vault Button */}
+        {/* Unified Projects & Cloud Sync Button */}
         {onOpenProjectVaultModal && (
           <button
             onClick={onOpenProjectVaultModal}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 shadow-sm transition active:scale-95"
-            title="Open My Projects Vault (WIPs & saved designs)"
+            title={
+              cloudUserEmail
+                ? `Projects Vault • Cloud Sync active (${cloudUserEmail})`
+                : 'Open My Projects Vault (WIPs & saved designs)'
+            }
           >
             <FolderArchive className="w-3.5 h-3.5 text-indigo-400" />
             <span className="hidden sm:inline">Projects</span>
@@ -459,32 +419,437 @@ export const Header: React.FC<HeaderProps> = ({
                 {savedProjectsCount}
               </span>
             )}
+            {cloudUserEmail && (
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isCloudSyncing ? 'bg-cyan-400 animate-pulse' : 'bg-emerald-400'
+                }`}
+              />
+            )}
           </button>
         )}
 
-        {/* Community Pattern Showcase Button */}
-        {onOpenStarterGallery && (
+        {/* Categorized Tools Mega-Popover */}
+        <div className="relative" ref={menuRef}>
           <button
-            onClick={onOpenStarterGallery}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-pink-300 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 hover:border-pink-500/50 shadow-sm transition active:scale-95"
-            title="Browse Community Pattern Showcase & Discovery (32 curated designs across all 8 crafts)"
+            onClick={() => setIsProjectMenuOpen(!isProjectMenuOpen)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border shadow-sm transition ${
+              isProjectMenuOpen
+                ? 'bg-indigo-600/20 border-indigo-500/50 text-white'
+                : 'bg-slate-900 border-slate-800 text-slate-200 hover:text-white hover:bg-slate-800'
+            }`}
+            title="All Studio tools, calculators, cloud sync & standalone pages"
           >
             <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-            <span className="hidden xl:inline">Showcase</span>
+            <span className="hidden sm:inline">Tools</span>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isProjectMenuOpen ? 'rotate-180' : ''}`} />
           </button>
-        )}
 
-        {/* Smart Craft Supply Kit Button */}
-        {onOpenMaterialKitModal && (
-          <button
-            onClick={onOpenMaterialKitModal}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 hover:border-amber-500/50 shadow-sm transition active:scale-95"
-            title="Smart Craft Supply Kit & 1-Click Amazon Checkout (Fabric, Hoop, Tools & Palette)"
-          >
-            <Package className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden xl:inline">Supply Kit</span>
-          </button>
-        )}
+          {isProjectMenuOpen && (
+            <div className="absolute right-0 mt-2 w-[min(94vw,640px)] max-h-[82vh] overflow-y-auto bg-slate-950/98 backdrop-blur-2xl border border-slate-700/80 rounded-2xl shadow-2xl p-3 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Column 1: Create & Edit */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-300/90 border-b border-slate-800/80 mb-1">
+                    Create &amp; Edit
+                  </div>
+
+                  {onOpenNewCanvasModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenNewCanvasModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Paintbrush className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>New Blank Canvas</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setIsProjectMenuOpen(false);
+                      onOpenAiModal();
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-purple-300 hover:bg-slate-800 transition text-left"
+                  >
+                    <Wand2 className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    <span>AI Motif Generator</span>
+                  </button>
+
+                  {onOpenBgRemoverModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenBgRemoverModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-teal-300 hover:bg-slate-800 transition text-left"
+                    >
+                      <Eraser className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                      <span>Background Remover</span>
+                    </button>
+                  )}
+
+                  {onOpenPixelTextModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenPixelTextModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Type className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Pixel Text &amp; Monogram</span>
+                    </button>
+                  )}
+
+                  {onOpenBorderModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenBorderModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-pink-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Frame className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                      <span>Border &amp; Sampler Frame</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-slate-800 transition text-left"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>Import JSON / .OXS</span>
+                  </button>
+
+                  <div className="my-1 border-t border-slate-800/80" />
+
+                  <button
+                    onClick={() => {
+                      setIsProjectMenuOpen(false);
+                      onResetProgress();
+                    }}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition text-left"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Reset Stitch Tracker</span>
+                  </button>
+
+                  {onClearEverything && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onClearEverything();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-rose-300 hover:bg-rose-950/40 hover:text-rose-200 transition text-left"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Start Fresh (Reset)</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Column 2: Stitch & Supplies */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300/90 border-b border-slate-800/80 mb-1">
+                    Stitch &amp; Supplies
+                  </div>
+
+                  {onOpenMaterialKitModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenMaterialKitModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left font-semibold"
+                    >
+                      <Package className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Smart Supply Kit</span>
+                    </button>
+                  )}
+
+                  {onOpenShoppingTripModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenShoppingTripModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
+                    >
+                      <ShoppingCart className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Shopping Checklist</span>
+                    </button>
+                  )}
+
+                  {onOpenMyStashModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenMyStashModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-emerald-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Package className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>My Floss &amp; Bead Stash</span>
+                    </button>
+                  )}
+
+                  {onOpenSizeAndFrameModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenSizeAndFrameModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Ruler className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <span>Size &amp; Framing</span>
+                    </button>
+                  )}
+
+                  {onOpenCalculatorsModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenCalculatorsModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Calculator className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Craft Calculators</span>
+                    </button>
+                  )}
+
+                  {onOpenColorChartModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenColorChartModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left"
+                    >
+                      <Palette className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <span>Color Chart &amp; Hex</span>
+                    </button>
+                  )}
+
+                  {onOpenStitchCompanionModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenStitchCompanionModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-teal-300 hover:bg-slate-800 transition text-left"
+                    >
+                      <Smartphone className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                      <span>Stitch Companion</span>
+                    </button>
+                  )}
+
+                  {onOpenWipTrackerModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenWipTrackerModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-emerald-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Timer className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>WIP Timer &amp; Stats</span>
+                      {isWipTimerRunning && (
+                        <span className="ml-auto text-[10px] font-mono text-emerald-400">
+                          {formatDurationClock(wipSessionSeconds)}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {/* Column 3: Community & Standalone Pages */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-pink-300/90 border-b border-slate-800/80 mb-1">
+                    Community &amp; Pages
+                  </div>
+
+                  {onOpenStarterGallery && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenStarterGallery();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left font-semibold"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                      <span>Starter Gallery</span>
+                    </button>
+                  )}
+
+                  {onOpenPublishModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenPublishModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-pink-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                      <span>Publish Short Link</span>
+                    </button>
+                  )}
+
+                  {onOpenSocialCardModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenSocialCardModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-rose-300 hover:bg-slate-800 transition text-left"
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Share Social Card</span>
+                    </button>
+                  )}
+
+                  {onOpenTimelapseModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenTimelapseModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-rose-200 hover:bg-slate-800 transition text-left"
+                    >
+                      <Video className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Timelapse Video</span>
+                    </button>
+                  )}
+
+                  {onOpenEtsyKitModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenEtsyKitModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Etsy Seller Kit</span>
+                    </button>
+                  )}
+
+                  {onOpenCloudAuthModal && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onOpenCloudAuthModal();
+                      }}
+                      className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-cyan-300 hover:bg-slate-800 transition text-left font-semibold"
+                    >
+                      <Cloud className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span>{cloudUserEmail ? 'Cloud Sync (On)' : 'Cloud Sync Sign In'}</span>
+                    </button>
+                  )}
+
+                  <div className="my-1 border-t border-slate-800/80" />
+
+                  <Link
+                    to="/oxs-viewer"
+                    onClick={() => setIsProjectMenuOpen(false)}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
+                  >
+                    <FileCode2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>.OXS Pattern Viewer</span>
+                  </Link>
+
+                  <Link
+                    to="/tools/color-substitutor"
+                    onClick={() => setIsProjectMenuOpen(false)}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>Color Substitutor</span>
+                  </Link>
+
+                  <Link
+                    to="/community"
+                    onClick={() => setIsProjectMenuOpen(false)}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                    <span>Community Hub</span>
+                  </Link>
+
+                  <Link
+                    to="/about"
+                    onClick={() => setIsProjectMenuOpen(false)}
+                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition text-left"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>About &amp; License</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Utility Bar Footer */}
+              <div className="border-t border-slate-800/80 pt-2.5 mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {onToggleZenMode && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        onToggleZenMode();
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition ${
+                        isZenMode
+                          ? 'bg-indigo-600/30 border-indigo-500/60 text-indigo-200 font-semibold'
+                          : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {isZenMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                      <span>{isZenMode ? 'Exit Focus Mode' : 'Focus Mode'}</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => {
+                      setIsProjectMenuOpen(false);
+                      onToggleHelpModal();
+                    }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Help &amp; Guide</span>
+                  </button>
+
+                  {!isInstalled && (
+                    <button
+                      onClick={() => {
+                        setIsProjectMenuOpen(false);
+                        handleInstallClick();
+                      }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-indigo-300 hover:text-white transition"
+                    >
+                      <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Install App</span>
+                    </button>
+                  )}
+                </div>
+
+                <a
+                  href="https://buymeacoffee.com/orjustdosomething"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 hover:text-amber-200 transition font-semibold"
+                >
+                  <Coffee className="w-3.5 h-3.5" />
+                  <span>Buy Me a Coffee</span>
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Palette Panel Toggle (Desktop) */}
         {onToggleRightPanel && (
@@ -501,464 +866,14 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        {/* Social Card / Share Button */}
-        {onOpenSocialCardModal && (
-          <button
-            onClick={onOpenSocialCardModal}
-            className="hidden md:flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition"
-            title="Create an aesthetic social card for Pinterest, TikTok & Instagram"
-          >
-            <Share2 className="w-3.5 h-3.5 text-rose-400" />
-            <span className="hidden xl:inline">Share</span>
-          </button>
-        )}
-
-        {/* Buy Me a Coffee (Sleek compact badge) */}
-        <a
-          href="https://buymeacoffee.com/orjustdosomething"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-1.5 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/30 transition flex items-center justify-center shrink-0"
-          title="Support Pixel Craft Studio on Buy Me a Coffee"
-        >
-          <Coffee className="w-4 h-4" />
-        </a>
-
-        {/* Help / Guide button */}
-        <button
-          onClick={onToggleHelpModal}
-          className="hidden sm:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800 transition shrink-0"
-          title="Guide & craft instructions"
-        >
-          <HelpCircle className="w-4 h-4" />
-        </button>
-
-        {/* Project Options / More Dropdown */}
-        <div className="relative" ref={menuRef}>
-          <button
-            onClick={() => setIsProjectMenuOpen(!isProjectMenuOpen)}
-            className={`p-1.5 rounded-lg border transition ${
-              isProjectMenuOpen
-                ? 'bg-slate-800 border-slate-700 text-white'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-            }`}
-            title="More tools & project options"
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-
-          {isProjectMenuOpen && (
-            <div className="absolute right-0 mt-1.5 w-56 bg-slate-900/95 backdrop-blur-xl border border-slate-700/80 rounded-xl shadow-2xl p-1.5 z-50 text-xs flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100">
-              {onOpenProjectVaultModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenProjectVaultModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <FolderArchive className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>My Projects Vault</span>
-                  {savedProjectsCount > 0 && (
-                    <span className="ml-auto px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
-                      {savedProjectsCount}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {onOpenNewCanvasModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenNewCanvasModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
-                >
-                  <Paintbrush className="w-3.5 h-3.5 text-amber-400" />
-                  <span>New Blank Canvas (Draw)</span>
-                </button>
-              )}
-
-              {onOpenBgRemoverModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenBgRemoverModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-teal-300 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <Eraser className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Smart Background Remover</span>
-                </button>
-              )}
-
-              {onOpenStarterGallery && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenStarterGallery();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Browse Starter Patterns</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  setIsProjectMenuOpen(false);
-                  onOpenAiModal();
-                }}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-purple-300 hover:bg-slate-800 transition text-left"
-              >
-                <Wand2 className="w-3.5 h-3.5 text-purple-400" />
-                <span>Ask AI Motif Generator</span>
-              </button>
-
-              {/* Mobile-only Quick Actions */}
-              {onOpenSocialCardModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenSocialCardModal();
-                  }}
-                  className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg text-rose-300 hover:bg-slate-800 transition text-left"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Share Social Card</span>
-                </button>
-              )}
-
-              {onToggleZenMode && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onToggleZenMode();
-                  }}
-                  className="md:hidden flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left"
-                >
-                  {isZenMode ? <Minimize2 className="w-3.5 h-3.5 text-indigo-400" /> : <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />}
-                  <span>{isZenMode ? 'Exit Focus Mode' : 'Focus Canvas Mode'}</span>
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  setIsProjectMenuOpen(false);
-                  onToggleHelpModal();
-                }}
-                className="sm:hidden flex items-center gap-2 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition text-left"
-              >
-                <HelpCircle className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Help & Guide</span>
-              </button>
-
-              <div className="my-1 border-t border-slate-800/80" />
-
-              <button
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 transition text-left"
-              >
-                <FolderOpen className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Import Project (JSON / .OXS)</span>
-              </button>
-
-              {/* Etsy & Seller Commercial Kit */}
-              {onOpenEtsyKitModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenEtsyKitModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left"
-                >
-                  <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Etsy & Commercial Kit</span>
-                </button>
-              )}
-
-              {/* Size & Frame Calculator */}
-              {onOpenSizeAndFrameModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenSizeAndFrameModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 transition text-left"
-                >
-                  <Ruler className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Size & Framing Calculator</span>
-                </button>
-              )}
-
-              {/* Animated Timelapse Generator */}
-              {onOpenTimelapseModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenTimelapseModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-rose-300 hover:bg-slate-800 transition text-left"
-                >
-                  <Video className="w-3.5 h-3.5 text-rose-400" />
-                  <span>Social Timelapse Video</span>
-                </button>
-              )}
-
-              {/* Pixel Text & Monogram Tool */}
-              {onOpenPixelTextModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenPixelTextModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-200 hover:bg-slate-800 transition text-left"
-                >
-                  <Type className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Pixel Text & Monogram</span>
-                </button>
-              )}
-
-              {/* Decorative Border & Sampler Builder */}
-              {onOpenBorderModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenBorderModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-200 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <Frame className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Border & Sampler Frame</span>
-                </button>
-              )}
-
-              {/* My Stash Inventory */}
-              {onOpenMyStashModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenMyStashModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
-                >
-                  <Package className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>My Floss & Bead Stash</span>
-                </button>
-              )}
-
-              {/* Stitch Companion Focus Mode */}
-              {onOpenStitchCompanionModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenStitchCompanionModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-teal-300 hover:bg-slate-800 transition text-left"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Stitch Companion (Phone Mode)</span>
-                </button>
-              )}
-
-              {/* WIP Timer & Progress Stats Card */}
-              {onOpenWipTrackerModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenWipTrackerModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-200 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <Timer className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>WIP Timer & Stats Card</span>
-                  {isWipTimerRunning && (
-                    <span className="ml-auto text-[10px] font-mono text-emerald-400">
-                      {formatDurationClock(wipSessionSeconds)}
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {/* Publish & Short Share Link (/p/:id) */}
-              {onOpenPublishModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenPublishModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <Share2 className="w-3.5 h-3.5 text-pink-400" />
-                  <span>Publish &amp; Short Link (/p/:id)</span>
-                </button>
-              )}
-
-              {/* Cloud Account & Sync */}
-              {onOpenCloudAuthModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenCloudAuthModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-cyan-300 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{cloudUserEmail ? 'Cloud Sync (Connected)' : 'Cloud Sync & Sign In'}</span>
-                </button>
-              )}
-
-              {/* Smart Craft Supply Kit & 1-Click Amazon Checkout */}
-              {onOpenMaterialKitModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenMaterialKitModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <Package className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Smart Craft Supply Kit</span>
-                </button>
-              )}
-
-              {/* In-Store Shopping Trip Mode */}
-              {onOpenShoppingTripModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenShoppingTripModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
-                >
-                  <ShoppingCart className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>In-Store Shopping Checklist</span>
-                </button>
-              )}
-
-              {/* Craft Calculators Suite */}
-              {onOpenCalculatorsModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenCalculatorsModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-amber-300 hover:bg-slate-800 transition text-left"
-                >
-                  <Calculator className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Craft Calculators Suite</span>
-                </button>
-              )}
-
-              {/* Interactive Thread & Bead Color Chart */}
-              {onOpenColorChartModal && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onOpenColorChartModal();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left font-semibold"
-                >
-                  <Palette className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Color Chart & Hex Matcher</span>
-                </button>
-              )}
-
-              <div className="my-1 border-t border-slate-800/80" />
-              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Standalone Pages
-              </div>
-
-              <Link
-                to="/oxs-viewer"
-                onClick={() => setIsProjectMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-emerald-300 hover:bg-slate-800 transition text-left"
-              >
-                <FileCode2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>.OXS Pattern Viewer</span>
-              </Link>
-
-              <Link
-                to="/tools/color-substitutor"
-                onClick={() => setIsProjectMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Color Substitutor &amp; Blends</span>
-              </Link>
-
-              <Link
-                to="/community"
-                onClick={() => setIsProjectMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-pink-300 hover:bg-slate-800 transition text-left"
-              >
-                <Globe className="w-3.5 h-3.5 text-pink-400" />
-                <span>Community Showcase Hub</span>
-              </Link>
-
-              <Link
-                to="/about"
-                onClick={() => setIsProjectMenuOpen(false)}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition text-left"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                <span>About, License &amp; Privacy</span>
-              </Link>
-
-              <div className="my-1 border-t border-slate-800/80" />
-
-              <button
-                onClick={() => {
-                  setIsProjectMenuOpen(false);
-                  onResetProgress();
-                }}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-slate-200 hover:bg-slate-800 transition text-left"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Reset Stitch Tracker</span>
-              </button>
-
-              {onClearEverything && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    onClearEverything();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-red-300 hover:bg-red-950/40 hover:text-red-200 transition text-left"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-red-400" />
-                  <span>Start Fresh (Reset All)</span>
-                </button>
-              )}
-
-              {!isInstalled && (
-                <button
-                  onClick={() => {
-                    setIsProjectMenuOpen(false);
-                    handleInstallClick();
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-indigo-300 hover:bg-slate-800 transition text-left border-t border-slate-800/80 pt-2"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Install Web App</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Primary Call to Action: Export & Print */}
         <button
           onClick={onOpenExportModal}
-          className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-600/25 transition active:scale-95 ml-1"
-          title="Export pattern as PDF, PNG, or JSON"
+          className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-lg shadow-indigo-600/25 transition active:scale-95"
+          title="Export pattern as PDF, PNG, .OXS, or .SVG"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Export<span className="hidden lg:inline">&nbsp;& Print</span></span>
+          <span>Export</span>
         </button>
       </div>
 

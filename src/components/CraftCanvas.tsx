@@ -39,7 +39,8 @@ import {
   Trash2,
   Circle,
   Frame,
-  SplitSquareHorizontal
+  SplitSquareHorizontal,
+  SlidersHorizontal
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { audioFeedback } from '../utils/audioFeedback';
@@ -200,9 +201,17 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
   }
   const effectiveSplitCompare = isSplitCompare && !!sourceImage;
 
-  // Transform popover & wrap state
+  // Transform & dock popover states
   const [isTransformOpen, setIsTransformOpen] = useState(false);
+  const [isShapesMenuOpen, setIsShapesMenuOpen] = useState(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
   const [wrapShift, setWrapShift] = useState(false);
+
+  const closeDockPopovers = () => {
+    setIsTransformOpen(false);
+    setIsShapesMenuOpen(false);
+    setIsViewMenuOpen(false);
+  };
 
   // Magic Wand & Backstitch states
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
@@ -212,7 +221,6 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
   // Retro display shaders & authentic textures
   const [activeShader, setActiveShader] = useState<DisplayShader>('craft');
-  const [isShaderOpen, setIsShaderOpen] = useState(false);
 
   // Tonal Contrast / Grayscale Value Check mode
   const [isValueCheckActive, setIsValueCheckActive] = useState<boolean>(false);
@@ -2270,59 +2278,369 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
         </div>
       )}
 
-      {/* Shaders Popover Panel */}
-      {isShaderOpen && (
+      {/* Shapes & Stamp Flyout Popover */}
+      {isShapesMenuOpen && (
         <div className="absolute bottom-32 lg:bottom-20 left-1/2 -translate-x-1/2 z-30 bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-2.5 shadow-2xl flex flex-col gap-1 min-w-[240px] max-w-[90vw] animate-in fade-in zoom-in-95 duration-150">
-          <div className="flex items-center justify-between border-b border-slate-800/90 pb-1.5 px-1 mb-1">
+          <div className="flex items-center justify-between border-b border-slate-800/90 pb-1.5 px-1 mb-0.5">
             <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-              <Tv className="w-3.5 h-3.5 text-emerald-400" />
-              Display Shaders
+              <PenTool className="w-3.5 h-3.5 text-cyan-400" />
+              Shapes, Outlines &amp; Stamps
             </span>
             <button
-              onClick={() => setIsShaderOpen(false)}
+              onClick={() => setIsShapesMenuOpen(false)}
               className="text-slate-500 hover:text-slate-200 text-xs px-1"
             >
               ✕
             </button>
           </div>
-          {[
-            { id: 'craft', label: 'Default Craft Style', desc: 'Simulated stitches or perler beads', icon: '🖼️' },
-            { id: 'crt', label: 'Retro CRT Arcade', desc: 'Scanlines, phosphor glow & vignette', icon: '📺' },
-            { id: 'gameboy', label: 'Game Boy LCD', desc: 'Classic 4-tone DMG dot-matrix', icon: '🕹️' },
-            { id: 'aida', label: 'Woven Aida Cloth', desc: 'Cross-stitch woven fabric texture', icon: '🧵' },
-            { id: 'glossy_bead', label: 'Glossy Melted Beads', desc: 'Shiny Perler bead fused highlight', icon: '🔮' },
-          ].map((item) => (
+
+          <button
+            onClick={() => {
+              setTool('line');
+              setIsShapesMenuOpen(false);
+            }}
+            className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+              tool === 'line'
+                ? 'bg-blue-600/30 border border-blue-500/50 text-blue-200'
+                : 'text-slate-300 hover:bg-slate-800/80'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Slash className="w-3.5 h-3.5 text-blue-400" />
+              <span>Line Tool (L)</span>
+            </span>
+            {tool === 'line' && <Check className="w-3.5 h-3.5 text-blue-400" />}
+          </button>
+
+          <button
+            onClick={() => {
+              setTool('rectangle');
+              setIsShapesMenuOpen(false);
+            }}
+            className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+              tool === 'rectangle'
+                ? 'bg-teal-600/30 border border-teal-500/50 text-teal-200'
+                : 'text-slate-300 hover:bg-slate-800/80'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Square className="w-3.5 h-3.5 text-teal-400" />
+              <span>Rectangle / Box (U)</span>
+            </span>
+            {tool === 'rectangle' && <Check className="w-3.5 h-3.5 text-teal-400" />}
+          </button>
+
+          <button
+            onClick={() => {
+              setTool('backstitch');
+              setIsShapesMenuOpen(false);
+            }}
+            className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+              tool === 'backstitch'
+                ? 'bg-rose-600/30 border border-rose-500/50 text-rose-200'
+                : 'text-slate-300 hover:bg-slate-800/80'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <PenTool className="w-3.5 h-3.5 text-rose-400" />
+              <span>Backstitch Outline (K)</span>
+            </span>
+            {tool === 'backstitch' && <Check className="w-3.5 h-3.5 text-rose-400" />}
+          </button>
+
+          {(onOpenPixelTextModal || onOpenBorderModal) && (
+            <div className="my-0.5 border-t border-slate-800/80" />
+          )}
+
+          {onOpenPixelTextModal && (
             <button
-              key={item.id}
               onClick={() => {
-                setActiveShader(item.id as DisplayShader);
-                setIsShaderOpen(false);
+                setIsShapesMenuOpen(false);
+                onOpenPixelTextModal();
               }}
-              className={`flex items-center justify-between p-2 rounded-xl text-left transition ${
-                activeShader === item.id
-                  ? 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-200'
-                  : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
-              }`}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-amber-200 hover:bg-slate-800/80 transition"
             >
-              <div className="flex items-center gap-2">
-                <span className="text-base">{item.icon}</span>
-                <div>
-                  <div className="text-xs font-semibold">{item.label}</div>
-                  <div className="text-[10px] text-slate-400">{item.desc}</div>
-                </div>
-              </div>
-              {activeShader === item.id && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+              <Type className="w-3.5 h-3.5 text-amber-400" />
+              <span>Pixel Text &amp; Monogram</span>
             </button>
-          ))}
+          )}
+
+          {onOpenBorderModal && (
+            <button
+              onClick={() => {
+                setIsShapesMenuOpen(false);
+                onOpenBorderModal();
+              }}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-pink-200 hover:bg-slate-800/80 transition"
+            >
+              <Frame className="w-3.5 h-3.5 text-pink-400" />
+              <span>Border &amp; Sampler Frame</span>
+            </button>
+          )}
         </div>
       )}
 
-      {/* Floating Canvas Dock (Bottom-Center Compact Ergonomic Bar) */}
+      {/* View & Display Popover Panel */}
+      {isViewMenuOpen && (
+        <div className="absolute bottom-32 lg:bottom-20 left-1/2 -translate-x-1/2 z-30 bg-slate-950/95 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5 w-[min(92vw,310px)] animate-in fade-in zoom-in-95 duration-150">
+          <div className="flex items-center justify-between border-b border-slate-800/90 pb-1.5">
+            <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-400" />
+              View &amp; Display Options
+            </span>
+            <button
+              onClick={() => setIsViewMenuOpen(false)}
+              className="text-slate-500 hover:text-slate-200 text-xs px-1"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Display Shaders */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <Tv className="w-3 h-3 text-emerald-400" />
+              Display Shader
+            </span>
+            <div className="grid grid-cols-5 gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+              {[
+                { id: 'craft' as const, label: 'Craft' },
+                { id: 'crt' as const, label: 'CRT' },
+                { id: 'gameboy' as const, label: 'GB' },
+                { id: 'aida' as const, label: 'Aida' },
+                { id: 'glossy_bead' as const, label: 'Beads' },
+              ].map((sh) => (
+                <button
+                  key={sh.id}
+                  onClick={() => setActiveShader(sh.id)}
+                  className={`py-1 rounded-lg text-[10px] font-bold transition ${
+                    activeShader === sh.id
+                      ? 'bg-emerald-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {sh.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Toggles List */}
+          <div className="flex flex-col gap-1 text-xs">
+            <button
+              onClick={() => setIsValueCheckActive((prev) => !prev)}
+              className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition ${
+                isValueCheckActive
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-200 font-semibold'
+                  : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Contrast className="w-3.5 h-3.5 text-amber-400" />
+                <span>Tonal Value Check</span>
+              </span>
+              {isValueCheckActive && <Check className="w-3.5 h-3.5 text-amber-400" />}
+            </button>
+
+            {onToggleShapeMask && (
+              <button
+                onClick={onToggleShapeMask}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition ${
+                  config.shapeMask && config.shapeMask !== 'none'
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-200 font-semibold'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Circle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Hoop &amp; Frame Mask</span>
+                </span>
+                <span className="text-[10px] font-mono uppercase text-slate-300">
+                  {config.shapeMask === 'round-hoop'
+                    ? 'Round'
+                    : config.shapeMask === 'oval-hoop'
+                    ? 'Oval'
+                    : config.shapeMask === 'heart'
+                    ? 'Heart'
+                    : 'Off'}
+                </span>
+              </button>
+            )}
+
+            {sourceImage && (
+              <button
+                onClick={() => {
+                  setIsSplitCompare((prev) => !prev);
+                  setIsViewMenuOpen(false);
+                }}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl border transition ${
+                  effectiveSplitCompare
+                    ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-200 font-semibold'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <SplitSquareHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Before/After Photo Split</span>
+                </span>
+                {effectiveSplitCompare && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+              </button>
+            )}
+
+            {onInspectSourceImage && (
+              <button
+                onClick={() => {
+                  setIsViewMenuOpen(false);
+                  onInspectSourceImage();
+                }}
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-xl border bg-slate-900/70 border-slate-800 text-slate-300 hover:bg-slate-800 transition"
+              >
+                <span className="flex items-center gap-2">
+                  <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Inspect Source Picture</span>
+                </span>
+              </button>
+            )}
+
+            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              <button
+                onClick={handleToggleSound}
+                className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-[11px] font-semibold transition ${
+                  soundEnabled
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                <span>{soundEnabled ? 'Sound On' : 'Muted'}</span>
+              </button>
+
+              <button
+                onClick={toggleWakeLock}
+                className={`flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl border text-[11px] font-semibold transition ${
+                  isWakeLockActive
+                    ? 'bg-teal-500/20 border-teal-500/50 text-teal-200'
+                    : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span>{isWakeLockActive ? 'Awake On' : 'Wake Lock'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Zoom Strip inside View Popover */}
+          <div className="md:hidden pt-1 border-t border-slate-800 flex items-center justify-between gap-1">
+            <button
+              onClick={() => {
+                const newZoom = Math.max(0.15, zoom * 0.8);
+                setZoom(newZoom);
+                onSetZoom?.(newZoom);
+              }}
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300"
+              title="Zoom Out (-)"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={fitToScreen}
+              className="px-2 py-1 rounded-lg text-slate-200 font-mono text-[11px] bg-slate-900 border border-slate-800"
+              title="Fit Canvas to Screen"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              onClick={() => {
+                const newZoom = Math.min(8, zoom * 1.25);
+                setZoom(newZoom);
+                onSetZoom?.(newZoom);
+              }}
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300"
+              title="Zoom In (+)"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={fitToScreen}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-semibold text-slate-200"
+              title="Fit to screen"
+            >
+              <Maximize2 className="w-3 h-3" />
+              <span>Fit</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bottom-Left Undo / Redo HUD (Desktop) */}
+      <div className="hidden md:flex absolute bottom-4 left-4 z-20 items-center gap-0.5 bg-slate-950/90 backdrop-blur-xl p-1 rounded-xl border border-slate-800/90 shadow-xl pointer-events-auto">
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition"
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition"
+          title="Redo (Ctrl+Y)"
+        >
+          <Redo2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Floating Bottom-Right Zoom HUD (Desktop) */}
+      <div className="hidden md:flex absolute bottom-4 right-4 z-20 items-center gap-0.5 bg-slate-950/90 backdrop-blur-xl p-1 rounded-xl border border-slate-800/90 shadow-xl pointer-events-auto">
+        <button
+          onClick={() => {
+            const newZoom = Math.max(0.15, zoom * 0.8);
+            setZoom(newZoom);
+            onSetZoom?.(newZoom);
+          }}
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition"
+          title="Zoom Out (-)"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={fitToScreen}
+          className="px-2 py-1 rounded-lg text-slate-200 hover:bg-slate-800 hover:text-white transition text-[11px] font-mono font-medium"
+          title="Fit Canvas to Screen"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          onClick={() => {
+            const newZoom = Math.min(8, zoom * 1.25);
+            setZoom(newZoom);
+            onSetZoom?.(newZoom);
+          }}
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition"
+          title="Zoom In (+)"
+        >
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={fitToScreen}
+          className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition"
+          title="Fit to screen"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Floating Canvas Dock (Bottom-Center Compact Core Bar) */}
       <div className="absolute bottom-16 lg:bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 bg-slate-950/95 backdrop-blur-xl p-1 sm:p-1.5 rounded-2xl border border-slate-700/80 shadow-2xl max-w-[calc(100%-1rem)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pointer-events-auto">
         {/* Navigation & Tracking Mode */}
         <div className="flex items-center bg-slate-900/90 rounded-xl p-0.5 border border-slate-800/80 shrink-0 gap-0.5">
           <button
-            onClick={() => setTool('pan')}
+            onClick={() => {
+              closeDockPopovers();
+              setTool('pan');
+            }}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'pan' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
@@ -2332,7 +2650,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           </button>
 
           <button
-            onClick={() => setTool('tracker')}
+            onClick={() => {
+              closeDockPopovers();
+              setTool('tracker');
+            }}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'tracker' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
@@ -2344,10 +2665,13 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
 
         <div className="w-[1px] h-4 bg-slate-800 shrink-0" />
 
-        {/* Pixel Art Studio Drawing Tools */}
+        {/* Core Drawing Tools */}
         <div className="flex items-center bg-slate-900/90 rounded-xl p-0.5 border border-slate-800/80 shrink-0 gap-0.5">
           <button
-            onClick={() => setTool('pencil')}
+            onClick={() => {
+              closeDockPopovers();
+              setTool('pencil');
+            }}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'pencil' ? 'bg-amber-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
@@ -2357,7 +2681,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           </button>
 
           <button
-            onClick={() => setTool('eraser')}
+            onClick={() => {
+              closeDockPopovers();
+              setTool('eraser');
+            }}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'eraser' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
@@ -2367,7 +2694,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           </button>
 
           <button
-            onClick={() => setTool('bucket')}
+            onClick={() => {
+              closeDockPopovers();
+              setTool('bucket');
+            }}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'bucket' ? 'bg-cyan-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
@@ -2377,7 +2707,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           </button>
 
           <button
-            onClick={() => setTool('wand')}
+            onClick={() => {
+              closeDockPopovers();
+              setTool('wand');
+            }}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'wand' ? 'bg-cyan-500 text-slate-950 font-bold shadow-md ring-1 ring-cyan-300' : 'text-slate-400 hover:text-cyan-300 hover:bg-slate-800/60'
             }`}
@@ -2387,7 +2720,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           </button>
 
           <button
-            onClick={() => setTool('eyedropper')}
+            onClick={() => {
+              closeDockPopovers();
+              setTool('eyedropper');
+            }}
             className={`p-1.5 rounded-lg transition-all ${
               tool === 'eyedropper' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
@@ -2396,71 +2732,34 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             <Pipette className="w-3.5 h-3.5" />
           </button>
 
+          {/* Shapes, Backstitch & Stamps Flyout Toggle */}
           <button
-            onClick={() => setTool('line')}
+            onClick={() => {
+              const next = !isShapesMenuOpen;
+              closeDockPopovers();
+              setIsShapesMenuOpen(next);
+            }}
             className={`p-1.5 rounded-lg transition-all ${
-              tool === 'line' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              isShapesMenuOpen || tool === 'line' || tool === 'rectangle' || tool === 'backstitch'
+                ? 'bg-blue-600 text-white shadow-md ring-1 ring-blue-400'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
-            title="Line Tool (L): Drag to draw straight lines"
+            title="Shapes, Backstitch (K), Text & Borders (Line L / Rect U)"
           >
-            <Slash className="w-3.5 h-3.5" />
+            {tool === 'rectangle' ? (
+              <Square className="w-3.5 h-3.5" />
+            ) : tool === 'backstitch' ? (
+              <PenTool className="w-3.5 h-3.5" />
+            ) : (
+              <Slash className="w-3.5 h-3.5" />
+            )}
           </button>
+        </div>
 
-          <button
-            onClick={() => setTool('rectangle')}
-            className={`p-1.5 rounded-lg transition-all ${
-              tool === 'rectangle' ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-            title="Rectangle (U): Drag to draw boxes (Hold Shift for filled)"
-          >
-            <Square className="w-3.5 h-3.5" />
-          </button>
+        <div className="w-[1px] h-4 bg-slate-800 shrink-0" />
 
-          <button
-            onClick={() => setTool('backstitch')}
-            className={`p-1.5 rounded-lg transition-all ${
-              tool === 'backstitch' ? 'bg-rose-500 text-white shadow-md ring-1 ring-rose-300' : 'text-slate-400 hover:text-rose-300 hover:bg-slate-800/60'
-            }`}
-            title="Backstitch / Outline (K): Drag along grid edges to draw stitch outlines"
-          >
-            <PenTool className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Pixel Text & Monogram Tool */}
-          {onOpenPixelTextModal && (
-            <button
-              onClick={onOpenPixelTextModal}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-slate-800/60 transition-all"
-              title="Pixel Text & Monogram Tool: Stamp letters, names & dates"
-            >
-              <Type className="w-3.5 h-3.5 text-amber-400" />
-            </button>
-          )}
-
-          {/* Hoop & Frame Shape Mask Toggle */}
-          {onToggleShapeMask && (
-            <button
-              onClick={onToggleShapeMask}
-              className={`p-1.5 rounded-lg transition-all ${
-                config.shapeMask && config.shapeMask !== 'none'
-                  ? 'bg-amber-500 text-white shadow-md ring-1 ring-amber-300'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-              title={`Hoop & Frame Mask: ${
-                config.shapeMask === 'round-hoop'
-                  ? 'Round Hoop ⭕ (Click to switch to Oval)'
-                  : config.shapeMask === 'oval-hoop'
-                  ? 'Oval Frame ⬭ (Click to switch to Heart)'
-                  : config.shapeMask === 'heart'
-                  ? 'Heart Shape 💖 (Click to turn OFF)'
-                  : 'OFF (Click to preview in Round Hoop)'
-              }`}
-            >
-              <Circle className="w-3.5 h-3.5" />
-            </button>
-          )}
-
-          {/* Symmetry / Mirror Drawing Mode */}
+        {/* Canvas Controls: Mirror, Transform, View & Display */}
+        <div className="flex items-center gap-0.5 shrink-0">
           <button
             onClick={() => setIsMirrorMode((prev) => !prev)}
             className={`p-1.5 rounded-lg transition-all ${
@@ -2473,12 +2772,12 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             <FlipHorizontal2 className="w-3.5 h-3.5" />
           </button>
 
-          {/* Transform & Auto-Center Popover Toggle */}
           {onTransformGrid && (
             <button
               onClick={() => {
-                setIsTransformOpen((prev) => !prev);
-                setIsShaderOpen(false);
+                const next = !isTransformOpen;
+                closeDockPopovers();
+                setIsTransformOpen(next);
               }}
               className={`p-1.5 rounded-lg transition-all ${
                 isTransformOpen
@@ -2491,43 +2790,40 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
             </button>
           )}
 
-          {/* Retro Display Shaders & Authentic Textures Toggle */}
           <button
             onClick={() => {
-              setIsShaderOpen((prev) => !prev);
-              setIsTransformOpen(false);
+              const next = !isViewMenuOpen;
+              closeDockPopovers();
+              setIsViewMenuOpen(next);
             }}
-            className={`p-1.5 rounded-lg transition-all ${
-              isShaderOpen || activeShader !== 'craft'
-                ? 'bg-emerald-600 text-white shadow-md ring-1 ring-emerald-400'
+            className={`relative p-1.5 rounded-lg transition-all ${
+              isViewMenuOpen ||
+              activeShader !== 'craft' ||
+              isValueCheckActive ||
+              (config.shapeMask && config.shapeMask !== 'none') ||
+              effectiveSplitCompare
+                ? 'bg-indigo-600 text-white shadow-md ring-1 ring-indigo-400'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
-            title="Display Shaders: Retro CRT, Game Boy LCD, Woven Aida, Glossy Beads"
+            title="View & Display: Shaders, Value Check, Hoop Mask, Split Photo, Sound & Zoom"
           >
-            <Tv className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Tonal Contrast / Grayscale Value Check Toggle */}
-          <button
-            onClick={() => setIsValueCheckActive((prev) => !prev)}
-            className={`p-1.5 rounded-lg transition-all ${
-              isValueCheckActive
-                ? 'bg-amber-400 text-slate-950 font-bold shadow-md ring-1 ring-amber-300'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-            title="Tonal Value Check / Grayscale Contrast (Check light-vs-dark contrast)"
-          >
-            <Contrast className="w-3.5 h-3.5" />
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            {(activeShader !== 'craft' ||
+              isValueCheckActive ||
+              (config.shapeMask && config.shapeMask !== 'none') ||
+              effectiveSplitCompare ||
+              isWakeLockActive) && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 border border-slate-950" />
+            )}
           </button>
         </div>
 
-        {/* Undo / Redo */}
-        <div className="w-[1px] h-4 bg-slate-800 shrink-0" />
-        <div className="flex items-center gap-0.5 shrink-0">
+        {/* Mobile-only Undo / Redo inside Dock */}
+        <div className="md:hidden flex items-center gap-0.5 shrink-0 border-l border-slate-800 pl-1">
           <button
             onClick={onUndo}
             disabled={!canUndo}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition"
+            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-30 transition"
             title="Undo (Ctrl+Z)"
           >
             <Undo2 className="w-3.5 h-3.5" />
@@ -2535,118 +2831,10 @@ export const CraftCanvas: React.FC<CraftCanvasProps> = ({
           <button
             onClick={onRedo}
             disabled={!canRedo}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition"
+            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-30 transition"
             title="Redo (Ctrl+Y)"
           >
             <Redo2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Zoom Controls */}
-        <div className="w-[1px] h-4 bg-slate-800 shrink-0" />
-        <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            onClick={() => {
-              const newZoom = Math.max(0.15, zoom * 0.8);
-              setZoom(newZoom);
-              onSetZoom?.(newZoom);
-            }}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition"
-            title="Zoom Out (-)"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            onClick={fitToScreen}
-            className="px-1.5 py-1 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition text-[11px] font-mono font-medium"
-            title="Fit Canvas to Screen"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-
-          <button
-            onClick={() => {
-              const newZoom = Math.min(8, zoom * 1.25);
-              setZoom(newZoom);
-              onSetZoom?.(newZoom);
-            }}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition"
-            title="Zoom In (+)"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            onClick={fitToScreen}
-            className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition"
-            title="Fit to screen"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
-
-          {onOpenBorderModal && (
-            <button
-              onClick={onOpenBorderModal}
-              className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-pink-300 transition"
-              title="Add Decorative Border & Sampler Frame"
-            >
-              <Frame className="w-3.5 h-3.5 text-pink-400" />
-            </button>
-          )}
-
-          {sourceImage && (
-            <button
-              onClick={() => setIsSplitCompare((prev) => !prev)}
-              className={`p-1.5 rounded-lg transition ${
-                effectiveSplitCompare
-                  ? 'bg-indigo-600 text-white shadow-md ring-1 ring-indigo-400'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-              title={effectiveSplitCompare ? 'Close Before/After Photo Split Slider' : 'Before/After Photo Split Comparison Slider'}
-            >
-              <SplitSquareHorizontal className="w-3.5 h-3.5 text-cyan-400" />
-            </button>
-          )}
-
-          {onInspectSourceImage && (
-            <button
-              onClick={onInspectSourceImage}
-              className="p-1.5 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition"
-              title="Inspect original source picture"
-            >
-              <ImageIcon className="w-3.5 h-3.5 text-indigo-400" />
-            </button>
-          )}
-
-          {/* Stitch Sound & Haptics Toggle */}
-          <button
-            onClick={handleToggleSound}
-            className={`p-1.5 rounded-lg transition ${
-              soundEnabled
-                ? 'text-emerald-400 hover:text-emerald-300 hover:bg-slate-800'
-                : 'text-slate-500 hover:text-slate-400 hover:bg-slate-800'
-            }`}
-            title={soundEnabled ? 'Stitch sound effects ON (click to mute)' : 'Stitch sound effects MUTED (click to enable)'}
-          >
-            {soundEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-          </button>
-
-          {/* Screen Wake Lock Toggle (Couch Mode) */}
-          <button
-            onClick={toggleWakeLock}
-            className={`p-1.5 rounded-lg transition ${
-              isWakeLockActive
-                ? 'text-teal-300 bg-teal-500/20 shadow-xs'
-                : 'text-slate-500 hover:text-slate-400 hover:bg-slate-800'
-            }`}
-            title={
-              isWakeLockActive
-                ? 'Screen Wake Lock ON (Screen stays awake while crafting)'
-                : 'Keep Screen Awake (Couch mode - prevents phone/tablet from sleeping)'
-            }
-          >
-            <Smartphone className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

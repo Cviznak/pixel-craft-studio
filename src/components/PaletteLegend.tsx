@@ -93,6 +93,7 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
   const [swapSourceIndex, setSwapSourceIndex] = useState<number | null>(null);
   const [sortMode, setSortMode] = useState<'count' | 'hue' | 'luminance' | 'code'>('count');
   const [flossSystem, setFlossSystem] = useState<'dmc' | 'anchor' | 'both'>('dmc');
+  const [showPaletteOptions, setShowPaletteOptions] = useState<boolean>(false);
   const [showSimilarAlert, setShowSimilarAlert] = useState<boolean>(true);
   const [isMoodMenuOpen, setIsMoodMenuOpen] = useState<boolean>(false);
   const [isConvertMenuOpen, setIsConvertMenuOpen] = useState<boolean>(false);
@@ -271,285 +272,346 @@ const PaletteLegendComponent: React.FC<PaletteLegendProps> = ({
           </div>
         </div>
 
-        {/* Search Box */}
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search code, DMC/Anchor, name, symbol..."
-            className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-950/80 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-          />
-          {searchTerm && (
+        {/* Single-Row Disclosure Toggle for Filter, Sort & Palette Tools */}
+        <div className="flex items-center justify-between gap-1.5 bg-slate-950/60 border border-slate-800/80 rounded-lg px-2 py-1">
+          <button
+            type="button"
+            onClick={() => setShowPaletteOptions((prev) => !prev)}
+            className="flex-1 flex items-center gap-1.5 text-[11px] font-semibold text-slate-300 hover:text-white transition text-left min-w-0"
+          >
+            <ArrowUpDown className="w-3 h-3 text-indigo-400 shrink-0" />
+            <span>Filter, Sort &amp; Tools</span>
+            <ChevronDown
+              className={`w-3 h-3 text-slate-400 transition-transform shrink-0 ${
+                showPaletteOptions ? 'rotate-180' : ''
+              }`}
+            />
+            {(filterMode !== 'all' || sortMode !== 'count' || (isThreadCraft && flossSystem !== 'dmc') || searchTerm) && (
+              <span className="ml-auto flex items-center gap-1 truncate">
+                {filterMode !== 'all' && (
+                  <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-bold uppercase">
+                    {filterMode}
+                  </span>
+                )}
+                {sortMode !== 'count' && (
+                  <span className="px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 text-[9px] font-bold capitalize">
+                    {sortMode}
+                  </span>
+                )}
+                {isThreadCraft && flossSystem !== 'dmc' && (
+                  <span className="px-1.5 py-0.2 rounded bg-pink-500/20 text-pink-300 text-[9px] font-bold uppercase">
+                    {flossSystem}
+                  </span>
+                )}
+                {searchTerm && (
+                  <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[9px] font-bold max-w-[60px] truncate">
+                    &ldquo;{searchTerm}&rdquo;
+                  </span>
+                )}
+              </span>
+            )}
+          </button>
+
+          {(filterMode !== 'all' || sortMode !== 'count' || (isThreadCraft && flossSystem !== 'dmc') || searchTerm) && (
             <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-2 top-2 text-slate-500 hover:text-slate-300 text-xs"
+              type="button"
+              onClick={() => {
+                setSearchTerm('');
+                setFilterMode('all');
+                setSortMode('count');
+                setFlossSystem('dmc');
+              }}
+              className="p-0.5 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition shrink-0"
+              title="Reset filter, sort & search"
             >
-              ×
+              <X className="w-3 h-3" />
             </button>
           )}
         </div>
 
-        {/* Progress Filter Pills: All | To Do | Done */}
-        <div className="flex bg-slate-950/60 p-0.5 rounded-lg border border-slate-800/80 text-[10px] font-semibold">
-          <button
-            onClick={() => setFilterMode('all')}
-            className={`flex-1 py-1 rounded-md transition text-center ${
-              filterMode === 'all'
-                ? 'bg-slate-800 text-slate-100 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            All ({palette.length})
-          </button>
-          <button
-            onClick={() => setFilterMode('todo')}
-            className={`flex-1 py-1 rounded-md transition text-center ${
-              filterMode === 'todo'
-                ? 'bg-slate-800 text-amber-300 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            To Do
-          </button>
-          <button
-            onClick={() => setFilterMode('done')}
-            className={`flex-1 py-1 rounded-md transition text-center ${
-              filterMode === 'done'
-                ? 'bg-slate-800 text-emerald-400 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            Done
-          </button>
-        </div>
+        {showPaletteOptions && (
+          <div className="space-y-2 pt-0.5">
+            {/* Search Box */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search code, DMC/Anchor, name, symbol..."
+                className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-950/80 border border-slate-800 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-2 text-slate-500 hover:text-slate-300 text-xs"
+                >
+                  ×
+                </button>
+              )}
+            </div>
 
-        {/* Smart Floss Standards & Sorting Bar */}
-        <div className="pt-1 border-t border-slate-800/60 flex flex-col gap-1.5">
-          {/* Thread Standard Selector (DMC / Anchor / Both) for fiber/thread crafts */}
-          {isThreadCraft ? (
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-slate-400 font-medium">Floss System:</span>
-              <div className="flex items-center bg-slate-950/80 rounded-md p-0.5 border border-slate-800 font-semibold">
-                <button
-                  onClick={() => setFlossSystem('dmc')}
-                  className={`px-2 py-0.5 rounded transition ${
-                    flossSystem === 'dmc'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="DMC Stranded Cotton codes"
-                >
-                  DMC
-                </button>
-                <button
-                  onClick={() => setFlossSystem('anchor')}
-                  className={`px-2 py-0.5 rounded transition ${
-                    flossSystem === 'anchor'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="Anchor stranded cotton equivalent codes"
-                >
-                  Anchor
-                </button>
-                <button
-                  onClick={() => setFlossSystem('both')}
-                  className={`px-2 py-0.5 rounded transition ${
-                    flossSystem === 'both'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                  title="Show both DMC and Anchor codes"
-                >
-                  Both
-                </button>
+            {/* Progress Filter Pills: All | To Do | Done */}
+            <div className="flex bg-slate-950/60 p-0.5 rounded-lg border border-slate-800/80 text-[10px] font-semibold">
+              <button
+                onClick={() => setFilterMode('all')}
+                className={`flex-1 py-1 rounded-md transition text-center ${
+                  filterMode === 'all'
+                    ? 'bg-slate-800 text-slate-100 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                All ({palette.length})
+              </button>
+              <button
+                onClick={() => setFilterMode('todo')}
+                className={`flex-1 py-1 rounded-md transition text-center ${
+                  filterMode === 'todo'
+                    ? 'bg-slate-800 text-amber-300 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                To Do
+              </button>
+              <button
+                onClick={() => setFilterMode('done')}
+                className={`flex-1 py-1 rounded-md transition text-center ${
+                  filterMode === 'done'
+                    ? 'bg-slate-800 text-emerald-400 shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Done
+              </button>
+            </div>
+
+            {/* Smart Floss Standards & Sorting Bar */}
+            <div className="pt-1 border-t border-slate-800/60 flex flex-col gap-1.5">
+              {/* Thread Standard Selector (DMC / Anchor / Both) for fiber/thread crafts */}
+              {isThreadCraft ? (
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-slate-400 font-medium">Floss System:</span>
+                  <div className="flex items-center bg-slate-950/80 rounded-md p-0.5 border border-slate-800 font-semibold">
+                    <button
+                      onClick={() => setFlossSystem('dmc')}
+                      className={`px-2 py-0.5 rounded transition ${
+                        flossSystem === 'dmc'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="DMC Stranded Cotton codes"
+                    >
+                      DMC
+                    </button>
+                    <button
+                      onClick={() => setFlossSystem('anchor')}
+                      className={`px-2 py-0.5 rounded transition ${
+                        flossSystem === 'anchor'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Anchor stranded cotton equivalent codes"
+                    >
+                      Anchor
+                    </button>
+                    <button
+                      onClick={() => setFlossSystem('both')}
+                      className={`px-2 py-0.5 rounded transition ${
+                        flossSystem === 'both'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                      title="Show both DMC and Anchor codes"
+                    >
+                      Both
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-[9px] text-slate-400 bg-slate-950/40 px-2 py-1 rounded-md border border-slate-800/60 font-mono">
+                  <span>Bead System:</span>
+                  <span className="text-amber-300 font-sans font-semibold">Perler • Artkal S • Hama Midi</span>
+                </div>
+              )}
+
+              {/* Palette Sort Modes (Count | Rainbow | Value | Code) */}
+              <div className="flex items-center justify-between text-[10px]">
+                <span className="text-slate-400 font-medium flex items-center gap-1">
+                  <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                  Sort:
+                </span>
+                <div className="flex items-center bg-slate-950/80 rounded-md p-0.5 border border-slate-800 text-[10px] font-medium">
+                  <button
+                    onClick={() => setSortMode('count')}
+                    className={`px-1.5 py-0.5 rounded transition ${
+                      sortMode === 'count'
+                        ? 'bg-slate-700 text-slate-100 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Sort by stitch/bead count (most used first)"
+                  >
+                    Count
+                  </button>
+                  <button
+                    onClick={() => setSortMode('hue')}
+                    className={`px-1.5 py-0.5 rounded transition ${
+                      sortMode === 'hue'
+                        ? 'bg-slate-700 text-pink-300 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Rainbow color order (sorted by hue angle)"
+                  >
+                    🌈 Hue
+                  </button>
+                  <button
+                    onClick={() => setSortMode('luminance')}
+                    className={`px-1.5 py-0.5 rounded transition ${
+                      sortMode === 'luminance'
+                        ? 'bg-slate-700 text-amber-300 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Tonal Value order (lightest to darkest luminance)"
+                  >
+                    ☯ Value
+                  </button>
+                  <button
+                    onClick={() => setSortMode('code')}
+                    className={`px-1.5 py-0.5 rounded transition ${
+                      sortMode === 'code'
+                        ? 'bg-slate-700 text-sky-300 font-semibold'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                    title="Sort alphanumerically by shade code"
+                  >
+                    Code
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between text-[9px] text-slate-400 bg-slate-950/40 px-2 py-1 rounded-md border border-slate-800/60 font-mono">
-              <span>Bead System:</span>
-              <span className="text-amber-300 font-sans font-semibold">Perler • Artkal S • Hama Midi</span>
-            </div>
-          )}
 
-          {/* Palette Sort Modes (Count | Rainbow | Value | Code) */}
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-slate-400 font-medium flex items-center gap-1">
-              <ArrowUpDown className="w-3 h-3 text-slate-400" />
-              Sort:
-            </span>
-            <div className="flex items-center bg-slate-950/80 rounded-md p-0.5 border border-slate-800 text-[10px] font-medium">
-              <button
-                onClick={() => setSortMode('count')}
-                className={`px-1.5 py-0.5 rounded transition ${
-                  sortMode === 'count'
-                    ? 'bg-slate-700 text-slate-100 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Sort by stitch/bead count (most used first)"
-              >
-                Count
-              </button>
-              <button
-                onClick={() => setSortMode('hue')}
-                className={`px-1.5 py-0.5 rounded transition ${
-                  sortMode === 'hue'
-                    ? 'bg-slate-700 text-pink-300 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Rainbow color order (sorted by hue angle)"
-              >
-                🌈 Hue
-              </button>
-              <button
-                onClick={() => setSortMode('luminance')}
-                className={`px-1.5 py-0.5 rounded transition ${
-                  sortMode === 'luminance'
-                    ? 'bg-slate-700 text-amber-300 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Tonal Value order (lightest to darkest luminance)"
-              >
-                ☯ Value
-              </button>
-              <button
-                onClick={() => setSortMode('code')}
-                className={`px-1.5 py-0.5 rounded transition ${
-                  sortMode === 'code'
-                    ? 'bg-slate-700 text-sky-300 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Sort alphanumerically by shade code"
-              >
-                Code
-              </button>
+              {/* Mood Shifter & 1-Click Craft Cross-Converter & Photo Extractor */}
+              {(onApplyPaletteMood || onCrossConvertCraft || onOpenPhotoPalette) && (
+                <div className="flex items-center gap-1.5 pt-1 relative">
+                  {onOpenPhotoPalette && (
+                    <button
+                      type="button"
+                      onClick={onOpenPhotoPalette}
+                      className="py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center gap-1 transition bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-amber-300"
+                      title="Extract color palette from an inspiration photo"
+                    >
+                      <Camera className="w-3 h-3 text-amber-400" />
+                      <span>Photo</span>
+                    </button>
+                  )}
+                  {onApplyPaletteMood && (
+                    <div className="relative flex-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsMoodMenuOpen((prev) => !prev);
+                          setIsConvertMenuOpen(false);
+                        }}
+                        className={`w-full py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center justify-between transition ${
+                          isMoodMenuOpen
+                            ? 'bg-pink-500/25 border-pink-400 text-pink-200'
+                            : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-pink-300'
+                        }`}
+                        title="Restyle palette mood (Pastel, Autumn, Cyberpunk, Sunset...)"
+                      >
+                        <span className="flex items-center gap-1">
+                          <Wand2 className="w-3 h-3 text-pink-400" />
+                          <span>Mood Shifter</span>
+                        </span>
+                        <ChevronDown className="w-3 h-3 opacity-70" />
+                      </button>
+
+                      {isMoodMenuOpen && (
+                        <div className="absolute left-0 right-0 mt-1 z-30 bg-slate-950 border border-slate-700 rounded-xl p-1.5 shadow-2xl space-y-0.5 min-w-[195px]">
+                          <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold px-2 py-0.5">
+                            Palette Harmonies (Keeps Locked Colors)
+                          </div>
+                          {PALETTE_MOOD_OPTIONS.map((mood) => (
+                            <button
+                              key={mood.id}
+                              type="button"
+                              onClick={() => {
+                                onApplyPaletteMood(mood.id);
+                                setIsMoodMenuOpen(false);
+                              }}
+                              className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-slate-800 transition flex items-start gap-2"
+                            >
+                              <span className="text-sm leading-none mt-0.5">{mood.emoji}</span>
+                              <div className="min-w-0">
+                                <div className="text-[11px] font-semibold text-slate-100 leading-tight">{mood.label}</div>
+                                <div className="text-[9px] text-slate-400 leading-tight">{mood.description}</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {onCrossConvertCraft && (
+                    <div className="relative flex-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsConvertMenuOpen((prev) => !prev);
+                          setIsMoodMenuOpen(false);
+                        }}
+                        className={`w-full py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center justify-between transition ${
+                          isConvertMenuOpen
+                            ? 'bg-teal-500/25 border-teal-400 text-teal-200'
+                            : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-teal-300'
+                        }`}
+                        title="1-Click convert pattern colors & specs to another craft"
+                      >
+                        <span className="flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3 text-teal-400" />
+                          <span>Convert Craft</span>
+                        </span>
+                        <ChevronDown className="w-3 h-3 opacity-70" />
+                      </button>
+
+                      {isConvertMenuOpen && (
+                        <div className="absolute right-0 mt-1 z-30 bg-slate-950 border border-slate-700 rounded-xl p-1.5 shadow-2xl space-y-0.5 min-w-[185px]">
+                          <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold px-2 py-0.5">
+                            Cross-Convert Pattern To
+                          </div>
+                          {Object.values(CRAFT_ROUTES).map((route) => {
+                            const isCurrent = route.craftType === craftType;
+                            return (
+                              <button
+                                key={route.craftType}
+                                type="button"
+                                disabled={isCurrent}
+                                onClick={() => {
+                                  onCrossConvertCraft(route.craftType);
+                                  setIsConvertMenuOpen(false);
+                                }}
+                                className={`w-full text-left px-2 py-1.5 rounded-lg transition flex items-center justify-between text-[11px] ${
+                                  isCurrent
+                                    ? 'bg-slate-900 text-slate-500 cursor-default'
+                                    : 'hover:bg-slate-800 text-slate-200'
+                                }`}
+                              >
+                                <span className="flex items-center gap-1.5 font-semibold">
+                                  <span>{route.icon}</span>
+                                  <span>{route.title}</span>
+                                </span>
+                                {isCurrent && <Check className="w-3 h-3 text-emerald-400" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Mood Shifter & 1-Click Craft Cross-Converter & Photo Extractor */}
-          {(onApplyPaletteMood || onCrossConvertCraft || onOpenPhotoPalette) && (
-            <div className="flex items-center gap-1.5 pt-1 relative">
-              {onOpenPhotoPalette && (
-                <button
-                  type="button"
-                  onClick={onOpenPhotoPalette}
-                  className="py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center gap-1 transition bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-amber-300"
-                  title="Extract color palette from an inspiration photo"
-                >
-                  <Camera className="w-3 h-3 text-amber-400" />
-                  <span>Photo</span>
-                </button>
-              )}
-              {onApplyPaletteMood && (
-                <div className="relative flex-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMoodMenuOpen((prev) => !prev);
-                      setIsConvertMenuOpen(false);
-                    }}
-                    className={`w-full py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center justify-between transition ${
-                      isMoodMenuOpen
-                        ? 'bg-pink-500/25 border-pink-400 text-pink-200'
-                        : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-pink-300'
-                    }`}
-                    title="Restyle palette mood (Pastel, Autumn, Cyberpunk, Sunset...)"
-                  >
-                    <span className="flex items-center gap-1">
-                      <Wand2 className="w-3 h-3 text-pink-400" />
-                      <span>Mood Shifter</span>
-                    </span>
-                    <ChevronDown className="w-3 h-3 opacity-70" />
-                  </button>
-
-                  {isMoodMenuOpen && (
-                    <div className="absolute left-0 right-0 mt-1 z-30 bg-slate-950 border border-slate-700 rounded-xl p-1.5 shadow-2xl space-y-0.5 min-w-[195px]">
-                      <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold px-2 py-0.5">
-                        Palette Harmonies (Keeps Locked Colors)
-                      </div>
-                      {PALETTE_MOOD_OPTIONS.map((mood) => (
-                        <button
-                          key={mood.id}
-                          type="button"
-                          onClick={() => {
-                            onApplyPaletteMood(mood.id);
-                            setIsMoodMenuOpen(false);
-                          }}
-                          className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-slate-800 transition flex items-start gap-2"
-                        >
-                          <span className="text-sm leading-none mt-0.5">{mood.emoji}</span>
-                          <div className="min-w-0">
-                            <div className="text-[11px] font-semibold text-slate-100 leading-tight">{mood.label}</div>
-                            <div className="text-[9px] text-slate-400 leading-tight">{mood.description}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {onCrossConvertCraft && (
-                <div className="relative flex-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsConvertMenuOpen((prev) => !prev);
-                      setIsMoodMenuOpen(false);
-                    }}
-                    className={`w-full py-1 px-2 rounded-lg border text-[10px] font-semibold flex items-center justify-between transition ${
-                      isConvertMenuOpen
-                        ? 'bg-teal-500/25 border-teal-400 text-teal-200'
-                        : 'bg-slate-900/90 hover:bg-slate-800 border-slate-800 text-teal-300'
-                    }`}
-                    title="1-Click convert pattern colors & specs to another craft"
-                  >
-                    <span className="flex items-center gap-1">
-                      <RefreshCw className="w-3 h-3 text-teal-400" />
-                      <span>Convert Craft</span>
-                    </span>
-                    <ChevronDown className="w-3 h-3 opacity-70" />
-                  </button>
-
-                  {isConvertMenuOpen && (
-                    <div className="absolute right-0 mt-1 z-30 bg-slate-950 border border-slate-700 rounded-xl p-1.5 shadow-2xl space-y-0.5 min-w-[185px]">
-                      <div className="text-[9px] uppercase tracking-wider text-slate-500 font-bold px-2 py-0.5">
-                        Cross-Convert Pattern To
-                      </div>
-                      {Object.values(CRAFT_ROUTES).map((route) => {
-                        const isCurrent = route.craftType === craftType;
-                        return (
-                          <button
-                            key={route.craftType}
-                            type="button"
-                            disabled={isCurrent}
-                            onClick={() => {
-                              onCrossConvertCraft(route.craftType);
-                              setIsConvertMenuOpen(false);
-                            }}
-                            className={`w-full text-left px-2 py-1.5 rounded-lg transition flex items-center justify-between text-[11px] ${
-                              isCurrent
-                                ? 'bg-slate-900 text-slate-500 cursor-default'
-                                : 'hover:bg-slate-800 text-slate-200'
-                            }`}
-                          >
-                            <span className="flex items-center gap-1.5 font-semibold">
-                              <span>{route.icon}</span>
-                              <span>{route.title}</span>
-                            </span>
-                            {isCurrent && <Check className="w-3 h-3 text-emerald-400" />}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Palette Color Cards List */}

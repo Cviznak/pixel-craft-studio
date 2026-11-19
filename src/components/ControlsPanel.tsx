@@ -110,6 +110,8 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'grid' | 'colors'>('grid');
   const [thumbTab, setThumbTab] = useState<'presets' | 'uploads' | 'ai'>('presets');
   const [showPreFilters, setShowPreFilters] = useState<boolean>(false);
+  const [isSourceOpen, setIsSourceOpen] = useState<boolean>(true);
+  const [isTransparencyOpen, setIsTransparencyOpen] = useState<boolean>(false);
   const [clothCount, setClothCount] = useState<CrossStitchClothCount>(14);
   const thumbStripRef = useRef<HTMLDivElement>(null);
 
@@ -148,13 +150,51 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
 
   return (
     <aside className="w-80 max-w-[92vw] sm:w-72 xl:w-80 h-full bg-slate-900 border-r border-slate-800/90 flex flex-col z-10 shrink-0 overflow-hidden shadow-2xl lg:shadow-none select-none">
-      {/* 1. Top Section: Picture Source */}
-      <div className="p-3.5 border-b border-slate-800/90 bg-slate-950/40">
-        <div className="flex items-center justify-between mb-2.5">
-          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-            <span>📷</span> Source Image
-          </span>
-          <div className="flex items-center gap-1.5">
+      {/* 1. Top Section: Picture Source (Collapsible to reclaim sidebar height) */}
+      <div className="p-3 sm:p-3.5 border-b border-slate-800/90 bg-slate-950/40">
+        <div className={`flex items-center justify-between ${isSourceOpen ? 'mb-2.5' : ''}`}>
+          <button
+            type="button"
+            onClick={() => setIsSourceOpen((prev) => !prev)}
+            className="text-xs font-bold text-slate-300 hover:text-white uppercase tracking-wider flex items-center gap-1.5 transition"
+            title={isSourceOpen ? 'Collapse source image panel' : 'Expand source image panel'}
+          >
+            <span>📷</span>
+            <span>Source Image</span>
+            {isSourceOpen ? (
+              <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            )}
+          </button>
+
+          <div className="flex items-center gap-1">
+            {!isSourceOpen && (
+              <>
+                <label
+                  className="cursor-pointer p-1 rounded-md text-indigo-300 hover:bg-slate-800 transition"
+                  title="Upload image (or press Ctrl+V anywhere to paste)"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                {onOpenNewCanvasModal && (
+                  <button
+                    type="button"
+                    onClick={onOpenNewCanvasModal}
+                    className="p-1 rounded-md text-emerald-300 hover:bg-slate-800 transition"
+                    title="Create a new blank canvas to draw freely"
+                  >
+                    <Paintbrush className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </>
+            )}
             {onOpenHistoryModal && (
               <button
                 type="button"
@@ -198,8 +238,10 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
           </div>
         </div>
 
-        {/* Action Button Row: Upload / Crop / Cutout BG / Draw / AI / Starters */}
-        <div className="grid grid-cols-3 gap-1.5 mb-2.5">
+        {isSourceOpen && (
+          <>
+            {/* Action Button Row: Upload / Crop / Cutout BG / Draw / AI / Starters */}
+            <div className="grid grid-cols-3 gap-1.5 mb-2.5">
           <label 
             className="cursor-pointer py-1.5 px-1 bg-indigo-600/15 hover:bg-indigo-600/25 border border-indigo-500/30 text-indigo-300 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 transition text-center"
             title="Upload image (or press Ctrl+V anywhere to paste)"
@@ -388,6 +430,8 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               ))}
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* 2. Simplified Two-Tab Navigation */}
@@ -500,51 +544,78 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({
               </div>
             </div>
 
-            {/* PNG Transparency & Background Fill */}
-            <div className={`p-3 rounded-xl border transition space-y-2.5 ${
-              hasTransparency 
-                ? 'bg-indigo-950/20 border-indigo-500/40' 
-                : 'bg-slate-950/50 border-slate-800/80'
-            }`}>
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
-                  <span>✨</span> PNG Transparency
-                </span>
-                {hasTransparency && (
-                  <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-full font-bold">
-                    Transparent PNG
-                  </span>
+            {/* PNG Transparency & Background Fill (Auto-expanded when PNG has transparency) */}
+            {hasTransparency || isTransparencyOpen ? (
+              <div className={`p-3 rounded-xl border transition space-y-2.5 ${
+                hasTransparency
+                  ? 'bg-indigo-950/20 border-indigo-500/40'
+                  : 'bg-slate-950/50 border-slate-800/80'
+              }`}>
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsTransparencyOpen(false)}
+                    className="text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-1.5 transition"
+                  >
+                    <span>✨</span>
+                    <span>PNG Transparency</span>
+                    {!hasTransparency && <ChevronUp className="w-3.5 h-3.5 text-slate-400" />}
+                  </button>
+                  {hasTransparency && (
+                    <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-1.5 py-0.5 rounded-full font-bold">
+                      Transparent PNG
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5 text-xs">
+                  {[
+                    { id: 'white' as const, label: '⚪ White', desc: 'Crisp black lines' },
+                    { id: 'empty' as const, label: '🔲 No Stitch', desc: 'Empty canvas' },
+                    { id: 'dark' as const, label: '⚫ Dark', desc: 'For light sprites' },
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => onUpdateConfig({ transparentMode: mode.id })}
+                      className={`py-2 px-1 rounded-lg border text-center transition flex flex-col items-center justify-center gap-0.5 ${
+                        (config.transparentMode || 'white') === mode.id
+                          ? 'bg-indigo-600/25 border-indigo-500 text-indigo-200 ring-1 ring-indigo-500/50 font-bold'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="text-xs font-semibold">{mode.label}</span>
+                      <span className="text-[9px] text-slate-500">{mode.desc}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {config.transparentMode === 'empty' && (
+                  <div className="text-[10px] text-indigo-300/90 bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-500/20">
+                    Background cells are transparent/empty. Only the subject character will be beaded/stitched!
+                  </div>
                 )}
               </div>
-
-              <div className="grid grid-cols-3 gap-1.5 text-xs">
-                {[
-                  { id: 'white' as const, label: '⚪ White', desc: 'Crisp black lines' },
-                  { id: 'empty' as const, label: '🔲 No Stitch', desc: 'Empty canvas' },
-                  { id: 'dark' as const, label: '⚫ Dark', desc: 'For light sprites' },
-                ].map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => onUpdateConfig({ transparentMode: mode.id })}
-                    className={`py-2 px-1 rounded-lg border text-center transition flex flex-col items-center justify-center gap-0.5 ${
-                      (config.transparentMode || 'white') === mode.id
-                        ? 'bg-indigo-600/25 border-indigo-500 text-indigo-200 ring-1 ring-indigo-500/50 font-bold'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className="text-xs font-semibold">{mode.label}</span>
-                    <span className="text-[9px] text-slate-500">{mode.desc}</span>
-                  </button>
-                ))}
-              </div>
-
-              {config.transparentMode === 'empty' && (
-                <div className="text-[10px] text-indigo-300/90 bg-indigo-950/40 p-1.5 rounded-lg border border-indigo-500/20">
-                  Background cells are transparent/empty. Only the subject character will be beaded/stitched!
-                </div>
-              )}
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsTransparencyOpen(true)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950/50 hover:bg-slate-900 border border-slate-800/80 flex items-center justify-between text-xs transition"
+              >
+                <span className="text-slate-300 font-semibold flex items-center gap-1.5">
+                  <span>✨</span>
+                  <span>PNG Transparency</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span className="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-slate-200 font-medium capitalize">
+                    {(config.transparentMode || 'white') === 'empty'
+                      ? 'No Stitch'
+                      : config.transparentMode || 'white'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </span>
+              </button>
+            )}
 
             {/* Quick Craft Presets */}
             <div>
